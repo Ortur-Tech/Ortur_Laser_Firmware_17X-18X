@@ -82,6 +82,11 @@ typedef enum {
     Message_CycleStartToRerun = 14,
     Message_ReferenceTLOEstablished = 15,
     Message_MotorFault = 16,
+
+	/*添加两个用于判断是否有插12V电的宏*/
+	Message_PowerSupplied = 17,
+	Message_NoPowerSupply = 18,
+
     Message_NextMessage // Next unassigned message number
 } message_code_t;
 

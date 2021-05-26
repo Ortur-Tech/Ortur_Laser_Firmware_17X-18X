@@ -29,6 +29,8 @@
 #include "tool_change.h"
 #include "state_machine.h"
 #include "limits.h"
+#include "driver.h"
+
 #ifdef KINEMATICS_API
 #include "kinematics.h"
 #endif
@@ -290,7 +292,10 @@ status_code_t system_execute_line (char *line)
         if(lcargs)
             *lcargs++ = '\0';
     }
-
+#if ENABLE_POWER_SUPPLY_CHECK
+	/*0:check power 1:report power*/
+	Main_PowerCheckReport(0);
+#endif
     if (retval == Status_Unhandled) {
         // Check for global setting, store if so
         if(state_get() == STATE_IDLE || (state_get() & (STATE_ALARM|STATE_ESTOP|STATE_CHECK_MODE))) {

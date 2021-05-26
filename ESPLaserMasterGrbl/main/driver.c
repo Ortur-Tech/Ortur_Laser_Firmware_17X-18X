@@ -39,6 +39,14 @@
 #include "driver/ledc.h"
 //#include "grbl_esp32_if/grbl_esp32_if.h"
 
+#include "board.h"
+#include "grbl/state_machine.h"
+#include "usb_serial.h"
+#include "my_machine_map.h"
+#include "accelDetection.h"
+#include "esp_adc_cal.h"
+#include "driver/adc.h"
+
 #ifdef USE_I2S_OUT
 #include "i2s_out.h"
 #endif
@@ -321,7 +329,7 @@ static ioexpand_t iopins = {0};
 
 #ifndef VFD_SPINDLE
 
-static void spindle_set_speed (uint_fast16_t pwm_value);
+
 
 static ledc_timer_config_t ledTimerConfig = {
     .speed_mode = LEDC_LOW_SPEED_MODE,
@@ -834,7 +842,7 @@ probe_state_t probeGetState (void)
 #ifndef VFD_SPINDLE
 
 // Static spindle (off, on cw & on ccw)
-IRAM_ATTR inline static void spindle_off (void)
+IRAM_ATTR inline void spindle_off (void)
 {
 #if IOEXPAND_ENABLE
     iopins.spindle_on = settings.spindle.invert.on ? On : Off;
@@ -877,10 +885,44 @@ IRAM_ATTR static void spindleSetState (spindle_state_t state, float rpm)
     }
 }
 
+uint8_t esp32s2_read_output_pin(uint32_t num)
+{
+	if(num < 32)
+	{
+		return GPIO.out & (1 << num) ? 1 : 0;
+	}
+	else
+	{
+		return (GPIO.out1.data & (1 << (num - 32))) ? 1 : 0;
+	}
+	return 0;
+}
+
+uint8_t is_SpindleEnable(void)
+{
+
+	return esp32s2_read_output_pin(SPINDLE_ENABLE_PIN) ? 0:1 ;
+}
+/*激光是否打开*/
+uint8_t is_SpindleOpen(void)
+{
+	uint32_t duty = 0;
+	duty = ledc_get_duty(ledConfig.speed_mode, ledConfig.channel);
+	duty = settings.spindle.invert.pwm ? pwm_max_value - duty : duty;
+	return duty && is_SpindleEnable();
+}
+/*获取激光pwm功率，*/
+uint16_t laser_GetPower(void)
+{
+	uint32_t duty = 0;
+	duty = ledc_get_duty(ledConfig.speed_mode, ledConfig.channel);
+	duty = settings.spindle.invert.pwm ? pwm_max_value - duty : duty;
+	return duty * 1000 / spindle_pwm.period ;
+}
 // Variable spindle control functions
 
 // Sets spindle speed
-IRAM_ATTR static void spindle_set_speed (uint_fast16_t pwm_value)
+IRAM_ATTR void spindle_set_speed (uint_fast16_t pwm_value)
 {
     if (pwm_value == spindle_pwm.off_value) {
         if(settings.spindle.flags.pwm_action == SpindleAction_DisableWithZeroSPeed)
@@ -1127,8 +1169,8 @@ static void settings_changed (settings_t *settings)
         if(ledTimerConfig.freq_hz != (uint32_t)settings->spindle.pwm_freq) {
             ledTimerConfig.freq_hz = (uint32_t)settings->spindle.pwm_freq;
             if(ledTimerConfig.freq_hz <= 100) {
-                if(ledTimerConfig.duty_resolution != LEDC_TIMER_16_BIT) {
-                    ledTimerConfig.duty_resolution = LEDC_TIMER_16_BIT;
+                if(ledTimerConfig.duty_resolution != LEDC_TIMER_14_BIT) {
+                    ledTimerConfig.duty_resolution = LEDC_TIMER_14_BIT;
                     ledc_timer_config(&ledTimerConfig);
                 }
             } else if(ledTimerConfig.duty_resolution != LEDC_TIMER_10_BIT) {
@@ -1337,6 +1379,631 @@ static void reportConnection (bool newopt)
 }
 #endif
 
+void light_Init(void)
+{
+	 gpio_config_t gpioConfig = {
+	        .pin_bit_mask = ((uint64_t)1 << LIGHT_PIN),
+	        .mode = GPIO_MODE_OUTPUT,
+	        .pull_up_en = GPIO_PULLUP_ENABLE,
+	        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+	        .intr_type = GPIO_INTR_DISABLE
+	    };
+
+	gpio_config(&gpioConfig);
+	gpio_set_level(LIGHT_PIN,0);
+}
+
+uint8_t light_brightness = 100;
+void light_SetState(uint8_t s)
+{
+	if(s)
+	{
+		light_brightness = 100;
+		gpio_set_level(LIGHT_PIN,1);
+	}
+	else
+	{
+		light_brightness = 0;
+		gpio_set_level(LIGHT_PIN,0);
+	}
+}
+uint8_t light_GetBrightness(void)
+{
+	return light_brightness;
+}
+
+void beep_Init(void)
+{
+	 gpio_config_t gpioConfig = {
+	        .pin_bit_mask = ((uint64_t)1 << BEEP_PIN),
+	        .mode = GPIO_MODE_OUTPUT,
+	        .pull_up_en = GPIO_PULLUP_ENABLE,
+	        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+	        .intr_type = GPIO_INTR_DISABLE
+	    };
+
+	gpio_config(&gpioConfig);
+	gpio_set_level(BEEP_PIN,0);
+}
+
+void beep_PwmSet(uint8_t duty)
+{
+	if(duty)
+	{
+		gpio_set_level(BEEP_PIN,1);
+	}
+	else
+	{
+		gpio_set_level(BEEP_PIN,0);
+	}
+}
+
+
+static void check_efuse(void)
+{
+    if (esp_adc_cal_check_efuse(ESP_ADC_CAL_VAL_EFUSE_TP) == ESP_OK) {
+        printf("eFuse Two Point: Supported\n");
+    } else {
+        printf("Cannot retrieve eFuse Two Point calibration values. Default calibration values will be used.\n");
+    }
+
+}
+static void print_char_val_type(esp_adc_cal_value_t val_type)
+{
+    if (val_type == ESP_ADC_CAL_VAL_EFUSE_TP) {
+        printf("Characterized using Two Point Value\n");
+    } else if (val_type == ESP_ADC_CAL_VAL_EFUSE_VREF) {
+        printf("Characterized using eFuse Vref\n");
+    } else {
+        printf("Characterized using Default Vref\n");
+    }
+}
+#define DEFAULT_VREF    1100        //Use adc2_vref_to_gpio() to obtain a better estimate
+static esp_adc_cal_characteristics_t *adc_chars;
+void fire_CheckInit(void)
+{
+	//check_efuse();
+    //Configure ADC
+    adc1_config_width(ADC_WIDTH_BIT_13);
+    adc1_config_channel_atten(ADC_CHANNEL_1, ADC_ATTEN_DB_11);
+    //Characterize ADC
+    //adc_chars = calloc(1, sizeof(esp_adc_cal_characteristics_t));
+    //esp_adc_cal_value_t val_type = esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_0, ADC_WIDTH_BIT_13, 1100, adc_chars);
+    //print_char_val_type(val_type);
+
+}
+
+static uint8_t pre_state = 0;
+static uint8_t fire_alarm_state = 0;
+static uint8_t fire_triggle_when_cycle = 0;
+static uint8_t fire_temp_enable_flag = 1;
+#define FIRE_CHECK_DEBOUNCE_TIME 10	//MS
+//#define FIRE_CHECK_MAX_CNT 	10	//次
+#define FIRE_CHECK_MAX_TIME 1000 //MS
+
+void fire_CheckTempEnable(void)
+{
+	fire_temp_enable_flag = 1;
+}
+
+void fire_CheckTempDisable(void)
+{
+	fire_temp_enable_flag = 0;
+}
+
+/*是否获取到环境ad值，在未获取到该值前不能使用火焰检测*/
+uint8_t fire_evn_flag = 0;
+uint16_t fire_evn_value = 0;
+uint16_t sensor_data_head = 0;
+uint16_t sensor_data_tail = 0;
+
+#define EVN_CAL_VALUE_TIME  	3000
+#define EVN_GET_INTERVAL 		50	 //每50ms采集一次数据
+#define EVN_MAX_RATE_OF_CHANGE 	20   //最大认为是环境波动的变化值
+#define EVN_MAX_VALUE 			4000 //当低于3000时不能进行火焰检测
+#define EVN_MAX_DATA_NUM 		(1000*5/EVN_GET_INTERVAL) //10S每50ms采集一次数据
+uint16_t sensor_data[EVN_MAX_DATA_NUM] = {0};
+
+/*中位值平均滤波+滑动滤波 算法获取环境值*/
+void fire_UpdateEnvironmentValue1(void)
+{
+	/*获取环境值时的突变值限制*/
+#define FIRE_MUTATION_VALUE_LIMIT 500
+
+	uint8_t str[50] = {0};
+	uint32_t i  = 0 ;
+	uint32_t next = sensor_data_tail +1;
+	uint32_t sum_value = 0;
+	uint32_t avg_value = 0;
+	uint32_t max_value = 0;
+	uint32_t min_value = 0xffff;
+	uint32_t err_cnt = 0;
+	static uint32_t cal_value_timer = 0 ;
+	/*每3s计算一次环境值*/
+	if((HAL_GetTick() - cal_value_timer) > EVN_CAL_VALUE_TIME)
+	{
+		cal_value_timer = HAL_GetTick();
+
+		if(next >= EVN_MAX_DATA_NUM) next = 0;
+		/*数据满了开始计算*/
+		if(sensor_data_head != next) return;
+
+		for(i = 0; i< EVN_MAX_DATA_NUM; i++)
+		{
+			/*获取最大值*/
+			if(max_value < sensor_data[i]) max_value = sensor_data[i];
+			/*获取最小值*/
+			if(min_value > sensor_data[i]) min_value = sensor_data[i];
+			sum_value = sum_value + sensor_data[i];
+		}
+		/*去掉最大值和最小值*/
+		sum_value = sum_value - max_value - min_value;
+		/*求总体平均值*/
+		avg_value = sum_value / (EVN_MAX_DATA_NUM -2);
+
+//		/*剔除掉相对于平均值的误差值--限幅*/
+//		for(i = 0; i< EVN_MAX_DATA_NUM; i++)
+//		{
+//			if(abs((int)sensor_data[i] - (int)avg_value) > FIRE_MUTATION_VALUE_LIMIT)
+//			{
+//				err_cnt ++;
+//				sum_value = sum_value - sensor_data[i];
+//			}
+//		}
+//		/*求最终平均值*/
+//		avg_value = sum_value / (EVN_MAX_DATA_NUM - err_cnt);
+
+
+		fire_evn_flag = 1;
+		fire_evn_value = avg_value;
+	}
+}
+
+/*获取环境ad value 连续10秒内的平滑曲线即斜率小于一个固定值*/
+void fire_UpdateEnvironmentValue(void)
+{
+	uint8_t str[50] = {0};
+	uint32_t i  = 0 ;
+	uint32_t next = sensor_data_tail +1;
+	static uint32_t cal_value_timer = 0 ;
+	/*每3s计算一次环境值*/
+	if((HAL_GetTick() - cal_value_timer) > EVN_CAL_VALUE_TIME)
+	{
+		cal_value_timer = HAL_GetTick();
+
+		if(next >= EVN_MAX_DATA_NUM) next = 0;
+		/*数据满了开始计算*/
+		if(sensor_data_head != next) return;
+
+		for(i = 0; i< EVN_MAX_DATA_NUM-1; i++)
+		{
+			if(abs((int)sensor_data[i] - (int)sensor_data[i+1]) > EVN_MAX_RATE_OF_CHANGE)
+			{
+				/*丢弃前面的值*/
+				sensor_data_head = i+1;
+				return ;
+			}
+		}
+		fire_evn_flag = 1;
+		fire_evn_value = sensor_data[sensor_data_tail];
+	}
+}
+static uint32_t fire_catch_cnt = 0;		/*统计检测到火焰的次数*/
+/*在中断tick中断中调用*/
+void fire_GetAverageValue(void)
+{
+	uint8_t str[100] = {0};
+	static uint32_t get_value_timer = 0 ;
+	uint16_t next = 0;
+	if(hal.stream.write_all == NULL)return ;
+	/*每50ms获取一个数据*/
+	if((HAL_GetTick() - get_value_timer) > EVN_GET_INTERVAL)
+	{
+		get_value_timer = HAL_GetTick();
+
+		next = sensor_data_tail + 1;
+		if(next >= EVN_MAX_DATA_NUM)
+			next = 0;
+		sensor_data[sensor_data_tail] = adc1_get_raw((adc1_channel_t)ADC_CHANNEL_1);
+
+		if(settings.fire_log_enable)
+		{
+			sprintf((char*)str,"[MSG:Fire Sensor,ENV:%d,CURRENT:%d,COUNT:%d.]\r\n",fire_evn_value,sensor_data[sensor_data_tail],fire_catch_cnt);
+			hal.stream.write_all((char*)str);
+		}
+
+		sensor_data_tail = next;
+		if(next == sensor_data_head)
+		{
+			if((sensor_data_head + 1) >= EVN_MAX_DATA_NUM)
+			{
+				sensor_data_head = 0;
+			}
+			else
+			{
+				sensor_data_head++;
+			}
+
+		}
+	}
+	fire_UpdateEnvironmentValue();
+}
+
+/*计算相邻两点的斜率*/
+float curve_GetSmoothness(uint16_t* data,uint32_t len)
+{
+	uint32_t i = 0;
+	/*两个数据之间的间隔是50ms--10s 200个数据样本*/
+	float sensor_data_slope[EVN_MAX_DATA_NUM-1] = {0};
+	for(i = 0; i< (EVN_MAX_DATA_NUM - 1); i++)
+	{
+		sensor_data_slope[i] = ((float)sensor_data[i+1] - (float)sensor_data[i]) / EVN_GET_INTERVAL;
+	}
+
+	return sensor_data_slope[0];
+}
+
+
+void fire_InfoReport(void)
+{
+	char str[100] = {0};
+	if(fire_temp_enable_flag == 0)
+	{
+		hal.stream.write_all("[MSG:Flame detector Inactive temporarily]" ASCII_EOL);
+	}
+	else
+	{
+		if(fire_evn_flag == 0)
+		{
+			hal.stream.write_all("[MSG:Detecting ambient infrared]" ASCII_EOL);
+		}
+		else
+		{
+			if(fire_evn_value < EVN_MAX_VALUE)
+			{
+				hal.stream.write_all("[MSG: Flame detector Inactive. Luminosity too high]" ASCII_EOL);
+			}
+			else
+			{
+				sprintf(str,"[MSG: Flame detector active,Ambient infrared value:%d]\r\n",fire_evn_value);
+				hal.stream.write_all(str);
+			}
+
+		}
+	}
+}
+
+uint32_t fire_GetEvnValue(void)
+{
+	return fire_evn_value;
+}
+
+uint32_t fire_GetCurrentValue(void)
+{
+	return adc1_get_raw((adc1_channel_t)ADC_CHANNEL_1);
+}
+
+
+/*
+ * 检测1s内的触发次数
+ */
+void fire_Check(void)
+{
+	static uint32_t check_timer = 0; //消抖计时
+	uint16_t average_value = 0;
+
+	uint32_t limit_min_value = 0;
+
+	control_signals_t signalss = {0};
+	/*临时关闭,硬件复位后使能*/
+	if(fire_temp_enable_flag == 0)
+	{
+		return;
+	}
+	/*火焰检测功能关闭*/
+	if(settings.fire_alarm_time_threshold == 0)
+	{
+		return;
+	}
+	/*已经处于报警状态，则不再进行火焰检测*/
+	if(fire_alarm_state == 1)
+	{
+		return;
+	}
+	/*还未得到环境值*/
+	if(fire_evn_flag == 0)
+	{
+		return;
+	}
+	/*环境值过小*/
+	if(fire_evn_value < EVN_MAX_VALUE)
+	{
+		return ;
+	}
+
+	if((HAL_GetTick() - check_timer) > FIRE_CHECK_DEBOUNCE_TIME)
+	{
+		check_timer = HAL_GetTick();
+
+		/*根据不同的环境光强度下计算触发值*/
+		#define K_VALUE 0.2
+		#define B_VALUE (-500)
+		/**/
+		limit_min_value = fire_evn_value * K_VALUE + B_VALUE;
+		limit_min_value = 50;
+
+		average_value = adc1_get_raw((adc1_channel_t)ADC_CHANNEL_1);
+		if((fire_evn_value > average_value) && (fire_evn_value - average_value > limit_min_value))
+		{
+			fire_catch_cnt++;
+		}
+		else
+		{
+			if(fire_catch_cnt)
+				fire_catch_cnt --;
+		}
+	}
+
+	if(fire_catch_cnt > settings.fire_alarm_time_threshold)
+	{
+		beep_PwmSet(100);
+
+		/*利用hold功能实现暂停打印功能*/
+		if(state_get() == STATE_CYCLE)
+		{
+			fire_triggle_when_cycle = 1;
+			signalss.feed_hold = 1;
+			hal.control.interrupt_callback(signalss);
+		}
+
+		spindle_off_directly();
+
+		/*触发火焰报警后需重新获取环境值*/
+		fire_evn_flag = 0;
+//		fan_PwmSet(0);//关风扇
+		hal.stream.write_all("[MSG: Flame Alarm! If Safe, press Power Button to Resume]" ASCII_EOL);
+//		sys.state = STATE_ALARM;
+//		sys.abort = 1;
+		fire_alarm_state = 1;
+		/*修复这个问题： 紧急停止在关闭状态下再触发火焰后无法关闭蜂鸣器*/
+		pre_state = 1;
+
+	}
+	else/*环境光线太强*/
+	{
+
+	}
+}
+
+
+/*使能或消除火焰报警状态*/
+void fire_AlarmStateSet(uint8_t state)
+{
+	/*每次关报警的时候都需要重置获取环境的标志位,以避免重复触发*/
+	if((fire_alarm_state == 1) && (state == 0))
+	{
+		if(fire_triggle_when_cycle == 1)
+		{
+			hal.stream.write_all("[MSG:Flame Detection OverRide. Resuming Engrave.]" ASCII_EOL);
+			fire_triggle_when_cycle = 0;
+		}
+		else
+		{
+			hal.stream.write_all("[MSG:Flame detection alarm cancelled.]" ASCII_EOL);
+		}
+		fire_evn_flag = 0;
+	}
+	fire_alarm_state = state;
+}
+
+void fire_Alarm(void)
+{
+
+	static uint32_t flash_timer = 0;
+
+	if(fire_alarm_state)
+	{
+		/*声光报警*/
+		if((HAL_GetTick()-flash_timer)>500)
+		{
+			//HAL_GPIO_TogglePin(LIGHT_PWM_PORT, LIGHT_PWM_BIT);
+			//light_Toggle();
+			flash_timer = HAL_GetTick();
+		}
+		pre_state = 1;
+	}
+	else
+	{
+		/*避免多次关闭报警动作*/
+		if(pre_state == 1)
+		{
+			pre_state = 0;
+			/*关闭报警*/
+			light_SetState(1);
+			beep_PwmSet(0);
+		}
+	}
+
+}
+/*LED*/
+void led_Init(void)
+{
+	 gpio_config_t gpioConfig = {
+	        .pin_bit_mask = ((uint64_t)1 << POWER_LED_PIN) | ((uint64_t)1 << COMM_LED_PIN),
+	        .mode = GPIO_MODE_OUTPUT,
+	        .pull_up_en = GPIO_PULLUP_ENABLE,
+	        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+	        .intr_type = GPIO_INTR_DISABLE
+	    };
+
+	gpio_config(&gpioConfig);
+}
+
+void power_LedAlarm(void)
+{
+	static uint32_t flash_time = 0;
+	if((state_get() == STATE_ALARM) && (gpio_get_level(POWER_KEY_PIN) != 0))
+	{
+		if((HAL_GetTick() - flash_time) > 500)
+		{
+			flash_time = HAL_GetTick();
+			power_LedToggle();
+		}
+	}
+	else if(gpio_get_level(POWER_KEY_PIN) != 0)
+	{
+		gpio_set_level(POWER_LED_PIN, 1);
+	}
+}
+void power_LedToggle(void)
+{
+	static uint8_t status = 0;
+	status = !status;
+	gpio_set_level(POWER_LED_PIN,status);
+}
+void power_LedOn(void)
+{
+	gpio_set_level(POWER_LED_PIN,1);
+}
+void power_LedOff(void)
+{
+	gpio_set_level(POWER_LED_PIN,0);
+}
+void comm_LedToggle(void)
+{
+	static uint8_t status = 0;
+	status = !status;
+	gpio_set_level(COMM_LED_PIN,status);
+}
+void comm_LedOn(void)
+{
+	gpio_set_level(COMM_LED_PIN,1);
+}
+void comm_LedOff(void)
+{
+	gpio_set_level(COMM_LED_PIN,0);
+}
+/*KEY*/
+void power_KeyInit(void)
+{
+	gpio_config_t gpioConfig = {
+			.pin_bit_mask = ((uint64_t)1 << POWER_KEY_PIN),
+			.mode = GPIO_MODE_INPUT,
+			.pull_up_en = GPIO_PULLUP_ENABLE,
+			.pull_down_en = GPIO_PULLDOWN_DISABLE,
+			.intr_type = GPIO_INTR_DISABLE
+		};
+
+	gpio_config(&gpioConfig);
+}
+
+uint8_t power_KeyDown(void)
+{
+	return gpio_get_level(POWER_KEY_PIN);
+}
+
+static uint32_t auto_poweroff_time = 0;
+
+/*自动关机功能*/
+void system_UpdateAutoPoweroffTime(void)
+{
+	auto_poweroff_time = HAL_GetTick();
+}
+void system_AutoPowerOff(void)
+{
+	if(settings.sys_auto_poweroff_time == 0) return;
+	/*usb,uart长时间没有输入数据则自动关机*/
+	if((HAL_GetTick() - auto_poweroff_time) > (1000 * 60 * settings.sys_auto_poweroff_time))
+	{
+		hal.stream.write_all(" [MSG: Power saving Mode enabled. Ortur powering off]"ASCII_EOL);
+		HAL_Delay(5);
+		esp_restart();
+	}
+}
+/*电源检测*/
+uint8_t report_power_flag = 0;//是否报告电源状态
+static uint8_t last_power_flag=0;//变化前电源状态
+
+#define IsMainPowrBitSet() (gpio_get_level(POWER_CHECK_PIN) ? 1:0)
+
+void Main_PowerCheckInit(void)
+{
+	gpio_config_t gpioConfig = {
+			.pin_bit_mask = ((uint64_t)1 << POWER_CHECK_PIN),
+			.mode = GPIO_MODE_INPUT,
+			.pull_up_en = GPIO_PULLUP_ENABLE,
+			.pull_down_en = GPIO_PULLDOWN_DISABLE,
+			.intr_type = GPIO_INTR_DISABLE
+		};
+
+	gpio_config(&gpioConfig);
+}
+
+
+/**
+ *掉电去抖
+ */
+uint8_t IsMainPowrIn(void)
+{
+	if(IsMainPowrBitSet())
+	{
+		HAL_Delay(10);
+		if(IsMainPowrBitSet())
+		{
+			last_power_flag=1;
+			return 1;
+		}
+	}
+	return 0;
+}
+/*0:check power 1:report power*/
+void Main_PowerCheckReport(uint8_t mode)
+{
+	/*报告状态*/
+	if(mode)
+	{
+		if(report_power_flag)
+		{
+		  report_feedback_message(report_power_flag);
+		  report_power_flag=0;
+		}
+	}
+	else /*检测状态*/
+	{
+		if(!IsMainPowrIn())
+		 {
+			report_power_flag = Message_NoPowerSupply;
+			 //report_feedback_message(MESSAGE_MAIN_POWER_OFF);
+		 }
+	}
+}
+/**
+ * 检测主电源状态
+ */
+void Main_PowerCheck(void)
+{
+	if(last_power_flag==0)
+	{
+		if(IsMainPowrIn())
+		{
+			report_feedback_message(Message_PowerSupplied);
+		}
+	}
+	else
+	{
+		/*掉电去抖*/
+		if(!IsMainPowrBitSet())
+		{
+			HAL_Delay(10);
+			if(!IsMainPowrBitSet())
+			{
+				last_power_flag=0;
+				report_feedback_message(Message_NoPowerSupply);
+			}
+		}
+	}
+}
+
 // Initializes MCU peripherals for Grbl use
 static bool driver_setup (settings_t *settings)
 {
@@ -1367,10 +2034,10 @@ static bool driver_setup (settings_t *settings)
     for(idx = 0; idx < N_AXIS; idx++)
         rmt_set_source_clk(idx, RMT_BASECLK_APB);
 
-    uint32_t mask = 0; // this is insane...
+    uint64_t mask = 0; // this is insane...
     idx = sizeof(outputpin) / sizeof(gpio_num_t);
     do {
-        mask |= (1ULL << outputpin[--idx]);
+        mask |= ((uint64_t)1ULL << outputpin[--idx]);
     } while(idx);
 
     gpio_config_t gpioConfig = {
@@ -1390,7 +2057,7 @@ ccc
      ************************/
 
     // Set as output low (until boot is complete)
-    gpioConfig.pin_bit_mask = (1ULL << MPG_ENABLE_PIN);
+    gpioConfig.pin_bit_mask = ((uint64_t)1ULL << MPG_ENABLE_PIN);
     gpio_config(&gpioConfig);
     gpio_set_level(MPG_ENABLE_PIN, 0);
 
@@ -1458,6 +2125,20 @@ ccc
     webui_init();
 #endif
 
+#if ENABLE_POWER_SUPPLY_CHECK
+    /*主电源供电检测*/
+    Main_PowerCheckInit();
+#endif
+    /*照明初始化*/
+    light_Init();
+    /*蜂鸣器初始化*/
+    beep_Init();
+    /*火焰检测初始化*/
+    fire_CheckInit();
+#if ENABLE_ACCELERATION_DETECT
+    /*加速度传感器初始化*/
+    Gsensor_Init();
+#endif
   // Set defaults
 
     IOInitDone = settings->version == 19;
@@ -1483,6 +2164,8 @@ bool driver_init (void)
     // Enable EEPROM and serial port here for Grbl to be able to configure itself and report any errors
 
     serialInit();
+
+    usb_SerialInit();
 
     hal.info = "ESP32 S2";
     hal.driver_version = "210314";
@@ -1701,4 +2384,135 @@ IRAM_ATTR static void gpio_isr (void *arg)
   if(grp & INPUT_GROUP_KEYPAD)
       keypad_keyclick_handler(gpio_get_level(KEYPAD_STROBE_PIN));
 #endif
+}
+
+
+#ifndef _MAX
+  #define _MAX(a,b) ((a)>(b)?(a):(b))
+#endif
+
+#ifndef _MIN
+  #define _MIN(a,b) ((a)<(b)?(a):(b))
+#endif
+
+  /* 主轴/激光 是否关闭的标识 */
+  uint8_t spindle_disable_by_grbl = 0;
+  /* 主轴/激光 被关闭的时间 */
+  uint32_t spindle_disabled_time = 0;
+  /* 主轴/激光 累积热量*/
+  uint32_t spindle_cumulative_heat = 0;
+  /* 主轴/激光 是否挂起的标识 */
+  uint8_t spindle_suspend_flag = 0;
+  /* 主轴/激光 风扇延时时间*/
+  uint32_t spindle_fan_delay_time = 0;
+
+/*用于关闭激光*/
+void spindle_reset(void)
+{
+	spindle_set_speed(0);
+	spindle_off_directly();
+}
+void spindle_off_directly(void)
+{
+	/*关主轴供电*/
+	gpio_set_level(SPINDLE_ENABLE_PIN, settings.spindle.invert.on ? 1 : 0);
+
+}
+
+
+  uint8_t spindle_delay_stop(void)
+  {
+  	if(spindle_disable_by_grbl)
+  	{
+  		if(( HAL_GetTick() - spindle_disabled_time ) > spindle_fan_delay_time)
+  		{
+  			spindle_disable_by_grbl = 0;
+  			spindle_cumulative_heat = 0;
+  			/*关主轴供电*/
+  			gpio_set_level(SPINDLE_ENABLE_PIN, settings.spindle.invert.on ? 1 : 0);
+  		}
+  		else
+  			return 0;
+  	}
+
+  	return 1;
+  }
+
+  void spindle_disable_by_grbl_set(uint8_t status)
+  {
+	spindle_disable_by_grbl = status;
+	spindle_disabled_time = HAL_GetTick();
+	if(status)
+	{
+		spindle_fan_delay_time = (spindle_cumulative_heat / FAN_HEAT_DISSIPATION_PER_SECOND) * 1000;
+		spindle_fan_delay_time = _MAX(spindle_fan_delay_time,MIN_SPINDLE_FAN_TIME);
+		spindle_fan_delay_time = _MIN(MAX_SPINDLE_FAN_TIME,spindle_fan_delay_time);
+	}
+  }
+
+void spindle_calculate_heat()
+{
+  static uint32_t last_time = 0;
+  static uint32_t equivalent_power = 0;
+  if(HAL_GetTick() - last_time >= 1000)
+  {
+	  //电源开启
+	  if(is_SpindleEnable())
+	  {
+		  //计算每秒产生的热量和丧失的热量
+		  if(spindle_cumulative_heat < MAX_SPINDLE_HEAT)
+			  spindle_cumulative_heat += equivalent_power / 1000;
+		  if(spindle_cumulative_heat >= FAN_HEAT_DISSIPATION_PER_SECOND)
+			  spindle_cumulative_heat -= FAN_HEAT_DISSIPATION_PER_SECOND ;
+	  }
+	  else
+	  {
+		  if(spindle_cumulative_heat >= AIR_HEAT_DISSIPATION_PER_SECOND)
+			  spindle_cumulative_heat -= AIR_HEAT_DISSIPATION_PER_SECOND ;
+	  }
+	  equivalent_power = 0;
+	  last_time = HAL_GetTick();
+  }
+  else
+  {
+	  equivalent_power += sys.spindle_rpm;
+  }
+}
+
+/*该函数在系统定时器中调用用于紧急按钮消抖
+ *
+ * "Emergency switch Engaged"
+"Emergency switch Cleared"
+ * */
+
+/*记录之前的reset状态*/
+static uint32_t pre_reset_flag = 0;
+
+void reset_report(void)
+{
+	static uint32_t release_reset_timer = 0;
+
+
+	if((systemGetState().reset == 1) && (pre_reset_flag == 0))
+	{
+		hal.stream.write_all("[MSG:Emergency switch Engaged!]" ASCII_EOL);
+		pre_reset_flag = 1;
+		release_reset_timer = HAL_GetTick();
+	}
+
+	if(pre_reset_flag == 1)
+	{
+		if(systemGetState().reset == 0)
+		{
+			if((HAL_GetTick() - release_reset_timer) > 200)
+			{
+				hal.stream.write_all("[MSG:Emergency switch Cleared.]" ASCII_EOL);
+				pre_reset_flag = 0;
+			}
+		}
+		else
+		{
+			release_reset_timer = HAL_GetTick();
+		}
+	}
 }

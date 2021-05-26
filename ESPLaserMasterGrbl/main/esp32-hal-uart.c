@@ -95,7 +95,7 @@ IRAM_ATTR static void _uart1_isr (void *arg)
 
     while(uart1->dev->status.rxfifo_cnt || (uart1->dev->mem_rx_status.rx_waddr != uart1->dev->mem_rx_status.apb_rx_raddr)) {
 
-        c = uart1->dev->ahb_fifo.rw_byte;
+    	 c = READ_PERI_REG(UART_FIFO_AHB_REG(0)); //uart1->dev->ahb_fifo.rw_byte;
 
         if(c == ESP_CMD_TOOL_ACK && !rxbuffer.backup) {
 	        stream_rx_backup(&rxbuffer);
@@ -149,7 +149,7 @@ static void uartSetBaudRate (uart_t *uart, uint32_t baud_rate)
 {
     if(uart == NULL)
         return;
-    baud_rate = 115200;
+
     UART_MUTEX_LOCK(uart);
     uint32_t clk_div = ((UART_CLK_FREQ << 4) / baud_rate);
     uart->dev->clk_div.div_int = clk_div >> 4 ;
@@ -184,7 +184,6 @@ static void uartConfig (uart_t *uart, uint32_t baud_rate)
             //DPORT_CLEAR_PERI_REG_MASK(DPORT_PERIP_RST_EN_REG, DPORT_UART2_RST);
             break;
     }
-    //baud_rate = 115200;
     uartSetBaudRate(uart, baud_rate);
 
     UART_MUTEX_LOCK(uart);

@@ -43,7 +43,7 @@
 //  These can be found in in this file and in defaults.h.
 // Set to 10 to also disable new coordinate system offsets (G59.1 - G59.3) and some $# report extensions.
 // NOTE: if switching to a level > 1 please reset non-volatile storage with $RST=* after reflashing!
-#define COMPATIBILITY_LEVEL 0
+#define COMPATIBILITY_LEVEL 1
 
 //#define KINEMATICS_API // Remove comment to add HAL entry points for custom kinematics
 
@@ -463,6 +463,37 @@
 // Number of tools in ATC tool table, comment out to disable
 // #define N_TOOLS 8
 #endif
+
+
+/********************************自定义功能 BEGIN****************************************/
+
+/*火焰报警触发阈值*/
+#define DEFAULT_FIRE_ALARM_TRIGGER_THRESHOLD 		50
+#define DEFAULT_FIRE_ALARM_TRIGGER_TIME_THRESHOLD 	100
+#define USE_ADC_FIRE_CHECK 1
+#define DEFAULT_AUTO_POWEROFF_TIME 					30//分钟
+/*回零偏移*/
+#if MACHINE_TYPE == OLM_2_PRO || (MACHINE_TYPE == OLM_PRO)
+#define ENABLE_HOMING_FORCE_SET_ORIGIN_OFFSET 0
+#else
+#define ENABLE_HOMING_FORCE_SET_ORIGIN_OFFSET 1
+#define ORIGIN_OFFSET_X 0
+#define ORIGIN_OFFSET_Y 260
+#define ORIGIN_OFFSET_Z 0
+#endif
+
+#define USB_SERIAL_CDC				1
+/**/
+#define DELAY_OFF_SPINDLE 			1
+/*加速度检测使能*/
+#define ENABLE_ACCELERATION_DETECT 	1
+#define DEFAULT_ACCELERATION_LIMIT 	255
+/*电源检测功能与通讯指示灯*/
+#define ENABLE_POWER_SUPPLY_CHECK 	1
+#define ENABLE_COMM_LED2			0
+
+/********************************自定义功能 END****************************************/
+
 
 // Max number of entries in log for PID data reporting, to be used for tuning
 //#define PID_LOG 1000 // Default disabled. Uncomment to enable.

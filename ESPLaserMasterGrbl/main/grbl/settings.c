@@ -77,6 +77,10 @@ PROGMEM const settings_t defaults = {
     .flags.report_inches = DEFAULT_REPORT_INCHES,
     .flags.sleep_enable = DEFAULT_SLEEP_ENABLE,
 #if DEFAULT_LASER_MODE
+	.fire_log_enable = 0,
+	.fire_alarm_delta_threshold = DEFAULT_FIRE_ALARM_TRIGGER_THRESHOLD,
+	.fire_alarm_time_threshold = DEFAULT_FIRE_ALARM_TRIGGER_TIME_THRESHOLD,
+	.sys_auto_poweroff_time = DEFAULT_AUTO_POWEROFF_TIME,
     .mode = Mode_Laser,
     .flags.disable_laser_during_hold = DEFAULT_DISABLE_LASER_DURING_HOLD,
 #else
@@ -99,6 +103,15 @@ PROGMEM const settings_t defaults = {
     .steppers.dir_invert.mask = DEFAULT_DIRECTION_INVERT_MASK,
     .steppers.enable_invert.mask = INVERT_ST_ENABLE_MASK,
     .steppers.deenergize.mask = ST_DEENERGIZE_MASK,
+#if ENABLE_HOMING_FORCE_SET_ORIGIN_OFFSET
+	.origin_offset_x = ORIGIN_OFFSET_X,
+	.origin_offset_y = ORIGIN_OFFSET_Y,
+	.origin_offset_z = ORIGIN_OFFSET_Z,
+#endif
+
+#if ENABLE_ACCELERATION_DETECT
+	.accel_sensitivity = DEFAULT_ACCELERATION_LIMIT,
+#endif
 #if DEFAULT_HOMING_ENABLE
     .homing.flags.enabled = DEFAULT_HOMING_ENABLE,
     .homing.flags.init_lock = DEFAULT_HOMING_INIT_LOCK,

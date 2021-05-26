@@ -35,6 +35,10 @@
 #include "limits.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "board.h"
+
+#include "accelDetection.h"
+#include "driver.h"
 #ifndef RT_QUEUE_SIZE
 #define RT_QUEUE_SIZE 8 // must be a power of 2
 #endif
@@ -172,9 +176,14 @@ bool protocol_main_loop (void)
 
     while(true) {
     	test_function();
+#if ENABLE_POWER_SUPPLY_CHECK
+    	Main_PowerCheck();
+#endif
         // Process one line of incoming stream data, as the data becomes available. Performs an
         // initial filtering by removing spaces and comments and capitalizing all letters.
         while((c = hal.stream.read()) != SERIAL_NO_DATA) {
+        	/*重置自动关机时间*/
+			system_UpdateAutoPoweroffTime();
         	vTaskDelay(1/ portTICK_PERIOD_MS);
             if(c == ASCII_CAN) {
 
@@ -215,6 +224,10 @@ bool protocol_main_loop (void)
                         system_raise_alarm(Alarm_LimitsEngaged);
                         grbl.report.feedback_message(Message_CheckLimits);
                     }
+#if ENABLE_POWER_SUPPLY_CHECK
+                    /*0:check power 1:report power*/
+                    Main_PowerCheckReport(1);
+#endif
                 } else if (line[0] == '[' && grbl.on_user_command)
                     gc_state.last_error = grbl.on_user_command(line);
                 else if (state_get() & (STATE_ALARM|STATE_ESTOP|STATE_JOG)) // Everything else is gcode. Block if in alarm, eStop or jog mode.
@@ -226,6 +239,10 @@ bool protocol_main_loop (void)
 
 #endif
                     gc_state.last_error = gc_execute_block(line, user_message.show ? user_message.message : NULL);
+#if ENABLE_POWER_SUPPLY_CHECK
+                    /*0:check power 1:report power*/
+					Main_PowerCheckReport(1);
+#endif
                 }
 
                 // Add a short delay for each block processed in Check Mode to
@@ -323,7 +340,27 @@ bool protocol_main_loop (void)
 
             xcommand[0] = '\0';
         }
-
+#if ENABLE_COMM_LED2
+		//指示USB连接状态
+		if(isUsbPlugIn())
+			comm_LedOn();
+		else
+			comm_LedOff();
+#endif
+		power_LedAlarm();
+    	/*添加实时检测reset状态*/
+    	if(hal.control.get_state().reset)
+		{
+    	    /*立即关激光供电*/
+    		spindle_off_directly();
+    		state_set(STATE_ALARM); // Ensure alarm state is set.
+		}
+    	/*报告reset状态*/
+    	reset_report();
+        /*添加按键关机操作*/
+		key_func(0);
+		/*长时间不动作自动关机*/
+		system_AutoPowerOff();
         // If there are no more characters in the input stream buffer to be processed and executed,
         // this indicates that g-code streaming has either filled the planner buffer or has
         // completed. In either case, auto-cycle start, if enabled, any queued moves.
@@ -385,7 +422,10 @@ bool protocol_execute_realtime (void)
 
         if (sys.suspend)
             protocol_exec_rt_suspend();
-
+#if ENABLE_ACCELERATION_DETECT
+        //检查加速度,侦测移动
+	    accel_detection_limit();
+#endif
       #ifdef BUFFER_NVSDATA
         if((state_get() == STATE_IDLE || (state_get() & (STATE_ALARM|STATE_ESTOP))) && settings_dirty.is_dirty && !gc_state.file_run)
             nvs_buffer_sync_physical();

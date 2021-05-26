@@ -307,4 +307,113 @@ extern SemaphoreHandle_t i2cBusy;
 
 void selectStream (stream_type_t stream);
 
+
+#ifdef DELAY_OFF_SPINDLE
+
+  #define MAX_SPINDLE_FAN_TIME (2*60*1000) //最大的风扇冷却时间
+  #define MIN_SPINDLE_FAN_TIME (30*1000)   //最小的风扇冷却时间
+
+  //假定散热和发热都是线性关系
+  //激光器全工作超过30分钟风扇延时工作120秒，确保激光器冷却
+  #define FAN_HEAT_DISSIPATION_PER_SECOND  400  //风扇辅助每秒散热量
+  #define AIR_HEAT_DISSIPATION_PER_SECOND  100  //自然空冷每秒散热量
+  #define LASER_CALORIFIC_PER_SECOND      1000  //激光每秒发热量
+
+  //最大发热量
+  #define MAX_SPINDLE_HEAT   ( MAX_SPINDLE_FAN_TIME / 1000 * FAN_HEAT_DISSIPATION_PER_SECOND)
+
+  /* 主轴/激光 是否关闭的标识 */
+  extern uint8_t spindle_disable_by_grbl;
+  /* 主轴/激光 被关闭的时间 */
+  extern uint32_t spindle_disabled_time;
+  /* 主轴/激光 累积热量*/
+  extern uint32_t spindle_cumulative_heat;
+  /* 主轴/激光 是否挂起的标识 */
+  extern uint8_t spindle_suspend_flag;
+  /* 主轴/激光 风扇延时时间*/
+  extern uint32_t spindle_fan_delay_time;
+
+  /**
+   * @brief spindle_suspend_flag_set 设置挂起状态，用于挂起恢复是开激光使能
+   * @param status
+   */
+  inline void spindle_suspend_flag_set(uint8_t status)
+  {
+  	spindle_suspend_flag = status;
+  }
+
+  /**
+   * @brief is_spindle_suspend_flag_set 读取挂起状态
+   * @return
+   */
+  inline uint8_t is_spindle_suspend_flag_set(void)
+  {
+  	return spindle_suspend_flag;
+  }
+
+  /**
+   * @brief grbl 层面关激光供电
+   * @param status
+   */
+  void spindle_disable_by_grbl_set(uint8_t status);
+
+  /**
+   * @brief delay_stop_spindle
+   * @return 1: 允许关激光 0：需要延时关激光
+   */
+  uint8_t spindle_delay_stop(void);
+
+  /**
+   * @brief 计算主轴热量累积
+   */
+  void spindle_calculate_heat();
+
+#endif
+
+void Main_PowerCheckReport(uint8_t mode);
+void Main_PowerCheck(void);
+void spindle_off (void);
+bool driver_init (void);
+/*激光是否打开*/
+uint8_t is_SpindleOpen(void);
+/*获取激光pwm功率，*/
+uint16_t laser_GetPower(void);
+void light_SetState(uint8_t s);
+void fan_PwmSet(uint8_t duty);
+void beep_PwmSet(uint8_t duty);
+
+void fire_Alarm(void);
+void fire_Check(void);
+void fire_AlarmStateSet(uint8_t state);
+void fire_GetAverageValue(void);
+void fire_InfoReport(void);
+uint32_t fire_GetEvnValue(void);
+uint32_t fire_GetCurrentValue(void);
+void fire_CheckTempEnable(void);
+void fire_CheckTempDisable(void);
+
+uint8_t light_GetBrightness(void);
+uint8_t fan_GetSpeed(void);
+void spindle_off_directly(void);
+void mcu_reboot();
+void spindle_set_speed (uint_fast16_t pwm_value);
+void power_KeyInit(void);
+uint8_t power_KeyDown(void);
+void led_Init(void);
+void power_LedToggle(void);
+void power_LedOn(void);
+void power_LedOff(void);
+void comm_LedToggle(void);
+void comm_LedOn(void);
+void comm_LedOff(void);
+void power_LedAlarm(void);
+void reset_report(void);
+
+void spindle_reset(void);
+
+
+
+void system_UpdateAutoPoweroffTime(void);
+void system_AutoPowerOff(void);
+
 #endif // __DRIVER_H__

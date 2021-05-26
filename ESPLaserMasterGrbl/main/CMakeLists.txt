@@ -45,7 +45,7 @@ set(BLUETOOTH_SOURCE bluetooth.c )
 set(HUANYANG_SOURCE spindle/huanyang.c spindle/modbus)
 set(EEPROM_SOURCE eeprom/eeprom_24LC16B.c eeprom/eeprom_24AAxxx.c)
 
-set(SRCS main.c driver.c nvs.c esp32-hal-uart.c
+set(SRCS main.c driver.c nvs.c esp32-hal-uart.c board.c usb_serial.c accelDetection.c 
  i2c.c
  ioexpand.c
  i2s_out.c

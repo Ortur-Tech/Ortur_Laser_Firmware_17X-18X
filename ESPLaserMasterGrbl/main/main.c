@@ -44,9 +44,12 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "sdkconfig.h"
+#include "board.h"
 
 static void vGrblTask (void *pvParameters)
 {
+	key_func(1);
+	creat_ExtFuncTask();
     grbl_enter();
 }
 

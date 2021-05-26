@@ -30,6 +30,8 @@
 #include "protocol.h"
 #include "state_machine.h"
 
+#include "driver.h"
+
 // NOTE: Max line number is defined by the g-code standard to be 99999. It seems to be an
 // arbitrary value, and some GUIs may require more. So we increased it based on a max safe
 // value when converting a float (7.2 digit precision)s to an integer.
@@ -76,7 +78,14 @@ typedef union {
                  M7 :1, // [M3,M4,M5] Spindle turning
                  M8 :1, // [M7,M8,M9] Coolant control
                  M9 :1, // [M49,M50,M51,M53,M56] Override control
-                M10 :1; // User defined M commands
+                M10 :1, // User defined M commands
+        		/*添加两个控制蜂鸣器和风扇*/
+				M11 :1,  	//LIGHT ON
+        		M12 :1,		//LIGHT OFF
+        		M13 :1,		//FAN PWM
+        		M14 :1,		//FAN OFF
+        		M15 :1,		//enable FIRE and sensitivity
+        		M16 :1;		//disable FIRE
     };
 } modal_groups_t;
 
@@ -736,7 +745,12 @@ status_code_t gc_execute_block(char *block, char *message)
                         }
                         break;
 
-                    case 3: case 4: case 5:
+                    case 3: case 4:
+#if ENABLE_POWER_SUPPLY_CHECK
+						/*主电源供电检测*/
+                    	Main_PowerCheckReport(0);
+#endif
+                    case 5:
                         word_bit.modal_group.M7 = On;
                         gc_block.modal.spindle.on = !(int_value == 5);
                         gc_block.modal.spindle.ccw = int_value == 4;
@@ -773,7 +787,28 @@ status_code_t gc_execute_block(char *block, char *message)
                                 break;
                         }
                         break;
+					case 11:
+						//light_SetState(1);
+						break;
+					case 12:
+						//light_SetState(0);
+						break;
+					case 13:
+						//fan_PwmSet(50);
+						word_bit.modal_group.M13 = On;
 
+						break;
+					case 14:
+						//fan_PwmSet(0);
+					case 15:
+						/*开火焰检测功能 带参Sxx --永久值*/
+						fire_CheckTempEnable();
+						word_bit.modal_group.M15 = On;
+						break;
+					case 16:
+						/*关火焰检测功能*/
+						fire_CheckTempDisable();
+						break;
                     case 56:
                         if(!settings.parking.flags.enable_override_control) // TODO: check if enabled?
                             FAIL(Status_GcodeUnsupportedCommand); // [Unsupported M command]

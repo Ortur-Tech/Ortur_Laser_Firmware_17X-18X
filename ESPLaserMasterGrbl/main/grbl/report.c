@@ -89,7 +89,7 @@ static const report_t report_fns = {
 
 // Append a number of strings to the static buffer
 // NOTE: do NOT use for several int/float conversions as these share the same underlying buffer!
-static char *appendbuf (int argc, ...)
+char *appendbuf (int argc, ...)
 {
     char c, *s = buf, *arg;
 

@@ -100,4 +100,5 @@ status_code_t report_spindle_data (sys_state_t state, char *args);
 // Prints current PID log.
 void report_pid_log (void);
 
+char *appendbuf (int argc, ...);
 #endif

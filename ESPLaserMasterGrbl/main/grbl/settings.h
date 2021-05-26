@@ -542,6 +542,20 @@ typedef struct {
     parking_settings_t parking;
     position_pid_t position;    // Used for synchronized motion
     ioport_signals_t ioport;
+
+    uint8_t fire_log_enable;				//日志打印
+    uint32_t fire_alarm_delta_threshold;   	//比较阈值
+    uint32_t fire_alarm_time_threshold;    	//次数阈值
+#if ENABLE_HOMING_FORCE_SET_ORIGIN_OFFSET
+    int16_t origin_offset_x;
+    int16_t origin_offset_y;
+    int16_t origin_offset_z;
+#endif
+#if ENABLE_ACCELERATION_DETECT
+    uint16_t accel_sensitivity;
+#endif
+    uint16_t sys_auto_poweroff_time;
+
 } settings_t;
 
 typedef enum {
