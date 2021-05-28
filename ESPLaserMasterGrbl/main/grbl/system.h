@@ -1,9 +1,9 @@
 /*
   system.h - Header for system level commands and real-time processes
 
-  Part of grblHAL
+  Part of GrblHAL
 
-  Copyright (c) 2017-2021 Terje Io
+  Copyright (c) 2017-2020 Terje Io
   Copyright (c) 2014-2016 Sungeun K. Jeon for Gnea Research LLC
 
   Grbl is free software: you can redistribute it and/or modify
@@ -25,7 +25,6 @@
 
 #include "gcode.h"
 #include "probe.h"
-#include "alarms.h"
 
 // Define system executor bit map. Used internally by realtime protocol as realtime command flags,
 // which notifies the main program to execute the specified realtime command asynchronously.
@@ -81,14 +80,33 @@ typedef enum {
     Message_HomingCycleRequired = 13,
     Message_CycleStartToRerun = 14,
     Message_ReferenceTLOEstablished = 15,
-    Message_MotorFault = 16,
 
-	/*ÃÌº”¡Ω∏ˆ”√”⁄≈–∂œ «∑Ò”–≤Â12VµÁµƒ∫Í*/
-	Message_PowerSupplied = 17,
-	Message_NoPowerSupply = 18,
+	/*Ê∑ªÂä†‰∏§‰∏™Áî®‰∫éÂà§Êñ≠ÊòØÂê¶ÊúâÊèí12VÁîµÁöÑÂÆè*/
+	Message_PowerSupplied = 16,
+	Message_NoPowerSupply = 17,
 
     Message_NextMessage // Next unassigned message number
 } message_code_t;
+
+// Alarm executor codes. Valid values (1-255). Zero is reserved.
+typedef enum {
+    Alarm_None = 0,
+    Alarm_HardLimit = 1,
+    Alarm_SoftLimit = 2,
+    Alarm_AbortCycle = 3,
+    Alarm_ProbeFailInitial = 4,
+    Alarm_ProbeFailContact = 5,
+    Alarm_HomingFailReset = 6,
+    Alarm_HomingFailDoor = 7,
+    Alarm_FailPulloff = 8,
+    Alarm_HomingFailApproach = 9,
+    Alarm_EStop = 10,
+    Alarm_HomingRequried = 11,
+    Alarm_LimitsEngaged = 12,
+    Alarm_ProbeProtect = 13,
+    Alarm_Spindle = 14,
+    Alarm_HomingFailAutoSquaringApproach = 15
+} alarm_code_t;
 
 typedef enum {
     Parking_DoorClosed = 0,
@@ -103,8 +121,6 @@ typedef enum {
     Hold_Complete = 1,
     Hold_Pending = 2
 } hold_state_t;
-
-typedef uint_fast16_t sys_state_t;
 
 // Define step segment generator state flags.
 typedef union {
@@ -133,9 +149,7 @@ typedef union {
                  probe_disconnected :1,
                  motor_fault        :1,
                  motor_warning      :1,
-                 limits_override    :1,
-                 single_block       :1,
-                 unassigned         :2,
+                 unassigned         :4,
                  probe_triggered    :1, // used for probe protection
                  deasserted         :1; // this flag is set if signals are deasserted. Note: do NOT pass on to Grbl control_interrupt_handler if set.
     };
@@ -197,111 +211,84 @@ typedef struct {
 } overrides_t;
 
 typedef union {
-    uint16_t value;
+    uint8_t value;
     struct {
-        uint16_t mpg_mode              :1, // MPG mode flag. Set when switched to secondary input stream. (unused for now)
-                 probe_succeeded       :1, // Tracks if last probing cycle was successful.
-                 soft_limit            :1, // Tracks soft limit errors for the state machine.
-                 exit                  :1, // System exit flag. Used in combination with abort to terminate main loop.
-                 block_delete_enabled  :1, // Set to true to enable block delete
-                 feed_hold_pending     :1,
-                 delay_overrides       :1,
-                 optional_stop_disable :1,
-                 single_block          :1; // Set to true to disable M1 (optional stop), via realtime command
+        uint8_t mpg_mode              :1, // MPG mode flag. Set when switched to secondary input stream. (unused for now)
+                probe_succeeded       :1, // Tracks if last probing cycle was successful.
+                soft_limit            :1, // Tracks soft limit errors for the state machine.
+                exit                  :1, // System exit flag. Used in combination with abort to terminate main loop.
+                block_delete_enabled  :1, // Set to true to enable block delete
+                feed_hold_pending     :1,
+                delay_overrides       :1,
+                optional_stop_disable :1; // Set to true to disable M1 (optional stop), via realtime command
     };
 } system_flags_t;
 
-typedef struct
-{
-    control_signals_t control;
-    limit_signals_t limits;
-} signal_event_t;
-
 // Define global system variables
-// NOTE: probe_position and position variables may need to be declared as volatiles, if problems arise.
 typedef struct {
-    bool abort;                             // System abort flag. Forces exit back to main loop for reset.
-    bool cancel;                            // System cancel flag.
-    bool suspend;                           // System suspend state flag.
-    bool position_lost;                     // Set when mc_reset is called when machine is moving.
-    volatile bool steppers_deenergize;      // Set to true to deenergize stepperes
-    axes_signals_t tlo_reference_set;       // Axes with tool length reference offset set
-    int32_t tlo_reference[N_AXIS];          // Tool length reference offset
-    alarm_code_t alarm_pending;             // Delayed alarm, currently used for probe protection
-    system_flags_t flags;                   // Assorted state flags
-    step_control_t step_control;            // Governs the step segment generator depending on system state.
-    axes_signals_t homing_axis_lock;        // Locks axes when limits engage. Used as an axis motion mask in the stepper ISR.
-    axes_signals_t homing;                  // Axes with homing enabled.
-    overrides_t override;                   // Override values & states
-    report_tracking_flags_t report;         // Tracks when to add data to status reports.
-    parking_state_t parking_state;          // Tracks parking state
-    hold_state_t holding_state;             // Tracks holding state
-    int32_t probe_position[N_AXIS];         // Last probe position in machine coordinates and steps.
-    volatile probing_state_t probing_state; // Probing state value. Used to coordinate the probing cycle with stepper ISR.
-    volatile uint_fast16_t rt_exec_state;   // Realtime executor bitflag variable for state management. See EXEC bitmasks.
-    volatile uint_fast16_t rt_exec_alarm;   // Realtime executor bitflag variable for setting various alarms.
+    uint_fast16_t state;                // Tracks the current system state of Grbl.
+                                        // NOTE: Setting the state variable directly is NOT allowed! Use the set_state() function!
+    bool ready;                         // System ready flag.
+    bool abort;                         // System abort flag. Forces exit back to main loop for reset.
+    bool cancel;                        // System cancel flag.
+    bool suspend;                       // System suspend state flag.
+    volatile bool steppers_deenergize;  // Set to true to deenergize stepperes
+    bool mpg_mode;                      // To be moved to system_flags_t
+    axes_signals_t tlo_reference_set;   // Axes with tool length reference offset set
+    int32_t tlo_reference[N_AXIS];      // Tool length reference offset
+    alarm_code_t alarm_pending;         // Delayed alarm, currently used for probe protection
+    system_flags_t flags;               // Assorted state flags
+    step_control_t step_control;        // Governs the step segment generator depending on system state.
+    axes_signals_t homing_axis_lock;    // Locks axes when limits engage. Used as an axis motion mask in the stepper ISR.
+    axes_signals_t homing;              // Axes with homing enabled.
+    axes_signals_t homed;               // Indicates which axes has been homed.
+    overrides_t override;               // Override values & states
+    report_tracking_flags_t report;     // Tracks when to add data to status reports.
+    parking_state_t parking_state;      // Tracks parking state
+    hold_state_t holding_state;         // Tracks holding state
+    float home_position[N_AXIS];        // Home position for homed axes
     float spindle_rpm;
 #ifdef PID_LOG
     pid_data_t pid_log;
 #endif
-    // The following variables are only cleared upon soft reset if position is likely lost, do NOT move. homed must be first!
-    axes_signals_t homed;                   // Indicates which axes has been homed.
-    float home_position[N_AXIS];            // Home position for homed axes
-    // The following variables are not cleared upon soft reset, do NOT move. alarm must be first!
-    alarm_code_t alarm;                     // Current alarm, only valid if system state is STATE_ALARM.
-    bool cold_start;                        // Set to true on boot, is false on subsequent soft resets.
-    bool driver_started;                    // Set to true when driver initialization is completed.
-    bool mpg_mode;                          // To be moved to system_flags_t
-    signal_event_t last_event;              // Last signal events (control and limits signal).
-    int32_t position[N_AXIS];               // Real-time machine (aka home) position vector in steps.
 } system_t;
-
-typedef status_code_t (*sys_command_ptr)(sys_state_t state, char *args);
-
-typedef struct
-{
-    const char *command;
-    bool noargs;
-    sys_command_ptr execute;
-} sys_command_t;
-
-typedef struct sys_commands_str {
-    const uint8_t n_commands;
-    const sys_command_t *commands;
-    struct sys_commands_str *(*on_get_commands)(void);
-} sys_commands_t;
 
 extern system_t sys;
 
+// NOTE: These position variables may need to be declared as volatiles, if problems arise.
+extern int32_t sys_position[N_AXIS];      // Real-time machine (aka home) position vector in steps.
+extern int32_t sys_probe_position[N_AXIS]; // Last probe position in machine coordinates and steps.
+
+extern volatile probing_state_t sys_probing_state; // Probing state value.  Used to coordinate the probing cycle with stepper ISR.
+extern volatile uint_fast16_t sys_rt_exec_state;   // Global realtime executor bitflag variable for state management. See EXEC bitmasks.
+extern volatile uint_fast16_t sys_rt_exec_alarm;   // Global realtimeate val executor bitflag variable for setting various alarms.
+
 // Executes an internal system command, defined as a string starting with a '$'
-status_code_t system_execute_line (char *line);
+status_code_t system_execute_line(char *line);
 
 // Execute the startup script lines stored in non-volatile storage upon initialization
-void system_execute_startup (void);
+void system_execute_startup(char *line);
 
-void system_flag_wco_change (void);
+void system_flag_wco_change();
 
 // Returns machine position of axis 'idx'. Must be sent a 'step' array.
 //float system_convert_axis_steps_to_mpos(int32_t *steps, uint_fast8_t idx);
 
 // Updates a machine 'position' array based on the 'step' array sent.
-void system_convert_array_steps_to_mpos (float *position, int32_t *steps);
+void system_convert_array_steps_to_mpos(float *position, int32_t *steps);
 
 // Checks and reports if target array exceeds machine travel limits.
-bool system_check_travel_limits (float *target);
+bool system_check_travel_limits(float *target);
 
 // Checks and limit jog commands to within machine travel limits.
 void system_apply_jog_limits (float *target);
 
-// Raise and report alarm state
-void system_raise_alarm (alarm_code_t alarm);
-
 // Special handlers for setting and clearing Grbl's real-time execution flags.
-#define system_set_exec_state_flag(mask) hal.set_bits_atomic(&sys.rt_exec_state, (mask))
-#define system_clear_exec_state_flag(mask) hal.clear_bits_atomic(&sys.rt_exec_state, (mask))
-#define system_clear_exec_states() hal.set_value_atomic(&sys.rt_exec_state, 0)
-#define system_set_exec_alarm(code) hal.set_value_atomic(&sys.rt_exec_alarm, (uint_fast16_t)(code))
-#define system_clear_exec_alarm() hal.set_value_atomic(&sys.rt_exec_alarm, 0)
+#define system_set_exec_state_flag(mask) hal.set_bits_atomic(&sys_rt_exec_state, (mask))
+#define system_clear_exec_state_flag(mask) hal.clear_bits_atomic(&sys_rt_exec_state, (mask))
+#define system_clear_exec_states() hal.set_value_atomic(&sys_rt_exec_state, 0)
+#define system_set_exec_alarm(code) hal.set_value_atomic(&sys_rt_exec_alarm, (uint_fast16_t)(code))
+#define system_clear_exec_alarm() hal.set_value_atomic(&sys_rt_exec_alarm, 0)
 
 void control_interrupt_handler (control_signals_t signals);
 

@@ -5,9 +5,9 @@
 
   These are NOT referenced in the core grbl code
 
-  Part of grblHAL
+  Part of GrblHAL
 
-  Copyright (c) 2020-2021 Terje Io
+  Copyright (c) 2020 Terje Io
 
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -106,11 +106,6 @@ typedef struct {
     char service_name[33];
 } bluetooth_settings_t;
 
-typedef struct {
-    uint32_t baud_rate;
-    uint32_t rx_timeout;
-} modbus_settings_t;
-
 // Quadrature encoder interface
 
 typedef enum {
@@ -133,7 +128,7 @@ typedef enum {
     Setting_EncoderCPR = 1, // Count Per Revolution
     Setting_EncoderCPD = 2, // Count Per Detent
     Setting_EncoderDblClickWindow = 3 // ms
-} encoder_setting_id_t;
+} encoder_setting_type_t;
 
 typedef union {
     uint8_t events;
@@ -184,6 +179,7 @@ typedef struct {
     uint8_t *data;
 } nvs_transfer_t;
 
+extern void i2c_init (void);
 extern nvs_transfer_result_t i2c_nvs_transfer (nvs_transfer_t *i2c, bool read);
 extern void my_plugin_init (void)  __attribute__((weak));
 

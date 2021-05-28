@@ -1,9 +1,9 @@
 /*
   spindle_control.c - spindle control methods
 
-  Part of grblHAL
+  Part of GrblHAL
 
-  Copyright (c) 2017-2021 Terje Io
+  Copyright (c) 2017-2020 Terje Io
   Copyright (c) 2012-2015 Sungeun K. Jeon
   Copyright (c) 2009-2011 Simen Svale Skogsrud
 
@@ -38,7 +38,7 @@ void spindle_set_override (uint_fast8_t speed_override)
 
     if ((uint8_t)speed_override != sys.override.spindle_rpm) {
         sys.override.spindle_rpm = (uint8_t)speed_override;
-        if(state_get() == STATE_IDLE)
+        if(sys.state == STATE_IDLE)
             spindle_set_state(gc_state.modal.spindle, gc_state.spindle.rpm);
         else
             sys.step_control.update_spindle_rpm = On;
@@ -77,9 +77,9 @@ bool spindle_set_state (spindle_state_t state, float rpm)
 bool spindle_sync (spindle_state_t state, float rpm)
 {
     bool ok = true;
-    bool at_speed = state_get() == STATE_CHECK_MODE || !state.on || !hal.driver_cap.spindle_at_speed || settings.spindle.at_speed_tolerance <= 0.0f;
+    bool at_speed = sys.state == STATE_CHECK_MODE || !state.on || !hal.driver_cap.spindle_at_speed || settings.spindle.at_speed_tolerance <= 0.0f;
 
-    if (state_get() != STATE_CHECK_MODE) {
+    if (sys.state != STATE_CHECK_MODE) {
         // Empty planner buffer to ensure spindle is set when programmed.
         if((ok = protocol_buffer_synchronize()) && spindle_set_state(state, rpm) && !at_speed) {
             float delay = 0.0f;
@@ -89,7 +89,8 @@ bool spindle_sync (spindle_state_t state, float rpm)
                 if(ABORTED)
                     break;
                 if(delay >= SAFETY_DOOR_SPINDLE_DELAY) {
-                    system_raise_alarm(Alarm_Spindle);
+                    set_state(STATE_ALARM); // Ensure alarm state is active.
+                    report_alarm_message(Alarm_Spindle);
                     break;
                 }
             }
@@ -119,7 +120,8 @@ bool spindle_restore (spindle_state_t state, float rpm)
                     if(ABORTED)
                         break;
                     if(delay >= SAFETY_DOOR_SPINDLE_DELAY) {
-                        system_raise_alarm(Alarm_Spindle);
+                        set_state(STATE_ALARM); // Ensure alarm state is active.
+                        report_alarm_message(Alarm_Spindle);
                         break;
                     }
                 }
@@ -170,7 +172,7 @@ bool spindle_precompute_pwm_values (spindle_pwm_t *pwm_data, uint32_t clock_hz)
         else
             pwm_data->off_value = invert_pwm(pwm_data, (uint_fast16_t)(pwm_data->period * settings.spindle.pwm_off_value / 100.0f));
         pwm_data->min_value = (uint_fast16_t)(pwm_data->period * settings.spindle.pwm_min_value / 100.0f);
-        pwm_data->max_value = (uint_fast16_t)(pwm_data->period * settings.spindle.pwm_max_value / 100.0f) + pwm_data->offset;
+        pwm_data->max_value = (uint_fast16_t)(pwm_data->period * settings.spindle.pwm_max_value / 100.0f) - 1;
         pwm_data->pwm_gradient = (float)(pwm_data->max_value - pwm_data->min_value) / (settings.spindle.rpm_max - settings.spindle.rpm_min);
         pwm_data->always_on = settings.spindle.pwm_off_value != 0.0f;
     }

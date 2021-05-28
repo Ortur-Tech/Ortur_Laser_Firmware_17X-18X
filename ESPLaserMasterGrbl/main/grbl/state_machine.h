@@ -3,9 +3,9 @@
 
   Main state machine
 
-  Part of grblHAL
+  Part of GrblHAL
 
-  Copyright (c) 2018-2021 Terje Io
+  Copyright (c) 2018 Terje Io
 
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -24,9 +24,8 @@
 #ifndef _STATE_MACHINE_H_
 #define _STATE_MACHINE_H_
 
-sys_state_t state_get (void);
-void state_set (uint_fast16_t state);
-void state_update (uint_fast16_t rt_exec);
+void set_state (uint_fast16_t state);
+void update_state (uint_fast16_t rt_exec);
 bool state_door_reopened (void);
 void state_suspend_manager (void);
 

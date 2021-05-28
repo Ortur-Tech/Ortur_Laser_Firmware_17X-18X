@@ -1,7 +1,7 @@
 /*
   coolant_control.h - spindle control methods
 
-  Part of grblHAL
+  Part of GrblHAL
 
   Copyright (c) 2012-2016 Sungeun K. Jeon for Gnea Research LLC
 

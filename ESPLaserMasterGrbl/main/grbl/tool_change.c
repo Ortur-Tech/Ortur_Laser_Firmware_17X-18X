@@ -3,9 +3,9 @@
 
   Manual tool change with option for automatic touch off
 
-  Part of grblHAL
+  Part of GrblHAL
 
-  Copyright (c) 2020-2021 Terje Io
+  Copyright (c) 2020 Terje Io
 
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -55,7 +55,7 @@ static void on_probe_completed (void)
     if(!sys.flags.probe_succeeded)
         report_message("Probe failed, try again.", Message_Plain);
     else if(sys.tlo_reference_set.mask & bit(plane.axis_linear))
-        gc_set_tool_offset(ToolLengthOffset_EnableDynamic, plane.axis_linear, sys.probe_position[plane.axis_linear] - sys.tlo_reference[plane.axis_linear]);
+        gc_set_tool_offset(ToolLengthOffset_EnableDynamic, plane.axis_linear, sys_probe_position[plane.axis_linear] - sys.tlo_reference[plane.axis_linear]);
 //    else error?
 }
 
@@ -139,17 +139,17 @@ static bool restore (void)
 
 // Issue warning on cycle start event if touch off by $TPW is pending.
 // Used in Manual and Manual_G59_3 modes ($341=1 or $341=2). Called from the foreground process.
-static void execute_warning (sys_state_t state)
+static void execute_warning (uint_fast16_t state)
 {
     report_message("Perform a probe with $TPW first!", Message_Plain);
 }
 
 // Execute restore position after touch off (on cycle start event).
 // Used in Manual and Manual_G59_3 modes ($341=1 or $341=2). Called from the foreground process.
-static void execute_restore (sys_state_t state)
+static void execute_restore (uint_fast16_t state)
 {
     // Get current position.
-    system_convert_array_steps_to_mpos(target.values, sys.position);
+    system_convert_array_steps_to_mpos(target.values, sys_position);
 
     bool ok = restore();
 
@@ -163,7 +163,7 @@ static void execute_restore (sys_state_t state)
 
 // Execute touch off on cycle start event from @ G59.3 position.
 // Used in SemiAutomatic mode ($341=3) only. Called from the foreground process.
-static void execute_probe (sys_state_t state)
+static void execute_probe (uint_fast16_t state)
 {
 #if COMPATIBILITY_LEVEL <= 1
     bool ok;
@@ -190,10 +190,9 @@ static void execute_probe (sys_state_t state)
 
         if((ok = ok && mc_probe_cycle(target.values, &plan_data, flags) == GCProbe_Found))
         {
-            system_convert_array_steps_to_mpos(target.values, sys.probe_position);
+            system_convert_array_steps_to_mpos(target.values, sys_probe_position);
 
             // Retract a bit and perform slow probe.
-            plan_data.feed_rate = settings.tool_change.pulloff_rate;
             target.values[plane.axis_linear] += TOOL_CHANGE_PROBE_RETRACT_DISTANCE;
             if((ok = mc_line(target.values, &plan_data))) {
                 plan_data.feed_rate = settings.tool_change.feed_rate;
@@ -204,13 +203,13 @@ static void execute_probe (sys_state_t state)
 
         if(ok) {
             if(!(sys.tlo_reference_set.mask & bit(plane.axis_linear))) {
-                sys.tlo_reference[plane.axis_linear] = sys.probe_position[plane.axis_linear];
+                sys.tlo_reference[plane.axis_linear] = sys_probe_position[plane.axis_linear];
                 sys.tlo_reference_set.mask |= bit(plane.axis_linear);
                 sys.report.tlo_reference = On;
                 report_feedback_message(Message_ReferenceTLOEstablished);
             } else
                 gc_set_tool_offset(ToolLengthOffset_EnableDynamic, plane.axis_linear,
-                                    sys.probe_position[plane.axis_linear] - sys.tlo_reference[plane.axis_linear]);
+                                    sys_probe_position[plane.axis_linear] - sys.tlo_reference[plane.axis_linear]);
 
             ok = restore();
         }
@@ -325,7 +324,7 @@ static status_code_t tool_change (parser_state_t *parser_state)
     parser_state->tool_change = true;
 
     // Save current position.
-    system_convert_array_steps_to_mpos(previous.values, sys.position);
+    system_convert_array_steps_to_mpos(previous.values, sys_position);
 
     // Establish axis assignments.
 
@@ -436,7 +435,7 @@ status_code_t tc_probe_workpiece (void)
     plan_line_data_t plan_data = {0};
 
     // Get current position.
-    system_convert_array_steps_to_mpos(target.values, sys.position);
+    system_convert_array_steps_to_mpos(target.values, sys_position);
 
     flags.probe_is_no_error = On;
     plan_data.feed_rate = settings.tool_change.seek_rate;
@@ -445,10 +444,9 @@ status_code_t tc_probe_workpiece (void)
 
     if((ok = mc_probe_cycle(target.values, &plan_data, flags) == GCProbe_Found))
     {
-        system_convert_array_steps_to_mpos(target.values, sys.probe_position);
+        system_convert_array_steps_to_mpos(target.values, sys_probe_position);
 
         // Retract a bit and perform slow probe.
-        plan_data.feed_rate = settings.tool_change.pulloff_rate;
         target.values[plane.axis_linear] += TOOL_CHANGE_PROBE_RETRACT_DISTANCE;
         if((ok = mc_line(target.values, &plan_data))) {
 
@@ -456,7 +454,7 @@ status_code_t tc_probe_workpiece (void)
             target.values[plane.axis_linear] -= (TOOL_CHANGE_PROBE_RETRACT_DISTANCE + 2.0f);
             if((ok = mc_probe_cycle(target.values, &plan_data, flags) == GCProbe_Found)) {
                 // Retract a bit again so that any touch plate can be removed
-                system_convert_array_steps_to_mpos(target.values, sys.probe_position);
+                system_convert_array_steps_to_mpos(target.values, sys_probe_position);
                 plan_data.feed_rate = settings.tool_change.seek_rate;
                 target.values[plane.axis_linear] += TOOL_CHANGE_PROBE_RETRACT_DISTANCE * 2.0f;
                 ok = mc_line(target.values, &plan_data);
@@ -467,9 +465,7 @@ status_code_t tc_probe_workpiece (void)
     if(ok && protocol_buffer_synchronize()) {
         sync_position();
         block_cycle_start = false;
-        report_message(settings.tool_change.mode == ToolChange_Manual_G59_3
-                        ? "Press cycle start to continue."
-                        : "Remove any touch plate and press cycle start to continue.", Message_Plain);
+        report_message("Remove any touch plate and press cycle start to continue.", Message_Plain);
     }
 
     return ok ? Status_OK : Status_GCodeToolError;

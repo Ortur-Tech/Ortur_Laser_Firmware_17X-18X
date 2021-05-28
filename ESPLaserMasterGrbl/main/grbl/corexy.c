@@ -1,7 +1,7 @@
 /*
   corexy.c - corexy kinematics implementation
 
-  Part of grblHAL
+  Part of GrblHAL
 
   Copyright (c) 2019 Terje Io
   Copyright (c) 2011-2016 Sungeun K. Jeon for Gnea Research LLC
@@ -90,15 +90,15 @@ static void corexy_limits_set_target_pos (uint_fast8_t idx) // fn name?
 
     switch(idx) {
         case X_AXIS:
-            axis_position = corexy_convert_to_b_motor_steps(sys.position);
-            sys.position[A_MOTOR] = axis_position;
-            sys.position[B_MOTOR] = -axis_position;
+            axis_position = corexy_convert_to_b_motor_steps(sys_position);
+            sys_position[A_MOTOR] = axis_position;
+            sys_position[B_MOTOR] = -axis_position;
             break;
         case Y_AXIS:
-            sys.position[A_MOTOR] = sys.position[B_MOTOR] = corexy_convert_to_a_motor_steps(sys.position);
+            sys_position[A_MOTOR] = sys_position[B_MOTOR] = corexy_convert_to_a_motor_steps(sys_position);
             break;
         default:
-            sys.position[idx] = 0;
+            sys_position[idx] = 0;
             break;
     }
 }
@@ -114,15 +114,15 @@ static void corexy_limits_set_machine_positions (axes_signals_t cycle)
         if (cycle.mask & bit(--idx)) do {
             switch(--idx) {
                 case X_AXIS:
-                    sys.position[A_MOTOR] = corexy_convert_to_b_motor_steps(sys.position);
-                    sys.position[B_MOTOR] = - sys.position[A_MOTOR];
+                    sys_position[A_MOTOR] = corexy_convert_to_b_motor_steps(sys_position);
+                    sys_position[B_MOTOR] = - sys_position[A_MOTOR];
                     break;
                 case Y_AXIS:
-                    sys.position[A_MOTOR] = corexy_convert_to_a_motor_steps(sys.position);
-                    sys.position[B_MOTOR] = sys.position[A_MOTOR];
+                    sys_position[A_MOTOR] = corexy_convert_to_a_motor_steps(sys_position);
+                    sys_position[B_MOTOR] = sys_position[A_MOTOR];
                     break;
                 default:
-                    sys.position[idx] = 0;
+                    sys_position[idx] = 0;
                     break;
             }
         } while (idx);
@@ -134,17 +134,17 @@ static void corexy_limits_set_machine_positions (axes_signals_t cycle)
                                           : lroundf(-settings.homing.pulloff * settings.axis[idx].steps_per_mm);
              switch(idx) {
                  case X_AXIS:
-                     off_axis_position = corexy_convert_to_b_motor_steps(sys.position);
-                     sys.position[A_MOTOR] = set_axis_position + off_axis_position;
-                     sys.position[B_MOTOR] = set_axis_position - off_axis_position;
+                     off_axis_position = corexy_convert_to_b_motor_steps(sys_position);
+                     sys_position[A_MOTOR] = set_axis_position + off_axis_position;
+                     sys_position[B_MOTOR] = set_axis_position - off_axis_position;
                      break;
                  case Y_AXIS:
-                     off_axis_position = corexy_convert_to_a_motor_steps(sys.position);
-                     sys.position[A_MOTOR] = off_axis_position + set_axis_position;
-                     sys.position[B_MOTOR] = off_axis_position - set_axis_position;
+                     off_axis_position = corexy_convert_to_a_motor_steps(sys_position);
+                     sys_position[A_MOTOR] = off_axis_position + set_axis_position;
+                     sys_position[B_MOTOR] = off_axis_position - set_axis_position;
                      break;
                  default:
-                     sys.position[idx] = set_axis_position;
+                     sys_position[idx] = set_axis_position;
                      break;
              }
          }

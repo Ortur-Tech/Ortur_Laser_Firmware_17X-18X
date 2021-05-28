@@ -1,7 +1,7 @@
 /*
   gcode.h - rs274/ngc parser.
 
-  Part of grblHAL
+  Part of GrblHAL
 
   Copyright (c) 2017-2020 Terje Io
   Copyright (c) 2011-2016 Sungeun K. Jeon for Gnea Research LLC
@@ -27,7 +27,153 @@
 #include "nuts_bolts.h"
 #include "coolant_control.h"
 #include "spindle_control.h"
-#include "errors.h"
+
+// Define Grbl status codes. Valid values (0-255)
+typedef enum {
+    Status_OK = 0,
+    Status_ExpectedCommandLetter = 1,
+    Status_BadNumberFormat = 2,
+    Status_InvalidStatement = 3,
+    Status_NegativeValue = 4,
+    Status_SettingDisabled = 5,
+    Status_SettingStepPulseMin = 6,
+    Status_SettingReadFail = 7,
+    Status_IdleError = 8,
+    Status_SystemGClock = 9,
+    Status_SoftLimitError = 10,
+    Status_Overflow = 11,
+    Status_MaxStepRateExceeded = 12,
+    Status_CheckDoor = 13,
+    Status_LineLengthExceeded = 14,
+    Status_TravelExceeded = 15,
+    Status_InvalidJogCommand = 16,
+    Status_SettingDisabledLaser = 17,
+    Status_Reset = 18,
+    Status_NonPositiveValue = 19,
+
+    Status_GcodeUnsupportedCommand = 20,
+    Status_GcodeModalGroupViolation = 21,
+    Status_GcodeUndefinedFeedRate = 22,
+    Status_GcodeCommandValueNotInteger = 23,
+    Status_GcodeAxisCommandConflict = 24,
+    Status_GcodeWordRepeated = 25,
+    Status_GcodeNoAxisWords = 26,
+    Status_GcodeInvalidLineNumber = 27,
+    Status_GcodeValueWordMissing = 28,
+    Status_GcodeUnsupportedCoordSys = 29,
+    Status_GcodeG53InvalidMotionMode = 30,
+    Status_GcodeAxisWordsExist = 31,
+    Status_GcodeNoAxisWordsInPlane = 32,
+    Status_GcodeInvalidTarget = 33,
+    Status_GcodeArcRadiusError = 34,
+    Status_GcodeNoOffsetsInPlane = 35,
+    Status_GcodeUnusedWords = 36,
+    Status_GcodeG43DynamicAxisError = 37,
+    Status_GcodeIllegalToolTableEntry = 38,
+    Status_GcodeValueOutOfRange = 39,
+    Status_GcodeToolChangePending = 40,
+    Status_GcodeSpindleNotRunning = 41,
+    Status_GcodeIllegalPlane = 42,
+    Status_GcodeMaxFeedRateExceeded = 43,
+    Status_GcodeRPMOutOfRange = 44,
+    Status_LimitsEngaged = 45,
+    Status_HomingRequired = 46,
+    Status_GCodeToolError = 47,
+    Status_ValueWordConflict = 48,
+
+    Status_EStop = 50,
+    Status_Unhandled = 59, // For internal use only
+
+// Some error codes as defined in bdring's ESP32 port
+    Status_SDMountError = 60,
+    Status_SDReadError = 61,
+    Status_SDFailedOpenDir = 62,
+    Status_SDDirNotFound = 63,
+    Status_SDFileEmpty = 64,
+
+    Status_BTInitError = 70
+} status_code_t;
+
+
+// Define modal group internal numbers for checking multiple command violations and tracking the
+// type of command that is called in the block. A modal group is a group of g-code commands that are
+// mutually exclusive, or cannot exist on the same line, because they each toggle a state or execute
+// a unique motion. These are defined in the NIST RS274-NGC v3 g-code standard, available online,
+// and are similar/identical to other g-code interpreters by manufacturers (Haas,Fanuc,Mazak,etc).
+// NOTE: Modal group define values must be sequential and starting from zero.
+typedef enum {
+    ModalGroup_G0 = 0,  // [G4,G10,G28,G28.1,G30,G30.1,G53,G92,G92.1] Non-modal
+    ModalGroup_G1,      // [G0,G1,G2,G3,G33,G38.2,G38.3,G38.4,G38.5,G76,G80] Motion
+    ModalGroup_G2,      // [G17,G18,G19] Plane selection
+    ModalGroup_G3,      // [G90,G91] Distance mode
+    ModalGroup_G4,      // [G91.1] Arc IJK distance mode
+    ModalGroup_G5,      // [G93,G94,G95] Feed rate mode
+    ModalGroup_G6,      // [G20,G21] Units
+    ModalGroup_G7,      // [G40] Cutter radius compensation mode. G41/42 NOT SUPPORTED.
+    ModalGroup_G8,      // [G43,G43.1,G49] Tool length offset
+    ModalGroup_G10,     // [G98,G99] Return mode in canned cycles
+    ModalGroup_G11,     // [G50,G51] Scaling
+    ModalGroup_G12,     // [G54,G55,G56,G57,G58,G59] Coordinate system selection
+    ModalGroup_G13,     // [G61] Control mode
+    ModalGroup_G14,     // [G96,G97] Spindle Speed Mode
+    ModalGroup_G15,     // [G7,G8] Lathe Diameter Mode
+
+    ModalGroup_M4,      // [M0,M1,M2,M30] Stopping
+    ModalGroup_M6,      // [M6] Tool change
+    ModalGroup_M7,      // [M3,M4,M5] Spindle turning
+    ModalGroup_M8,      // [M7,M8,M9] Coolant control
+    ModalGroup_M9,      // [M49,M50,M51,M53,M56] Override control
+    ModalGroup_M10,     // User defined M commands
+	/*添加两个控制蜂鸣器和风扇*/
+	ModalGroup_M11,  	//LIGHT ON
+	ModalGroup_M12,		//LIGHT OFF
+	ModalGroup_M13,		//FAN PWM
+	ModalGroup_M14,		//FAN OFF
+	ModalGroup_M15,		//enable FIRE and sensitivity
+	ModalGroup_M16,		//disable FIRE
+
+} modal_group_t;
+
+// Define parameter word mapping.
+typedef enum {
+    Word_E = 0,
+    Word_F,
+    Word_H,
+    Word_I,
+    Word_J,
+    Word_K,
+    Word_L,
+    Word_N,
+    Word_P,
+    Word_R,
+    Word_S,
+    Word_T,
+    Word_X,
+    Word_Y,
+    Word_Z,
+    Word_Q,
+#if N_AXIS > 3
+    Word_A,
+    Word_B,
+    Word_C,
+#endif
+    Word_D
+} parameter_word_t;
+
+#if N_AXIS == 3
+#define AXIS_WORDS_MASK ((1 << Word_X)|(1 << Word_Y)|(1 << Word_Z))
+#elif N_AXIS == 4
+#define AXIS_WORDS_MASK ((1 << Word_X)|(1 << Word_Y)|(1 << Word_Z)|(1 << Word_A))
+#elif N_AXIS == 5
+#define AXIS_WORDS_MASK ((1 << Word_X)|(1 << Word_Y)|(1 << Word_Z)|(1 << Word_A)|(1 << Word_B))
+#else
+#define AXIS_WORDS_MASK ((1 << Word_X)|(1 << Word_Y)|(1 << Word_Z)|(1 << Word_A)|(1 << Word_B)|(1 << Word_C))
+#endif
+
+typedef union {
+    parameter_word_t parameter;
+    modal_group_t group;
+} word_bit_t;
 
 // Define command actions for within execution-type modal groups (motion, stopping, non-modal). Used
 // internally by the parser to know which command to execute.
@@ -140,6 +286,7 @@ typedef enum {
     SpindleSpeedMode_CSS = 1   // G97 (Do not alter value)
 } spindle_rpm_mode_t;
 
+
 typedef struct output_command {
     bool is_digital;
     bool is_executed;
@@ -161,11 +308,6 @@ typedef enum {
 // NOTE: Not used by core, may be used by driver code
 typedef enum {
     UserMCode_Ignore = 0,
-    UserMCode_Generic0 = 100,
-    UserMCode_Generic1 = 101,
-    UserMCode_Generic2 = 102,
-    UserMCode_Generic3 = 103,
-    UserMCode_Generic4 = 104,
     LaserPPI_Enable = 112,
     LaserPPI_Rate = 113,
     LaserPPI_PulseLength = 114,
@@ -176,7 +318,7 @@ typedef enum {
     Trinamic_ReportPrewarnFlags = 911,
     Trinamic_ClearPrewarnFlags = 912,
     Trinamic_HybridThreshold = 913,
-    Trinamic_HomingSensitivity = 914
+    Trinamic_HomingSensivity = 914
 } user_mcode_t;
 
 // Define g-code parser position updating flags
@@ -198,36 +340,6 @@ typedef enum {
     GCProbe_CheckMode = GCUpdatePos_Target
   #endif
 } gc_probe_t;
-
-// Define parser words bitfield
-typedef union {
-    uint32_t mask;
-    uint32_t value;
-    struct {
-        uint32_t e :1,
-                 f :1,
-                 h :1,
-                 i :1,
-                 j :1,
-                 k :1,
-                 l :1,
-                 n :1,
-                 p :1,
-                 r :1,
-                 s :1,
-                 t :1,
-                 x :1,
-                 y :1,
-                 z :1,
-                 q :1,
-#if N_AXIS > 3
-                 a :1,
-                 b :1,
-                 c :1,
-#endif
-                 d :1;
-    };
-} parameter_words_t;
 
 // Define gcode parser flags for handling special cases.
 
@@ -450,17 +562,17 @@ typedef struct {
 } parser_block_t;
 
 // Initialize the parser
-void gc_init (void);
+void gc_init(bool cold_start);
 
 // Execute one block of rs275/ngc/g-code
-status_code_t gc_execute_block (char *block, char *message);
+status_code_t gc_execute_block(char *block, char *message);
 
 // Sets g-code parser position in mm. Input in steps. Called by the system abort and hard
 // limit pull-off routines.
-#define gc_sync_position() system_convert_array_steps_to_mpos (gc_state.position, sys.position)
+#define gc_sync_position() system_convert_array_steps_to_mpos (gc_state.position, sys_position)
 
 // Sets g-code parser and planner position in mm.
-#define sync_position() plan_sync_position(); system_convert_array_steps_to_mpos (gc_state.position, sys.position)
+#define sync_position() plan_sync_position(); system_convert_array_steps_to_mpos (gc_state.position, sys_position)
 
 // Set dynamic laser power mode to PPI (Pulses Per Inch)
 // Driver support for pulsing the laser on signal is required for this to work.

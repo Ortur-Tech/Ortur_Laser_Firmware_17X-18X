@@ -1,9 +1,9 @@
 /*
   planner.h - buffers movement commands and manages the acceleration profile plan
 
-  Part of grblHAL
+  Part of GrblHAL
 
-  Copyright (c) 2019-2021 Terje Io
+  Copyright (c) 2019-2020 Terje Io
   Copyright (c) 2011-2016 Sungeun K. Jeon for Gnea Research LLC
   Copyright (c) 2009-2011 Simen Svale Skogsrud
 
@@ -106,6 +106,10 @@ typedef struct {
   float previous_nominal_speed;     // Nominal speed of previous path line segment
 } planner_t;
 
+plan_block_t *get_block_buffer();     //A ring buffer for motion instructions
+plan_block_t *get_block_buffer_head();//Pointer to the block to process now
+plan_block_t *get_block_buffer_tail();//Pointer to the next block to be pushed
+
 // Initialize and reset the motion plan subsystem
 void plan_reset(); // Reset all
 //void plan_reset_buffer(); // Reset buffer only.
@@ -141,7 +145,7 @@ void plan_sync_position();
 void plan_cycle_reinitialize();
 
 // Returns the number of available blocks in the planner buffer.
-uint_fast16_t plan_get_block_buffer_available();
+uint8_t plan_get_block_buffer_available();
 
 // Returns the status of the block ring buffer. True, if buffer is full.
 bool plan_check_full_buffer();

@@ -1,9 +1,9 @@
 /*
   report.h - reporting and messaging methods
 
-  Part of grblHAL
+  Part of GrblHAL
 
-  Copyright (c) 2018-2021 Terje Io
+  Copyright (c) 2018-2019 Terje Io
   Copyright (c) 2012-2016 Sungeun K. Jeon for Gnea Research LLC
 
   Grbl is free software: you can redistribute it and/or modify
@@ -24,6 +24,7 @@
 #define _REPORT_H_
 
 #include "system.h"
+#include "settings.h"
 
 // Message types for uncoded messages
 typedef enum {
@@ -52,14 +53,13 @@ message_code_t report_feedback_message (message_code_t message_code);
 void report_init_message (void);
 
 // Prints Grbl help.
-status_code_t report_help (char *args, char *lcargs);
 void report_grbl_help();
 
-// Prints Grbl settings
-void report_grbl_settings (bool all, void *data);
-
-// Prints Grbl setting
-status_code_t report_grbl_setting (setting_id_t id, void *data);
+// Prints Grbl setting(s)
+void report_grbl_settings (bool all);
+void report_uint_setting (setting_type_t n, uint32_t val);
+void report_float_setting (setting_type_t n, float val, uint8_t n_decimal);
+void report_string_setting (setting_type_t n, char *val);
 
 // Prints an echo of the pre-parsed line received right before execution.
 void report_echo_line_received (char *line);
@@ -84,21 +84,11 @@ void report_startup_line (uint8_t n, char *line);
 void report_execute_startup_message (char *line, status_code_t status_code);
 
 // Prints build info and user info.
-void report_build_info (char *line, bool extended);
-
-status_code_t report_alarm_details (void);
-status_code_t report_error_details (void);
-status_code_t report_setting_group_details (bool by_id, char *prefix);
-status_code_t report_settings_details (bool human_readable, setting_id_t setting, setting_group_t group);
-
-status_code_t report_last_signals_event (sys_state_t state, char *args);
-status_code_t report_current_limit_state (sys_state_t state, char *args);
-
-// Prints spindle data (encoder pulse and index count, angular position).
-status_code_t report_spindle_data (sys_state_t state, char *args);
+void report_build_info (char *line);
 
 // Prints current PID log.
 void report_pid_log (void);
 
 char *appendbuf (int argc, ...);
+
 #endif

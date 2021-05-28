@@ -1,7 +1,7 @@
 /*
   kinematics.h - kinematics interface (API)
 
-  Part of grblHAL
+  Part of GrblHAL
 
   Copyright (c) 2019 Terje Io
 

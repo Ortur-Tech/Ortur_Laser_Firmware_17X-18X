@@ -1,9 +1,9 @@
 /*
   nuts_bolts.h - Header file for shared definitions, variables, and functions
 
-  Part of grblHAL
+  Part of GrblHAL
 
-  Copyright (c) 2017-2021 Terje Io
+  Copyright (c) 2017-2019 Terje Io
   Copyright (c) 2011-2016 Sungeun K. Jeon for Gnea Research LLC
   Copyright (c) 2009-2011 Simen Svale Skogsrud
 
@@ -97,21 +97,16 @@ typedef union {
     };
 } axes_signals_t;
 
-#pragma pack(push, 1)
-
-typedef struct {
-    axes_signals_t min;
-    axes_signals_t max;
-    axes_signals_t min2;
-    axes_signals_t max2;
-} limit_signals_t;
-
-#pragma pack(pop)
-
 typedef enum {
     DelayMode_Dwell = 0,
     DelayMode_SysSuspend
 } delaymode_t;
+
+ // Delay struct, currently not used by core - may be used by drivers
+typedef struct {
+    volatile uint32_t ms;
+    void (*callback)(void);
+} delay_t;
 
 // Conversions
 #define MM_PER_INCH (25.40f)
@@ -132,11 +127,12 @@ typedef enum {
 
 // Bit field and masking macros
 #ifndef bit
-#define bit(n) (1UL << n)
+#define bit(n) (1UL << (n))
 #endif
 #define bit_true(x,mask) (x) |= (mask)
 #define bit_false(x,mask) (x) &= ~(mask)
 #define BIT_SET(x, bit, v) { if (v) { x |= (bit); } else { x &= ~(bit); } }
+//#define bit_set(x, y, z) HWREGBITW(&x, y) = z;
 
 #define bit_istrue(x, mask) ((x & (mask)) != 0)
 #define bit_isfalse(x, mask) ((x & (mask)) == 0)
@@ -162,8 +158,6 @@ float convert_delta_vector_to_unit_vector(float *vector);
 
 // calculate checksum byte for data
 uint8_t calc_checksum (uint8_t *data, uint32_t size);
-
-char *strcaps (char *s);
 
 void dummy_handler (void);
 

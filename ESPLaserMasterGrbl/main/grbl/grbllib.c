@@ -1,9 +1,9 @@
 /*
   grbllib.c - An embedded CNC Controller with rs274/ngc (g-code) support
 
-  Part of grblHAL
+  Part of GrblHAL
 
-  Copyright (c) 2017-2021 Terje Io
+  Copyright (c) 2017-2020 Terje Io
   Copyright (c) 2011-2015 Sungeun K. Jeon
   Copyright (c) 2009-2011 Simen Svale Skogsrud
 
@@ -34,9 +34,11 @@
 #include "report.h"
 #include "state_machine.h"
 #include "nvs_buffer.h"
-#ifdef ENABLE_BACKLASH_COMPENSATION
+#include "driver.h"
 #include "motion_control.h"
-#endif
+
+
+
 #ifdef KINEMATICS_API
 #include "kinematics.h"
 #endif
@@ -50,7 +52,15 @@
 #endif
 
 // Declare system global variable structure
-system_t sys = {0};
+system_t sys;
+int32_t sys_position[N_AXIS];               // Real-time machine (aka home) position vector in steps.
+int32_t sys_probe_position[N_AXIS];         // Last probe position in machine coordinates and steps.
+bool prior_mpg_mode;                        // Enter MPG mode on startup?
+bool cold_start = true;
+volatile probing_state_t sys_probing_state; // Probing state value. Used to coordinate the probing cycle with stepper ISR.
+volatile uint_fast16_t sys_rt_exec_state;   // Global realtime executor bitflag variable for state management. See EXEC bitmasks.
+volatile uint_fast16_t sys_rt_exec_alarm;   // Global realtime executor bitflag variable for setting various alarms.
+
 grbl_t grbl;
 grbl_hal_t hal;
 
@@ -59,10 +69,7 @@ grbl_hal_t hal;
 static bool stream_tx_blocking (void)
 {
     // TODO: Restructure st_prep_buffer() calls to be executed here during a long print.
-
-    grbl.on_execute_realtime(state_get());
-
-    return !(sys.rt_exec_state & EXEC_RESET);
+    return !(sys_rt_exec_state & EXEC_RESET);
 }
 
 #ifdef KINEMATICS_API
@@ -91,11 +98,6 @@ static void debug_out (bool on)
 }
 #endif
 
-void dummy_bool_handler (bool arg)
-{
-    // NOOP
-}
-
 // main entry point
 
 int grbl_enter (void)
@@ -114,7 +116,7 @@ int grbl_enter (void)
     memset(&grbl, 0, sizeof(grbl_t));
     grbl.on_execute_realtime = protocol_execute_noop;
     grbl.protocol_enqueue_gcode = protocol_enqueue_gcode;
-    grbl.on_report_options = dummy_bool_handler;
+    grbl.on_report_options = dummy_handler;
 
     // Clear all and set some HAL function pointers
     memset(&hal, 0, sizeof(grbl_hal_t));
@@ -128,9 +130,6 @@ int grbl_enter (void)
     hal.control.interrupt_callback = control_interrupt_handler;
     hal.stepper.interrupt_callback = stepper_driver_interrupt_handler;
     hal.stream_blocking_callback = stream_tx_blocking;
-    hal.signals_cap.reset = hal.signals_cap.feed_hold = hal.signals_cap.cycle_start = On;
-
-    sys.cold_start = true;
 
 #ifdef BUFFER_NVSDATA
     nvs_buffer_alloc(); // Allocate memory block for NVS buffer
@@ -154,18 +153,17 @@ int grbl_enter (void)
 #endif
 
 #ifndef ENABLE_SAFETY_DOOR_INPUT_PIN
-    hal.signals_cap.safety_door_ajar = Off;
+    hal.driver_cap.safety_door = false;
 #else
-    driver_ok &= hal.signals_cap.safety_door_ajar;
+    driver_ok &= hal.driver_cap.safety_door;
 #endif
-
 
   #ifdef BUFFER_NVSDATA
     nvs_buffer_init();
   #endif
     settings_init(); // Load Grbl settings from non-volatile storage
 
-    memset(sys.position, 0, sizeof(sys.position)); // Clear machine position.
+    memset(sys_position, 0, sizeof(sys_position)); // Clear machine position.
 
 // check and configure driver
 
@@ -197,12 +195,12 @@ int grbl_enter (void)
 #endif
 
     if(!driver_ok) {
-        hal.stream.write("grblHAL: incompatible driver" ASCII_EOL);
+        hal.stream.write("GrblHAL: incompatible driver" ASCII_EOL);
         while(true);
     }
 
     if(hal.get_position)
-        hal.get_position(&sys.position); // TODO:  restore on abort when returns true?
+        hal.get_position(&sys_position); // TODO:  restore on abort when returns true?
 
 #ifdef COREXY
     corexy_init();
@@ -212,12 +210,6 @@ int grbl_enter (void)
     wall_plotter_init();
 #endif
 
-    sys.driver_started = true;
-
-    // "Wire" homing switches to limit switches if not provided by the driver.
-    if(hal.homing.get_state == NULL)
-        hal.homing.get_state = hal.limits.get_state;
-
     // Grbl initialization loop upon power-up or a system abort. For the latter, all processes
     // will return to this loop to be cleanly re-initialized.
     while(looping) {
@@ -225,11 +217,13 @@ int grbl_enter (void)
         // Reset report entry points
         report_init_fns();
 
-        if(!sys.position_lost || settings.homing.flags.keep_on_reset)
-            memset(&sys, 0, offsetof(system_t, homed)); // Clear system variables except alarm & homed status.
-        else
-            memset(&sys, 0, offsetof(system_t, alarm)); // Clear system variables except state & alarm.
+        // Reset system variables, keeping current state and MPG mode.
+        bool prior_mpg_mode = sys.mpg_mode;
+        uint_fast16_t prior_state = sys.state;
 
+        memset(&sys, 0, sizeof(system_t)); // Clear system struct variable.
+        sys.ready = false;
+        set_state(prior_state);
         sys.override.feed_rate = DEFAULT_FEED_OVERRIDE;          // Set to 100%
         sys.override.rapid_rate = DEFAULT_RAPID_OVERRIDE;        // Set to 100%
         sys.override.spindle_rpm = DEFAULT_SPINDLE_RPM_OVERRIDE; // Set to 100%
@@ -237,17 +231,22 @@ int grbl_enter (void)
         if(settings.parking.flags.enabled)
             sys.override.control.parking_disable = settings.parking.flags.deactivate_upon_init;
 
+        memset(sys_probe_position, 0, sizeof(sys_probe_position)); // Clear probe position.
+        sys_probing_state = Probing_Off;
+        sys_rt_exec_state = 0;
+        sys_rt_exec_alarm = 0;
+
         flush_override_buffers();
 
         // Reset Grbl primary systems.
         hal.stream.reset_read_buffer(); // Clear input stream buffer
-        gc_init();                      // Set g-code parser to default state
+        gc_init(cold_start); // Set g-code parser to default state
         hal.limits.enable(settings.limits.flags.hard_enabled, false);
-        plan_reset();                   // Clear block buffer and planner variables
-        st_reset();                     // Clear stepper subsystem variables.
-        limits_set_homing_axes();       // Set axes to be homed from settings.
+        plan_reset(); // Clear block buffer and planner variables
+        st_reset(); // Clear stepper subsystem variables.
+        limits_set_homing_axes(); // Set axes to be homed from settings.
 #ifdef ENABLE_BACKLASH_COMPENSATION
-        mc_backlash_init();             // Init backlash configuration.
+        mc_backlash_init(); // Init backlash configuration.
 #endif
         // Sync cleared gcode and planner positions to current system position.
         sync_position();
@@ -257,21 +256,27 @@ int grbl_enter (void)
 
         if(!hal.driver_cap.atc)
             tc_init();
+        /*grbl复位强制关激光pwm和供电*/
+        spindle_reset();
 
         // Print welcome message. Indicates an initialization has occured at power-up or with a reset.
         report_init_message();
 
-        if(state_get() == STATE_ESTOP)
-            state_set(STATE_ALARM);
+        if(sys.state == STATE_ESTOP)
+            set_state(STATE_ALARM);
 
-        if(hal.driver_cap.mpg_mode)
+        if(hal.driver_cap.mpg_mode) {
+            sys.mpg_mode = prior_mpg_mode;
             hal.stream.enqueue_realtime_command(sys.mpg_mode ? CMD_STATUS_REPORT_ALL : CMD_STATUS_REPORT);
+        }
 
         // Start Grbl main loop. Processes program inputs and executes them.
-        if(!(looping = protocol_main_loop()))
+        sys.ready = true;
+        if(!(looping = protocol_main_loop(cold_start)))
             looping = hal.driver_release == NULL || hal.driver_release();
 
-        sys.cold_start = false;
+        cold_start = false;
+        sys_rt_exec_state = 0;
     }
 
     return 0;

@@ -3,7 +3,7 @@
 
   Manual tool change with automatic touch off
 
-  Part of grblHAL
+  Part of GrblHAL
 
   Copyright (c) 2020 Terje Io
 

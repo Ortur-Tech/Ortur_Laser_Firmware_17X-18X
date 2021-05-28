@@ -1,9 +1,9 @@
 /*
   motion_control.c - high level interface for issuing motion commands
 
-  Part of grblHAL
+  Part of GrblHAL
 
-  Copyright (c) 2017-2021 Terje Io
+  Copyright (c) 2017-2020 Terje Io
   Copyright (c) 2011-2016 Sungeun K. Jeon for Gnea Research LLC
   Copyright (c) 2009-2011 Simen Svale Skogsrud
 
@@ -81,7 +81,7 @@ void mc_backlash_init (void)
 void mc_sync_backlash_position (void)
 {
     // Update target_prev
-    system_convert_array_steps_to_mpos(target_prev, sys.position);
+    system_convert_array_steps_to_mpos(target_prev, sys_position);
 }
 
 #endif
@@ -103,7 +103,7 @@ bool mc_line (float *target, plan_line_data_t *pl_data)
         limits_soft_check(target);
 
     // If in check gcode mode, prevent motion by blocking planner. Soft limits still work.
-    if (state_get() != STATE_CHECK_MODE && protocol_execute_realtime()) {
+    if (sys.state != STATE_CHECK_MODE && protocol_execute_realtime()) {
 
         // NOTE: Backlash compensation may be installed here. It will need direction info to track when
         // to insert a backlash line motion(s) before the intended line motion and will require its own
@@ -328,7 +328,7 @@ static inline float interp(const float a, const float b, const float t)
 }
 
 /**
- * Compute a B�zier curve using the De Casteljau's algorithm (see
+ * Compute a B閦ier curve using the De Casteljau's algorithm (see
  * https://en.wikipedia.org/wiki/De_Casteljau's_algorithm), which is
  * easy to code and has good numerical stability (very important,
  * since Arudino works with limited precision real numbers).
@@ -623,7 +623,7 @@ void mc_thread (plan_line_data_t *pl_data, float *position, gc_thread_data *thre
 
     // TODO: Add to initial move to compensate for acceleration distance?
     /*
-    float acc_distance = pl_data->feed_rate * hal.spindle.get_data(SpindleData_RPM)->rpm / settings.acceleration[Z_AXIS];
+    float acc_distance = pl_data->feed_rate * hal.spindle.get_data(SpindleData_RPM).rpm / settings.acceleration[Z_AXIS];
     acc_distance = acc_distance * acc_distance * settings.acceleration[Z_AXIS] * 0.5f;
      */
 
@@ -644,7 +644,7 @@ void mc_thread (plan_line_data_t *pl_data, float *position, gc_thread_data *thre
         if(!mc_line(target, pl_data))
             return;
 
-        if(!protocol_buffer_synchronize() && state_get() != STATE_IDLE) // Wait until any previous moves are finished.
+        if(!protocol_buffer_synchronize() && sys.state != STATE_IDLE) // Wait until any previous moves are finished.
             return;
 
         pl_data->condition.rapid_motion = Off;          // Clear rapid motion condition flag,
@@ -725,9 +725,8 @@ status_code_t mc_jog_execute (plan_line_data_t *pl_data, parser_block_t *gc_bloc
 
     // Valid jog command. Plan, set state, and execute.
     mc_line(gc_block->values.xyz, pl_data);
-    sys_state_t state = state_get();
-    if ((state == STATE_IDLE || state == STATE_TOOL_CHANGE) && plan_get_current_block() != NULL) { // Check if there is a block to execute.
-        state_set(STATE_JOG);
+    if ((sys.state == STATE_IDLE || sys.state == STATE_TOOL_CHANGE) && plan_get_current_block() != NULL) { // Check if there is a block to execute.
+        set_state(STATE_JOG);
         st_prep_buffer();
         st_wake_up();  // NOTE: Manual start. No state machine required.
     }
@@ -738,7 +737,7 @@ status_code_t mc_jog_execute (plan_line_data_t *pl_data, parser_block_t *gc_bloc
 // Execute dwell in seconds.
 void mc_dwell (float seconds)
 {
-    if (state_get() != STATE_CHECK_MODE) {
+    if (sys.state != STATE_CHECK_MODE) {
         protocol_buffer_synchronize();
         delay_sec(seconds, DelayMode_Dwell);
     }
@@ -751,8 +750,6 @@ void mc_dwell (float seconds)
 status_code_t mc_homing_cycle (axes_signals_t cycle)
 {
     bool home_all = cycle.mask == 0;
-
-    memset(&sys.last_event.limits, 0, sizeof(limit_signals_t));
 
     if(settings.homing.flags.manual && (home_all ? sys.homing.mask : (cycle.mask & sys.homing.mask)) == 0) {
 
@@ -772,13 +769,13 @@ status_code_t mc_homing_cycle (axes_signals_t cycle)
         // Check and abort homing cycle, if hard limits are already enabled. Helps prevent problems
         // with machines with limits wired on both ends of travel to one limit pin.
         // TODO: Move the pin-specific LIMIT_PIN call to limits.c as a function.
-        if (settings.limits.flags.two_switches && hal.homing.get_state == hal.limits.get_state && limit_signals_merge(hal.limits.get_state()).value) {
+        if (settings.limits.flags.two_switches && hal.limits.get_state().value) {
             mc_reset(); // Issue system reset and ensure spindle and coolant are shutdown.
             system_set_exec_alarm(Alarm_HardLimit);
             return Status_Unhandled;
         }
 
-        state_set(STATE_HOMING);                                // Set homing system state.
+        set_state(STATE_HOMING);                                // Set homing system state.
 #if COMPATIBILITY_LEVEL == 0
         hal.stream.enqueue_realtime_command(CMD_STATUS_REPORT); // Force a status report and
         delay_sec(0.1f, DelayMode_Dwell);                       // delay a bit to get it sent (or perhaps wait a bit for a request?)
@@ -810,7 +807,7 @@ status_code_t mc_homing_cycle (axes_signals_t cycle)
                     if(!limits_go_home(cycle))
                         break;
                 }
-            } while(++idx < N_AXIS);
+            } while(++idx < (N_AXIS-2));
         }
 
         // If hard limits feature enabled, re-enable hard limits pin change register after homing cycle.
@@ -844,7 +841,7 @@ status_code_t mc_homing_cycle (axes_signals_t cycle)
 
     sys.report.homed = On;
 
-    return settings.limits.flags.hard_enabled && settings.limits.flags.check_at_init && limit_signals_merge(hal.limits.get_state()).value
+    return settings.limits.flags.hard_enabled && settings.limits.flags.check_at_init && hal.limits.get_state().value
             ? Status_LimitsEngaged
             : Status_OK;
 }
@@ -855,7 +852,7 @@ status_code_t mc_homing_cycle (axes_signals_t cycle)
 gc_probe_t mc_probe_cycle (float *target, plan_line_data_t *pl_data, gc_parser_flags_t parser_flags)
 {
     // TODO: Need to update this cycle so it obeys a non-auto cycle start.
-    if (state_get() == STATE_CHECK_MODE)
+    if (sys.state == STATE_CHECK_MODE)
         return GCProbe_CheckMode;
 
     // Finish all queued commands and empty planner buffer before starting probe cycle.
@@ -881,37 +878,34 @@ gc_probe_t mc_probe_cycle (float *target, plan_line_data_t *pl_data, gc_parser_f
         return GCProbe_Abort;
 
     // Activate the probing state monitor in the stepper module.
-    sys.probing_state = Probing_Active;
+    sys_probing_state = Probing_Active;
 
     // Perform probing cycle. Wait here until probe is triggered or motion completes.
     system_set_exec_state_flag(EXEC_CYCLE_START);
     do {
         if(!protocol_execute_realtime()) // Check for system abort
             return GCProbe_Abort;
-    } while (!(state_get() == STATE_IDLE || state_get() == STATE_TOOL_CHANGE));
+    } while (!(sys.state == STATE_IDLE || sys.state == STATE_TOOL_CHANGE));
 
     // Probing cycle complete!
 
     // Set state variables and error out, if the probe failed and cycle with error is enabled.
-    if (sys.probing_state == Probing_Active) {
+    if (sys_probing_state == Probing_Active) {
         if (parser_flags.probe_is_no_error)
-            memcpy(sys.probe_position, sys.position, sizeof(sys.position));
+            memcpy(sys_probe_position, sys_position, sizeof(sys_position));
         else
             system_set_exec_alarm(Alarm_ProbeFailContact);
     } else
         sys.flags.probe_succeeded = On; // Indicate to system the probing cycle completed successfully.
 
-    sys.probing_state = Probing_Off;    // Ensure probe state monitor is disabled.
+    sys_probing_state = Probing_Off;                // Ensure probe state monitor is disabled.
     hal.probe.configure(false, false);  // Re-initialize invert mask.
-    protocol_execute_realtime();        // Check and execute run-time commands
+    protocol_execute_realtime();                    // Check and execute run-time commands
 
     // Reset the stepper and planner buffers to remove the remainder of the probe motion.
     st_reset();             // Reset step segment buffer.
     plan_reset();           // Reset planner buffer. Zero planner positions. Ensure probing motion is cleared.
     plan_sync_position();   // Sync planner position to current machine position.
-#ifdef ENABLE_BACKLASH_COMPENSATION
-    mc_sync_backlash_position();
-#endif
 
     // All done! Output the probe position as message if configured.
     if(settings.status_report.probe_coordinates)
@@ -929,20 +923,20 @@ gc_probe_t mc_probe_cycle (float *target, plan_line_data_t *pl_data, gc_parser_f
 // NOTE: Uses the always free planner ring buffer head to store motion parameters for execution.
 bool mc_parking_motion (float *parking_target, plan_line_data_t *pl_data)
 {
-    bool ok;
-
     if (sys.abort)
         return false; // Block during abort.
 
-    if ((ok = plan_buffer_line(parking_target, pl_data))) {
+    if (plan_buffer_line(parking_target, pl_data)) {
         sys.step_control.execute_sys_motion = On;
-        sys.step_control.end_motion = Off;  // Allow parking motion to execute, if feed hold is active.
-        st_parking_setup_buffer();          // Setup step segment buffer for special parking motion case.
+        sys.step_control.end_motion = Off; // Allow parking motion to execute, if feed hold is active.
+        st_parking_setup_buffer(); // Setup step segment buffer for special parking motion case
         st_prep_buffer();
         st_wake_up();
+        return true;
+    } else { // no motion for execution
+        system_set_exec_state_flag(EXEC_CYCLE_COMPLETE); // Flag main program for cycle completed
+        return false;
     }
-
-    return ok;
 }
 
 void mc_override_ctrl_update (gc_override_flags_t override_state)
@@ -961,7 +955,7 @@ void mc_override_ctrl_update (gc_override_flags_t override_state)
 ISR_CODE void mc_reset ()
 {
     // Only this function can set the system reset. Helps prevent multiple kill calls.
-    if (bit_isfalse(sys.rt_exec_state, EXEC_RESET)) {
+    if (bit_isfalse(sys_rt_exec_state, EXEC_RESET)) {
 
         system_set_exec_state_flag(EXEC_RESET);
 
@@ -972,13 +966,11 @@ ISR_CODE void mc_reset ()
         // NOTE: If steppers are kept enabled via the step idle delay setting, this also keeps
         // the steppers enabled by avoiding the go_idle call altogether, unless the motion state is
         // violated, by which, all bets are off.
-        if ((state_get() & (STATE_CYCLE|STATE_HOMING|STATE_JOG)) || sys.step_control.execute_hold || sys.step_control.execute_sys_motion) {
+        if ((sys.state & (STATE_CYCLE|STATE_HOMING|STATE_JOG)) || sys.step_control.execute_hold || sys.step_control.execute_sys_motion) {
 
-            sys.position_lost = true;
-
-            if (state_get() != STATE_HOMING)
+            if (sys.state != STATE_HOMING)
                 system_set_exec_alarm(Alarm_AbortCycle);
-            else if (!sys.rt_exec_alarm)
+            else if (!sys_rt_exec_alarm)
                 system_set_exec_alarm(Alarm_HomingFailReset);
 
             st_go_idle(); // Force kill steppers. Position has likely been lost.
@@ -986,7 +978,5 @@ ISR_CODE void mc_reset ()
 
         if(hal.control.get_state().e_stop)
             system_set_exec_alarm(Alarm_EStop);
-        else if(hal.control.get_state().motor_fault)
-            system_set_exec_alarm(Alarm_MotorFault);
     }
 }

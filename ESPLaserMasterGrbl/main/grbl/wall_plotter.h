@@ -1,7 +1,7 @@
 /*
   wall_plotter.h - wall plotter kinematics implementation
 
-  Part of grblHAL
+  Part of GrblHAL
 
   Copyright (c) 2019 Terje Io
 

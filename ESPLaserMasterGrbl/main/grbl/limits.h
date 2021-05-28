@@ -1,7 +1,7 @@
 /*
   limits.h - code pertaining to limit-switches and performing the homing cycle
 
-  Part of grblHAL
+  Part of GrblHAL
 
   Copyright (c) 2017-2018 Terje Io
   Copyright (c) 2012-2015 Sungeun K. Jeon
@@ -32,15 +32,10 @@ bool limits_go_home(axes_signals_t cycle);
 // Check for soft limit violations
 void limits_soft_check(float *target);
 
-// Check if homing is required.
-bool limits_homing_required (void);
-
 // Set axes to be homed from settings.
 void limits_set_homing_axes (void);
 void limits_set_machine_positions (axes_signals_t cycle, bool add_pulloff);
 
-void limit_interrupt_handler (limit_signals_t state);
-
-axes_signals_t limit_signals_merge (limit_signals_t signals);
+void limit_interrupt_handler (axes_signals_t state);
 
 #endif

@@ -1,9 +1,9 @@
 /*
   spindle_control.h - spindle control methods
 
-  Part of grblHAL
+  Part of GrblHAL
 
-  Copyright (c) 2017-2021 Terje Io
+  Copyright (c) 2017-2020 Terje Io
   Copyright (c) 2012-2015 Sungeun K. Jeon
   Copyright (c) 2009-2011 Simen Svale Skogsrud
 
@@ -28,14 +28,14 @@ typedef union {
     uint8_t value;
     uint8_t mask;
     struct {
-        uint8_t on            :1,
-                ccw           :1,
-                pwm           :1, // NOTE: only used for PWM inversion setting
-                reserved3     :1,
-                reserved4     :1,
-                encoder_error :1,
-                at_speed      :1,
-                synchronized  :1;
+        uint8_t on           :1,
+                ccw          :1,
+                pwm          :1, // NOTE: only used for PWM inversion setting
+                reserved3    :1,
+                reserved4    :1,
+                reserved5    :1,
+                at_speed     :1,
+                synchronized :1;
     };
 } spindle_state_t;
 
@@ -54,21 +54,19 @@ typedef struct {
     float pwm_gradient;
     bool invert_pwm; // NOTE: set (by driver) when inversion is done in code
     bool always_on;
-    int_fast16_t offset;
     uint_fast16_t n_pieces;
     pwm_piece_t piece[SPINDLE_NPWM_PIECES];
 } spindle_pwm_t;
 
 // Used when HAL driver supports spindle synchronization
 typedef struct {
+    volatile uint32_t index_count;
+    volatile uint32_t pulse_count;
     float rpm;
     float rpm_low_limit;
     float rpm_high_limit;
     float angular_position; // Number of revolutions since last reset
     float rpm_programmed;
-    uint32_t index_count;
-    uint32_t pulse_count;
-    uint32_t error_count;
     spindle_state_t state_programmed;
 } spindle_data_t;
 

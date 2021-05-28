@@ -3,7 +3,7 @@
 
   "Dummy" user plugin init, called if no user plugin is provided.
 
-  Part of grblHAL
+  Part of GrblHAL
 
   Copyright (c) 2020 Terje Io
 

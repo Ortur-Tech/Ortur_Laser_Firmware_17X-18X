@@ -1,7 +1,7 @@
 /*
   maslow.h - Maslow router kinematics implementation
 
-  Part of grblHAL
+  Part of GrblHAL
 
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -88,23 +88,27 @@
 #define MASLOW_BCORRSCALING        1.002611f
 
 typedef enum {
-    Maslow_ChainOverSprocket = 260,
-    Maslow_MachineWidth,
-    Maslow_MachineHeight,
-    Maslow_DistBetweenMotors,
-    Maslow_MotorOffsetY,
+    Maslow_A_KP = 200,
+    Maslow_A_KI,
+    Maslow_A_KD,
+    Maslow_A_IMAX,
+    Maslow_B_KP,
+    Maslow_B_KI,
+    Maslow_B_KD,
+    Maslow_B_IMAX,
+    Maslow_Z_KP,
+    Maslow_Z_KI,
+    Maslow_Z_KD,
+    Maslow_Z_IMAX,
+    Maslow_chainOverSprocket,
+    Maslow_machineWidth,
+    Maslow_machineHeight,
+    Maslow_distBetweenMotors,
+    Maslow_motorOffsetY,
     Maslow_AcorrScaling,
     Maslow_BcorrScaling,
     Maslow_SettingMax,
-} maslow_setting_t;
-
-typedef enum {
-    AxisSetting_MaslowKP = 10,
-    AxisSetting_MaslowKI,
-    AxisSetting_MaslowKD,
-    AxisSetting_MaslowIMax,
-    AxisSetting_MaslowMaxSetting
-} maslow_axis_setting_t;
+} maslow_config_t;
 
 typedef struct {
     float Kp;
@@ -156,6 +160,6 @@ extern maslow_hal_t maslow_hal;
 
 // Initialize HAL pointers for Maslow Router kinematics
 bool maslow_init (void);
-static status_code_t maslow_tuning (uint_fast16_t state, char *line);
+static status_code_t maslow_tuning (uint_fast16_t state, char *line, char *lcline);
 
 #endif

@@ -1,7 +1,7 @@
 /*
   grbllib.h - An embedded CNC Controller with rs274/ngc (g-code) support
 
-  Part of grblHAL
+  Part of GrblHAL
 
   Copyright (c) 2011-2015 Sungeun K. Jeon
   Copyright (c) 2009-2011 Simen Svale Skogsrud

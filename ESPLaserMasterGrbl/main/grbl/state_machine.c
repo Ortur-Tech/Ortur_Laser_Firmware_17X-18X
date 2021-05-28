@@ -3,9 +3,9 @@
 
   Main state machine
 
-  Part of grblHAL
+  Part of GrblHAL
 
-  Copyright (c) 2018-2021 Terje Io
+  Copyright (c) 2018-2019 Terje Io
   Copyright (c) 2011-2016 Sungeun K. Jeon for Gnea Research LLC
   Copyright (c) 2009-2011 Simen Svale Skogsrud
 
@@ -47,7 +47,7 @@ static void (* volatile stateHandler)(uint_fast16_t rt_exec) = state_idle;
 
 static float restore_spindle_rpm;
 static planner_cond_t restore_condition;
-static sys_state_t pending_state = STATE_IDLE, sys_state = STATE_IDLE;
+static uint_fast16_t pending_state = STATE_IDLE;
 
 typedef struct {
     float target[N_AXIS];
@@ -55,7 +55,6 @@ typedef struct {
     float retract_waypoint;
     bool retracting;
     bool restart_retract;
-    bool active;
     plan_line_data_t plan_data;
 } parking_data_t;
 
@@ -83,6 +82,7 @@ bool initiate_hold (uint_fast16_t new_state)
 {
     if(settings.parking.flags.enabled) {
         memset(&park.plan_data, 0, sizeof(plan_line_data_t));
+        park.retract_waypoint = settings.parking.pullout_increment;
         park.plan_data.condition.system_motion = On;
         park.plan_data.condition.no_feed_override = On;
         park.plan_data.line_number = PARKING_MOTION_LINE_NUMBER;
@@ -102,7 +102,7 @@ bool initiate_hold (uint_fast16_t new_state)
     if(settings.mode == Mode_Laser && settings.flags.disable_laser_during_hold)
         enqueue_accessory_override(CMD_OVERRIDE_SPINDLE_STOP);
 
-    if(sys_state & (STATE_CYCLE|STATE_JOG)) {
+    if(sys.state & (STATE_CYCLE|STATE_JOG)) {
         st_update_plan_block_parameters();  // Notify stepper module to recompute for hold deceleration.
         sys.step_control.execute_hold = On; // Initiate suspend state with active flag.
         stateHandler = state_await_hold;
@@ -110,15 +110,13 @@ bool initiate_hold (uint_fast16_t new_state)
 
     if(new_state == STATE_HOLD)
         sys.holding_state = Hold_Pending;
-    else {
+    else
         sys.parking_state = Parking_Retracting;
-        park.active = false;
-    }
 
     sys.suspend = true;
-    pending_state = sys_state == STATE_JOG ? new_state : STATE_IDLE;
+    pending_state = sys.state == STATE_JOG ? new_state : STATE_IDLE;
 
-    return sys_state == STATE_CYCLE;
+    return sys.state == STATE_CYCLE;
 }
 
 bool state_door_reopened (void)
@@ -126,22 +124,23 @@ bool state_door_reopened (void)
     return settings.parking.flags.enabled && park.restart_retract;
 }
 
-void state_update (uint_fast16_t rt_exec)
+void update_state (uint_fast16_t rt_exec)
 {
-    if((rt_exec & EXEC_SAFETY_DOOR) && sys_state != STATE_SAFETY_DOOR)
-        state_set(STATE_SAFETY_DOOR);
+    if((rt_exec & EXEC_SAFETY_DOOR) && sys.state != STATE_SAFETY_DOOR)
+    {
+        set_state(STATE_SAFETY_DOOR);
+    }
+//    else if (rt_exec & EXEC_SAFETY_DOOR)//修复关门快速开门不会执行暂停的bug
+//    {
+//    	bit_true(sys_rt_exec_state, EXEC_SAFETY_DOOR);
+//	}
     else
         stateHandler(rt_exec);
 }
 
-sys_state_t state_get (void)
+void set_state (uint_fast16_t new_state)
 {
-    return sys_state;
-}
-
-void state_set (uint_fast16_t new_state)
-{
-    if(new_state != sys_state) {
+    if(new_state != sys.state) {
 
         switch(new_state) {    // Set up new state and handler
 
@@ -150,16 +149,16 @@ void state_set (uint_fast16_t new_state)
                 sys.step_control.flags = 0; // Restore step control to normal operation.
                 sys.parking_state = Parking_DoorClosed;
                 sys.holding_state = Hold_NotHolding;
-                sys_state = pending_state = new_state;
+                sys.state = pending_state = new_state;
                 stateHandler = state_idle;
                 break;
 
             case STATE_CYCLE:
-                if(sys_state == STATE_IDLE) {
+                if(sys.state == STATE_IDLE) {
                     // Start cycle only if queued motions exist in planner buffer and the motion is not canceled.
                     plan_block_t *block;
                     if ((block = plan_get_current_block())) {
-                        sys_state = new_state;
+                        sys.state = new_state;
                         sys.steppers_deenergize = false;    // Cancel stepper deenergize if pending.
                         st_prep_buffer();                   // Initialize step segment buffer before beginning cycle.
                         if(block->condition.spindle.synchronized) {
@@ -167,9 +166,9 @@ void state_set (uint_fast16_t new_state)
                             if(hal.spindle.reset_data)
                                 hal.spindle.reset_data();
 
-                            uint32_t index = hal.spindle.get_data(SpindleData_Counters)->index_count + 2;
+                            uint32_t index = hal.spindle.get_data(SpindleData_Counters).index_count + 2;
 
-                            while(index != hal.spindle.get_data(SpindleData_Counters)->index_count); // check for abort in this loop?
+                            while(index != hal.spindle.get_data(SpindleData_Counters).index_count); // check for abort in this loop?
 
                         }
                         st_wake_up();
@@ -179,32 +178,32 @@ void state_set (uint_fast16_t new_state)
                 break;
 
             case STATE_JOG:
-                if(sys_state == STATE_TOOL_CHANGE)
+                if(sys.state == STATE_TOOL_CHANGE)
                     pending_state = STATE_TOOL_CHANGE;
-                sys_state = new_state;
+                sys.state = new_state;
                 stateHandler = state_cycle;
                 break;
 
             case STATE_TOOL_CHANGE:
-                sys_state = new_state;
+                sys.state = new_state;
                 stateHandler = state_await_toolchanged;
                 break;
 
             case STATE_HOLD:
                 if(sys.override.control.sync && sys.override.control.feed_hold_disable)
                     sys.flags.feed_hold_pending = On;
-                if(!((sys_state & STATE_JOG) || sys.override.control.feed_hold_disable)) {
+                if(!((sys.state & STATE_JOG) || sys.override.control.feed_hold_disable)) {
                     if(!initiate_hold(new_state)) {
                         sys.holding_state = Hold_Complete;
                         stateHandler = state_await_resume;
                     }
-                    sys_state = new_state;
+                    sys.state = new_state;
                     sys.flags.feed_hold_pending = Off;
                 }
                 break;
 
             case STATE_SAFETY_DOOR:
-                if((sys_state & (STATE_ALARM|STATE_ESTOP|STATE_SLEEP|STATE_CHECK_MODE)))
+                if((sys.state & (STATE_ALARM|STATE_ESTOP|STATE_SLEEP|STATE_CHECK_MODE)))
                     return;
                 grbl.report.feedback_message(Message_SafetyDoorAjar);
                 // no break
@@ -212,25 +211,22 @@ void state_set (uint_fast16_t new_state)
                 sys.parking_state = Parking_Retracting;
                 if(!initiate_hold(new_state)) {
                     if(pending_state != new_state) {
-                        sys_state = new_state;
+                        sys.state = new_state;
                         state_await_hold(EXEC_CYCLE_COMPLETE); // "Simulate" a cycle stop
                     }
                 } else
-                    sys_state = new_state;
+                    sys.state = new_state;
                 break;
 
             case STATE_ALARM:
             case STATE_ESTOP:
             case STATE_HOMING:
             case STATE_CHECK_MODE:
-                sys_state = new_state;
+                sys.state = new_state;
                 sys.suspend = false;
                 stateHandler = state_noop;
                 break;
         }
-
-        if(!(sys_state & (STATE_ALARM|STATE_ESTOP)))
-            sys.alarm = Alarm_None;
 
         if(grbl.on_state_change)
             grbl.on_state_change(new_state);
@@ -272,18 +268,18 @@ void state_suspend_manager (void)
 static void state_idle (uint_fast16_t rt_exec)
 {
     if((rt_exec & EXEC_CYCLE_START))
-        state_set(STATE_CYCLE);
+        set_state(STATE_CYCLE);
 
     if(rt_exec & EXEC_FEED_HOLD)
-        state_set(STATE_HOLD);
+        set_state(STATE_HOLD);
 
     if ((rt_exec & EXEC_TOOL_CHANGE)) {
         hal.stream.suspend_read(true); // Block reading from input stream until tool change state is acknowledged
-        state_set(STATE_TOOL_CHANGE);
+        set_state(STATE_TOOL_CHANGE);
     }
 
     if (rt_exec & EXEC_SLEEP)
-        state_set(STATE_SLEEP);
+        set_state(STATE_SLEEP);
 }
 
 static void state_cycle (uint_fast16_t rt_exec)
@@ -295,7 +291,7 @@ static void state_cycle (uint_fast16_t rt_exec)
         hal.stream.suspend_read(true); // Block reading from input stream until tool change state is acknowledged
 
     if (rt_exec & EXEC_CYCLE_COMPLETE)
-        state_set(gc_state.tool_change ? STATE_TOOL_CHANGE : STATE_IDLE);
+        set_state(gc_state.tool_change ? STATE_TOOL_CHANGE : STATE_IDLE);
 
     if (rt_exec & EXEC_MOTION_CANCEL) {
         st_update_plan_block_parameters();  // Notify stepper module to recompute for hold deceleration.
@@ -305,7 +301,7 @@ static void state_cycle (uint_fast16_t rt_exec)
     }
 
     if ((rt_exec & EXEC_FEED_HOLD))
-        state_set(STATE_HOLD);
+        set_state(STATE_HOLD);
 }
 
 static void state_await_toolchanged (uint_fast16_t rt_exec)
@@ -317,8 +313,8 @@ static void state_await_toolchanged (uint_fast16_t rt_exec)
             sys.report.tool = On;
         }
         pending_state = gc_state.tool_change ? STATE_TOOL_CHANGE : STATE_IDLE;
-        state_set(STATE_IDLE);
-        state_set(STATE_CYCLE);
+        set_state(STATE_IDLE);
+        set_state(STATE_CYCLE);
         // Force a status report to let the sender know tool change is completed.
         system_set_exec_state_flag(EXEC_STATUS_REPORT);
     }
@@ -327,7 +323,7 @@ static void state_await_toolchanged (uint_fast16_t rt_exec)
 static void state_await_motion_cancel (uint_fast16_t rt_exec)
 {
     if (rt_exec & EXEC_CYCLE_COMPLETE) {
-        if(sys_state == STATE_JOG) {
+        if(sys.state == STATE_JOG) {
             sys.step_control.flags = 0;
             plan_reset();
             st_reset();
@@ -337,9 +333,9 @@ static void state_await_motion_cancel (uint_fast16_t rt_exec)
 #endif
             sys.suspend = false;
         }
-        state_set(pending_state);
+        set_state(pending_state);
         if(gc_state.tool_change)
-            state_set(STATE_TOOL_CHANGE);
+            set_state(STATE_TOOL_CHANGE);
     }
 }
 
@@ -357,7 +353,7 @@ static void state_await_hold (uint_fast16_t rt_exec)
             sys.alarm_pending = Alarm_None;
         }
 
-        switch (sys_state) {
+        switch (sys.state) {
 
             case STATE_TOOL_CHANGE:
                 hal.spindle.set_state((spindle_state_t){0}, 0.0f); // De-energize
@@ -374,28 +370,21 @@ static void state_await_hold (uint_fast16_t rt_exec)
                 // Ensure any prior spindle stop override is disabled at start of safety door routine.
                 sys.override.spindle_stop.value = 0;
 
-                // Parking requires parking axis homed, the current location not exceeding the???
-                // parking target location, and laser mode disabled.
-                if(settings.parking.flags.enabled && !sys.override.control.parking_disable && settings.mode != Mode_Laser) {
-
-                    // Get current position and store as restore location.
-                    if (!park.active) {
-                        park.active = true;
-                        system_convert_array_steps_to_mpos(park.restore_target, sys.position);
+                if(settings.parking.flags.enabled) {
+                    // Get current position and store restore location and spindle retract waypoint.
+                    system_convert_array_steps_to_mpos(park.target, sys_position);
+                    if (!park.restart_retract) {
+                        memcpy(park.restore_target, park.target, sizeof(park.target));
+                        park.retract_waypoint += park.restore_target[settings.parking.axis];
+                        park.retract_waypoint = min(park.retract_waypoint, settings.parking.target);
                     }
 
-                    // Execute slow pull-out parking retract motion.
-                    // NOTE: State is will remain DOOR, until the de-energizing and retract is complete.
-                    if (bit_istrue(sys.homed.mask, bit(settings.parking.axis)) && (park.restore_target[settings.parking.axis] < settings.parking.target)) {
-
+                    // Execute slow pull-out parking retract motion. Parking requires parking axis homed, the
+                    // current location not exceeding the parking target location, and laser mode disabled.
+                    // NOTE: State is will remain DOOR, until the de-energizing and retract is complete.   去掉了激光模式下不执行的条件    && settings.mode != Mode_Laser
+                    if (bit_istrue(sys.homed.mask, bit(settings.parking.axis)) && (park.target[settings.parking.axis] < settings.parking.target) && !sys.override.control.parking_disable) {
                         handler_changed = true;
                         stateHandler = state_await_waypoint_retract;
-
-                        // Copy restore location to park target and calculate spindle retract waypoint.
-                        memcpy(park.target, park.restore_target, sizeof(park.target));
-                        park.retract_waypoint = settings.parking.pullout_increment + park.target[settings.parking.axis];
-                        park.retract_waypoint = min(park.retract_waypoint, settings.parking.target);
-
                         // Retract spindle by pullout distance. Ensure retraction motion moves away from
                         // the workpiece and waypoint motion doesn't exceed the parking target location.
                         if (park.target[settings.parking.axis] < park.retract_waypoint) {
@@ -412,14 +401,12 @@ static void state_await_hold (uint_fast16_t rt_exec)
                         // Parking motion not possible. Just disable the spindle and coolant.
                         // NOTE: Laser mode does not start a parking motion to ensure the laser stops immediately.
                         hal.spindle.set_state((spindle_state_t){0}, 0.0f); // De-energize
-                        if(!settings.flags.keep_coolant_state_on_door_open)
-                            hal.coolant.set_state((coolant_state_t){0});     // De-energize
+                        hal.coolant.set_state((coolant_state_t){0});     // De-energize
                         sys.parking_state = Parking_DoorAjar;
                     }
                 } else {
                     hal.spindle.set_state((spindle_state_t){0}, 0.0f); // De-energize
-                    if(!settings.flags.keep_coolant_state_on_door_open)
-                        hal.coolant.set_state((coolant_state_t){0}); // De-energize
+                    hal.coolant.set_state((coolant_state_t){0}); // De-energize
                     sys.parking_state = Parking_DoorAjar;
                 }
                 break;
@@ -438,19 +425,21 @@ static void state_await_hold (uint_fast16_t rt_exec)
 static void state_await_resume (uint_fast16_t rt_exec)
 {
     if((rt_exec & EXEC_CYCLE_COMPLETE) && settings.parking.flags.enabled) {
-        if(sys.step_control.execute_sys_motion)
+        if(sys.step_control.execute_sys_motion) {
             sys.step_control.execute_sys_motion = Off;
+            st_parking_restore_buffer(); // Restore step segment buffer to normal run state.
+        }
         sys.parking_state = Parking_DoorAjar;
     }
 
-    if ((rt_exec & EXEC_CYCLE_START) && !(sys_state == STATE_SAFETY_DOOR && hal.control.get_state().safety_door_ajar)) {
+    if ((rt_exec & EXEC_CYCLE_START) && !(sys.state == STATE_SAFETY_DOOR && hal.control.get_state().safety_door_ajar)) {
 
         bool handler_changed = false;
 
-        if(sys_state == STATE_HOLD && !sys.override.spindle_stop.value)
+        if(sys.state == STATE_HOLD && !sys.override.spindle_stop.value)
             sys.override.spindle_stop.restore_cycle = On;
 
-        switch (sys_state) {
+        switch (sys.state) {
 
             case STATE_TOOL_CHANGE:
                 break;
@@ -473,14 +462,10 @@ static void state_await_resume (uint_fast16_t rt_exec)
                         stateHandler = state_restore;
                         // Check to ensure the motion doesn't move below pull-out position.
                         if (park.target[settings.parking.axis] <= settings.parking.target) {
-                            float target[N_AXIS];
-                            memcpy(target, park.target, sizeof(target));
-                            target[settings.parking.axis] = park.retract_waypoint;
+                            park.target[settings.parking.axis] = park.retract_waypoint;
                             park.plan_data.feed_rate = settings.parking.rate;
-                            if(!mc_parking_motion(target, &park.plan_data))
+                            if(!mc_parking_motion(park.target, &park.plan_data))
                                 stateHandler(EXEC_CYCLE_COMPLETE);
-                            else
-                                st_parking_setup_buffer();
                         } else // tell next handler to proceed with final step immediately
                             stateHandler(EXEC_CYCLE_COMPLETE);
                     }
@@ -498,7 +483,7 @@ static void state_await_resume (uint_fast16_t rt_exec)
                     }
                     sys.override.spindle_stop.value = 0; // Clear spindle stop override states
                 } else {
-                    handler_changed = true;
+                	handler_changed = true;
                     stateHandler = state_await_restore;
                     stateHandler(0);
                 }
@@ -506,14 +491,14 @@ static void state_await_resume (uint_fast16_t rt_exec)
         }
 
         // Restart cycle if there is no further processing to take place
-        if(!(handler_changed || sys_state == STATE_SLEEP)) {
-            state_set(STATE_IDLE);
-            state_set(STATE_CYCLE);
+        if(!(handler_changed || sys.state == STATE_SLEEP)) {
+            set_state(STATE_IDLE);
+            set_state(STATE_CYCLE);
         }
     }
 
     if (rt_exec & EXEC_SLEEP)
-        state_set(STATE_SLEEP);
+        set_state(STATE_SLEEP);
 }
 
 static void state_await_restore (uint_fast16_t rt_exec)
@@ -540,14 +525,14 @@ static void state_await_restore (uint_fast16_t rt_exec)
         grbl.report.feedback_message(Message_None);
 
         if(restart) {
-            state_set(STATE_IDLE);
-            state_set(STATE_CYCLE);
+            set_state(STATE_IDLE);
+            set_state(STATE_CYCLE);
         }
     }
 
     if(rt_exec & EXEC_FEED_HOLD) {
-        restart = false;
-        stateHandler = state_await_resume;
+    	restart = false;
+    	stateHandler = state_await_resume;
     }
 
 }
@@ -585,28 +570,26 @@ static void state_await_waypoint_retract (uint_fast16_t rt_exec)
 {
     if (rt_exec & EXEC_CYCLE_COMPLETE) {
 
-        if(sys.step_control.execute_sys_motion)
+        if(sys.step_control.execute_sys_motion) {
             sys.step_control.execute_sys_motion = Off;
+            st_parking_restore_buffer(); // Restore step segment buffer to normal run state.
+        }
 
         // NOTE: Clear accessory state after retract and after an aborted restore motion.
         park.plan_data.condition.spindle.value = 0;
         park.plan_data.spindle.rpm = 0.0f;
         hal.spindle.set_state(park.plan_data.condition.spindle, 0.0f); // De-energize
 
-        if(!settings.flags.keep_coolant_state_on_door_open) {
-            park.plan_data.condition.coolant.value = 0;
-            hal.coolant.set_state(park.plan_data.condition.coolant); // De-energize
-        }
+        park.plan_data.condition.coolant.value = 0;
+        hal.coolant.set_state(park.plan_data.condition.coolant); // De-energize
 
         stateHandler = state_await_resume;
 
         // Execute fast parking retract motion to parking target location.
         if (park.target[settings.parking.axis] < settings.parking.target) {
-            float target[N_AXIS];
-            memcpy(target, park.target, sizeof(target));
-            target[settings.parking.axis] = settings.parking.target;
+            park.target[settings.parking.axis] = settings.parking.target;
             park.plan_data.feed_rate = settings.parking.rate;
-            if(mc_parking_motion(target, &park.plan_data))
+            if(mc_parking_motion(park.target, &park.plan_data))
                 park.retracting = true;
             else
                 stateHandler(EXEC_CYCLE_COMPLETE);
@@ -633,8 +616,10 @@ static void state_restore (uint_fast16_t rt_exec)
 
     else if (rt_exec & EXEC_CYCLE_COMPLETE) {
 
-        if(sys.step_control.execute_sys_motion)
+        if(sys.step_control.execute_sys_motion) {
             sys.step_control.execute_sys_motion = Off;
+            st_parking_restore_buffer(); // Restore step segment buffer to normal run state.
+        }
 
         stateHandler = state_await_resumed;
 
@@ -670,8 +655,8 @@ static void state_await_resumed (uint_fast16_t rt_exec)
             sys.step_control.flags = 0;
             st_parking_restore_buffer(); // Restore step segment buffer to normal run state.
         }
-        state_set(STATE_IDLE);
-        state_set(STATE_CYCLE);
+        set_state(STATE_IDLE);
+        set_state(STATE_CYCLE);
     }
 }
 

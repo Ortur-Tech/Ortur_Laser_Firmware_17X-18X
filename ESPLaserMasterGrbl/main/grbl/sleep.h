@@ -1,7 +1,7 @@
 /*
   sleep.h - Sleep methods header file
 
-  Part of grblHAL
+  Part of GrblHAL
   
   Copyright (c) 2016 Sungeun K. Jeon  
 

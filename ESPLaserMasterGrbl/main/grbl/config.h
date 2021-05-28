@@ -3,7 +3,7 @@
 
   Part of grblHAL
 
-  Copyright (c) 2020-2021 Terje Io
+  Copyright (c) 2020 Terje Io
 
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -28,11 +28,12 @@
 #ifndef _GRBL_CONFIG_H_
 #define _GRBL_CONFIG_H_
 
+#include "board.h"
 // Compile time only default configuration
 
 // Number of axes supported: minimum 3, maximum 6
 // If more than 3 axes are required a compliant driver must be provided
-//#define N_AXIS 3 // Number of axes
+#define N_AXIS 3 // Number of axes
 
 // Defines compatibility level with the grbl 1.1 protocol.
 // Additional G- and M-codes are not disabled except when level is set to >= 10.
@@ -68,18 +69,21 @@
 // avoid overwhelming the sender with fast reply messages.
 // This is likely to happen when streaming is done via a protocol where
 // the speed is not limited to 115200 baud. An example is native USB streaming.
-//#define CHECK_MODE_DELAY 0 // ms
+#define CHECK_MODE_DELAY 1 // ms
 
 // This option enables the safety door switch. A safety door, when triggered,
 // immediately forces a feed hold and then safely de-energizes the machine. Resuming is blocked until
 // the safety door is re-engaged. When it is, Grbl will re-energize the machine and then resume on the
 // previous tool path, as if nothing happened.
-// #define ENABLE_SAFETY_DOOR_INPUT_PIN // Default disabled. Uncomment to enable.
+#if MACHINE_TYPE == OLM_2_PRO || (MACHINE_TYPE == OLM_PRO)
+#elif
+#define ENABLE_SAFETY_DOOR_INPUT_PIN // Default disabled. Uncomment to enable.
+#endif
 
 // After the safety door switch has been toggled and restored, this setting sets the power-up delay
 // between restoring the spindle and coolant and resuming the cycle.
-//#define SAFETY_DOOR_SPINDLE_DELAY 4.0f // Float (seconds)
-//#define SAFETY_DOOR_COOLANT_DELAY 1.0f // Float (seconds)
+#define SAFETY_DOOR_SPINDLE_DELAY 5.0f // Float (seconds)
+#define SAFETY_DOOR_COOLANT_DELAY 3.0f // Float (seconds)
 
 // Control signals bit definitions and mask.
 // NOTE: these definitions are only referenced in this file. Do NOT change!
@@ -91,9 +95,12 @@
 #define SIGNALS_STOPDISABLE_BIT (1<<5)
 #define SIGNALS_ESTOP_BIT (1<<6)
 #define SIGNALS_PROBE_CONNECTED_BIT (1<<7)
-#define SIGNALS_MOTOR_FAULT_BIT (1<<8)
-#define SIGNALS_BITMASK (SIGNALS_RESET_BIT|SIGNALS_FEEDHOLD_BIT|SIGNALS_CYCLESTART_BIT|SIGNALS_SAFETYDOOR_BIT|SIGNALS_BLOCKDELETE_BIT|SIGNALS_STOPDISABLE_BIT|SIGNALS_ESTOP_BIT|SIGNALS_PROBE_CONNECTED_BIT|SIGNALS_MOTOR_FAULT_BIT)
+#define SIGNALS_BITMASK (SIGNALS_RESET_BIT|SIGNALS_FEEDHOLD_BIT|SIGNALS_CYCLESTART_BIT|SIGNALS_SAFETYDOOR_BIT|SIGNALS_BLOCKDELETE_BIT|SIGNALS_STOPDISABLE_BIT|SIGNALS_ESTOP_BIT|SIGNALS_PROBE_CONNECTED_BIT)
 /**/
+
+//Since the cooling fan on the laser module shares power with the laser,
+//we need to delay the power off in order to better heat dissipation.
+#define DELAY_OFF_SPINDLE // For better cooling, delay turn off the laser power.
 
 // ---------------------------------------------------------------------------------------
 // ADVANCED CONFIGURATION OPTIONS:
@@ -117,10 +124,10 @@
 // refreshes more often when its not doing anything important. With a good GUI, this data doesn't need
 // to be refreshed very often, on the order of a several seconds.
 // NOTE: WCO refresh must be 2 or greater. OVERRIDE refresh must be 1 or greater.
-//#define REPORT_OVERRIDE_REFRESH_BUSY_COUNT 20   // (1-255)
-//#define REPORT_OVERRIDE_REFRESH_IDLE_COUNT 10   // (1-255) Must be less than or equal to the busy count
-//#define REPORT_WCO_REFRESH_BUSY_COUNT 30        // (2-255)
-//#define REPORT_WCO_REFRESH_IDLE_COUNT 10        // (2-255) Must be less than or equal to the busy count
+#define REPORT_OVERRIDE_REFRESH_BUSY_COUNT 20   // (1-255)
+#define REPORT_OVERRIDE_REFRESH_IDLE_COUNT 10   // (1-255) Must be less than or equal to the busy count
+#define REPORT_WCO_REFRESH_BUSY_COUNT 30        // (2-255)
+#define REPORT_WCO_REFRESH_IDLE_COUNT 10        // (2-255) Must be less than or equal to the busy count
 
 // The temporal resolution of the acceleration management subsystem. A higher number gives smoother
 // acceleration, particularly noticeable on machines that run at very high feedrates, but may negatively
@@ -129,14 +136,14 @@
 // NOTE: Changing this value also changes the execution time of a segment in the step segment buffer.
 // When increasing this value, this stores less overall time in the segment buffer and vice versa. Make
 // certain the step segment buffer is increased/decreased to account for these changes.
-//#define ACCELERATION_TICKS_PER_SECOND 100
+#define ACCELERATION_TICKS_PER_SECOND 100
 
 // Sets the maximum step rate allowed to be written as a Grbl setting. This option enables an error
 // check in the settings module to prevent settings values that will exceed this limitation. The maximum
 // step rate is strictly limited by the CPU speed and will change if something other than an AVR running
 // at 16MHz is used.
 // NOTE: For now disabled, will enable if flash space permits.
-//#define MAX_STEP_RATE_HZ 30000 // Hz
+#define MAX_STEP_RATE_HZ 100000 // Hz
 
 // With this enabled, Grbl sends back an echo of the line it has received, which has been pre-parsed (spaces
 // removed, capitalized letters, no comments) and is to be immediately executed by Grbl. Echoes will not be
@@ -150,7 +157,7 @@
 // Sets which axis the tool length offset is applied. Assumes the spindle is always parallel with
 // the selected axis with the tool oriented toward the negative direction. In other words, a positive
 // tool length offset value is subtracted from the current location.
-//#define TOOL_LENGTH_OFFSET_AXIS Z_AXIS // Default z-axis. Valid values are X_AXIS, Y_AXIS, or Z_AXIS.
+#define TOOL_LENGTH_OFFSET_AXIS Z_AXIS // Default z-axis. Valid values are X_AXIS, Y_AXIS, or Z_AXIS.
 
 // Minimum planner junction speed. Sets the default minimum junction speed the planner plans to at
 // every buffer block junction, except for starting from rest and end of the buffer, which are always
@@ -158,19 +165,19 @@
 // limits or angle between neighboring block line move directions. This is useful for machines that can't
 // tolerate the tool dwelling for a split second, i.e. 3d printers or laser cutters. If used, this value
 // should not be much greater than zero or to the minimum value necessary for the machine to work.
-//#define MINIMUM_JUNCTION_SPEED 0.0f // (mm/min)
+#define MINIMUM_JUNCTION_SPEED 0.0f // (mm/min)
 
 // Sets the minimum feed rate the planner will allow. Any value below it will be set to this minimum
 // value. This also ensures that a planned motion always completes and accounts for any floating-point
 // round-off errors. Although not recommended, a lower value than 1.0 mm/min will likely work in smaller
 // machines, perhaps to 0.1mm/min, but your success may vary based on multiple factors.
-// #define MINIMUM_FEED_RATE 1.0f // (mm/min)
+#define MINIMUM_FEED_RATE 1.0f // (mm/min)
 
 // Number of arc generation iterations by small angle approximation before exact arc trajectory
 // correction with expensive sin() and cos() calculations. This parameter maybe decreased if there
 // are issues with the accuracy of the arc generations, or increased if arc execution is getting
 // bogged down by too many trig calculations.
-//#define N_ARC_CORRECTION 12 // Integer (1-255)
+#define N_ARC_CORRECTION 12 // Integer (1-255)
 
 // The arc G2/3 g-code standard is problematic by definition. Radius-based arcs have horrible numerical
 // errors when arc at semi-circles(pi) or full-circles(2*pi). Offset-based arcs are much more accurate
@@ -180,27 +187,27 @@
 // This define value sets the machine epsilon cutoff to determine if the arc is a full-circle or not.
 // NOTE: Be very careful when adjusting this value. It should always be greater than 1.2e-7 but not too
 // much greater than this. The default setting should capture most, if not all, full arc error situations.
-//#define ARC_ANGULAR_TRAVEL_EPSILON 5E-7f // Float (radians)
+#define ARC_ANGULAR_TRAVEL_EPSILON 5E-7f // Float (radians)
 
 // Default constants for G5 Cubic splines
 //
-//#define BEZIER_MIN_STEP 0.002f
-//#define BEZIER_MAX_STEP 0.1f
-//#define BEZIER_SIGMA 0.1f
+#define BEZIER_MIN_STEP 0.002f
+#define BEZIER_MAX_STEP 0.1f
+#define BEZIER_SIGMA 0.1f
 
 // Time delay increments performed during a dwell. The default value is set at 50ms, which provides
 // a maximum time delay of roughly 55 minutes, more than enough for most any application. Increasing
 // this delay will increase the maximum dwell time linearly, but also reduces the responsiveness of
 // run-time command executions, like status reports, since these are performed between each dwell
 // time step.
-//#define DWELL_TIME_STEP 50 // Integer (1-255) (milliseconds)
+#define DWELL_TIME_STEP 50 // Integer (1-255) (milliseconds)
 
 // The number of linear motions in the planner buffer to be planned at any give time. The vast
 // majority of RAM that Grbl uses is based on this buffer size. Only increase if there is extra
 // available RAM, like when re-compiling for MCU with ample amounts of RAM. Or decrease if the MCU begins to
 // crash due to the lack of available RAM or if the CPU is having trouble keeping up with planning
 // new incoming motions as they are executed.
-// #define BLOCK_BUFFER_SIZE 36 // Uncomment to override default in planner.h.
+#define BLOCK_BUFFER_SIZE 16 // Uncomment to override default in planner.h.
 
 // Governs the size of the intermediary step segment buffer between the step execution algorithm
 // and the planner blocks. Each segment is set of steps executed at a constant velocity over a
@@ -208,7 +215,7 @@
 // block velocity profile is traced exactly. The size of this buffer governs how much step
 // execution lead time there is for other Grbl processes have to compute and do their thing
 // before having to come back and refill this buffer, currently at ~50msec of step moves.
-// #define SEGMENT_BUFFER_SIZE 10 // Uncomment to override default in stepper.h.
+#define SEGMENT_BUFFER_SIZE 16 // Uncomment to override default in stepper.h.
 
 // Configures the position after a probing cycle during Grbl's check mode. Disabled sets
 // the position to the probe target, when enabled sets the position to the start position.
@@ -222,7 +229,7 @@
 // that the switches don't bounce, we recommend enabling this option. This will help prevent
 // triggering a hard limit when the machine disengages from the switch.
 // NOTE: This option has no effect if SOFTWARE_DEBOUNCE is enabled.
-// #define HARD_LIMIT_FORCE_STATE_CHECK // Default disabled. Uncomment to enable.
+ #define HARD_LIMIT_FORCE_STATE_CHECK // Default disabled. Uncomment to enable.
 
 // Adjusts homing cycle search and locate scalars. These are the multipliers used by Grbl's
 // homing cycle to ensure the limit switches are engaged and cleared through each phase of
@@ -231,8 +238,8 @@
 // uses the homing pull-off distance setting times the LOCATE_SCALAR to pull-off and re-engage
 // the limit switch.
 // NOTE: Both of these values must be greater than 1.0 to ensure proper function.
-// #define HOMING_AXIS_SEARCH_SCALAR  1.5f // Uncomment to override defaults in limits.c.
-// #define HOMING_AXIS_LOCATE_SCALAR  10.0f // Uncomment to override defaults in limits.c.
+ #define HOMING_AXIS_SEARCH_SCALAR  1.5f // Uncomment to override defaults in limits.c.
+ #define HOMING_AXIS_LOCATE_SCALAR  10.0f // Uncomment to override defaults in limits.c.
 
 // Enable the '$RST=*', '$RST=$', and '$RST=#' non-volatile storage restore commands. There are cases where
 // these commands may be undesirable. Simply comment the desired macro to disable it.
@@ -248,11 +255,11 @@
 // particularily for OEMs that need to retain certain data. For example, the BUILD_INFO string can be
 // written into non-volatile storage via a separate program to contain product data. Altering these
 // macros to not restore the build info non-volatile storage will ensure this data is retained after firmware upgrades.
-//#define SETTINGS_RESTORE_DEFAULTS          0 // Default enabled, uncomment to disable
-//#define SETTINGS_RESTORE_PARAMETERS        0 // Default enabled, uncomment to disable
-//#define SETTINGS_RESTORE_STARTUP_LINES     0 // Default enabled, uncomment to disable
-//#define SETTINGS_RESTORE_BUILD_INFO        0 // Default enabled, uncomment to disable
-//#define SETTINGS_RESTORE_DRIVER_PARAMETERS 0 // Default enabled, uncomment to disable
+#define SETTINGS_RESTORE_DEFAULTS          1 // Default enabled, uncomment to disable
+#define SETTINGS_RESTORE_PARAMETERS        1 // Default enabled, uncomment to disable
+#define SETTINGS_RESTORE_STARTUP_LINES     1 // Default enabled, uncomment to disable
+#define SETTINGS_RESTORE_BUILD_INFO        1 // Default enabled, uncomment to disable
+#define SETTINGS_RESTORE_DRIVER_PARAMETERS 1 // Default enabled, uncomment to disable
 
 // Enable the '$I=(string)' build info write command. If disabled, any existing build info data must
 // be placed into non-volatile storage via external means with a valid checksum value. This macro option is useful
@@ -270,8 +277,8 @@
 // well. While in sleep mode, only a hard/soft reset will exit it and the job will be unrecoverable.
 // NOTE: Sleep mode is a safety feature, primarily to address communication disconnect problems. To
 // keep Grbl from sleeping, employ a stream of '?' status report commands as a connection "heartbeat".
-//#define SLEEP_ENABLE  // Default disabled. Uncomment to enable.
-//#define SLEEP_DURATION 5.0f // Number of minutes before sleep mode is entered.
+#define SLEEP_ENABLE  // Default disabled. Uncomment to enable.
+#define SLEEP_DURATION 10.0f // Number of minutes before sleep mode is entered.
 
 // Disable non-volatile storage emulation/buffering in RAM (allocated from heap)
 // Can be used for MCUs with no non-volatile storage or as buffer in order to avoid writing to
@@ -279,7 +286,7 @@
 // The buffer will be written to non-volatile storage when in idle state.
 //#define BUFFER_NVSDATA_DISABLE
 
-//#define ENABLE_BACKLASH_COMPENSATION
+#define ENABLE_BACKLASH_COMPENSATION
 
 // End compile time only default configuration
 
@@ -294,12 +301,12 @@
 // override immediately after coming to a stop. However, this also means that the laser still may
 // be reenabled by disabling the spindle stop override, if needed. This is purely a safety feature
 // to ensure the laser doesn't inadvertently remain powered while at a stop and cause a fire.
-//#define DEFAULT_DISABLE_LASER_DURING_HOLD // Default enabled. Uncomment to disable.
+#define DEFAULT_DISABLE_LASER_DURING_HOLD // Default enabled. Uncomment to disable.
 
 // This option is for what should happen on resume from feed hold.
 // Default action is to restore spindle and coolant status (if overridden), this contradicts the
 // behaviour of industrial controllers but is in line with earlier versions of Grbl.
-//#define DEFAULT_NO_RESTORE_AFTER_FEED_HOLD // Default enabled. Uncomment to disable.
+// #define DEFAULT_NO_RESTORE_AFTER_FEED_HOLD // Default enabled. Uncomment to disable.
 
 // When Grbl powers-cycles or is hard reset with the MCU reset button, Grbl boots up with no ALARM
 // by default. This is to make it as simple as possible for new users to start using Grbl. When homing
@@ -307,7 +314,7 @@
 // Grbl doesn't know its position and to force the user to home before proceeding. This option forces
 // Grbl to always initialize into an ALARM state regardless of homing or not. This option is more for
 // OEMs and LinuxCNC users that would like this power-cycle behavior.
-//#define DEFAULT_FORCE_INITIALIZATION_ALARM // Default disabled. Uncomment to enable.
+#define DEFAULT_FORCE_INITIALIZATION_ALARM // Default disabled. Uncomment to enable.
 
 // At power-up or a reset, Grbl will check the limit switch states to ensure they are not active
 // before initialization. If it detects a problem and the hard limits setting is enabled, Grbl will
@@ -316,11 +323,11 @@
 //#define DEFAULT_CHECK_LIMITS_AT_INIT // Default disabled. Uncomment to enable.
 
 // Configure options for the parking motion, if enabled.
-//#define DEFAULT_PARKING_AXIS Z_AXIS // Define which axis that performs the parking motion
-//#define DEFAULT_PARKING_TARGET -5.0f // Parking axis target. In mm, as machine coordinate [-max_travel,0].
-//#define DEFAULT_PARKING_RATE 500.0f // Parking fast rate after pull-out in mm/min.
-//#define DEFAULT_PARKING_PULLOUT_RATE 100.0f // Pull-out/plunge slow feed rate in mm/min.
-//#define DEFAULT_PARKING_PULLOUT_INCREMENT 5.0f // Spindle pull-out and plunge distance in mm. Incremental distance.
+#define DEFAULT_PARKING_AXIS 	Y_AXIS // Define which axis that performs the parking motion
+#define DEFAULT_PARKING_TARGET 	(DEFAULT_Y_MAX_TRAVEL - 5.0f) // Parking axis target. In mm, as machine coordinate [-max_travel,0].
+#define DEFAULT_PARKING_RATE 	100*60.0f // Parking fast rate after pull-out in mm/min.
+#define DEFAULT_PARKING_PULLOUT_RATE 30*60.0f //100.0f // Pull-out/plunge slow feed rate in mm/min.
+#define DEFAULT_PARKING_PULLOUT_INCREMENT 1.0f // Spindle pull-out and plunge distance in mm. Incremental distance.
                                                  // Must be positive value or equal to zero.
 
 
@@ -341,11 +348,10 @@
 //       allowing their use from manual input, eg. from a terminal or MDI.
 //#define DEFAULT_NO_LEGACY_RTCOMMANDS // Default disabled. Uncomment to enable.
 
-//#define DEFAULT_TOOLCHANGE_MODE 0               // 0 = Normal mode, 1 = Manual change, 2 = Manual change @ G59.3,  3 = Manual change and probe sensor @ G59.3 - sets TLO
-//#define DEFAULT_TOOLCHANGE_PROBING_DISTANCE 30  // max probing distance in mm for mode 3
-//#define DEFAULT_TOOLCHANGE_FEED_RATE 25.0f      // mm/min
-//#define DEFAULT_TOOLCHANGE_SEEK_RATE 200.0f     // mm/min
-//#define DEFAULT_TOOLCHANGE_PULLOFF_RATE 200.0f  // mm/min
+#define DEFAULT_TOOLCHANGE_MODE 0               // 0 = Normal mode, 1 = Manual change, 2 = Manual change @ G59.3,  3 = Manual change and probe sensor @ G59.3 - sets TLO
+#define DEFAULT_TOOLCHANGE_PROBING_DISTANCE 30  // max probing distance in mm for mode 3
+#define DEFAULT_TOOLCHANGE_FEED_RATE (0.5f*60)      // mm/min
+#define DEFAULT_TOOLCHANGE_SEEK_RATE (3.0f*60)     // mm/min
 
 // By default, Grbl sets all input pins to normal-low operation with their internal pull-up resistors
 // enabled. This simplifies the wiring for users by requiring only a normally closed (NC) switch connected
@@ -385,32 +391,18 @@
 // NOTE: Not universally available for individual axes - check driver documentation.
 //       Specify at least X_AXIS_BIT if a common enable signal is used.
 //#define ST_DEENERGIZE_MASK (X_AXIS_BIT|Y_AXIS_BIT|Z_AXIS_BIT) // Default disabled. Uncomment to enable.
-//#define DEFAULT_STEPPING_INVERT_MASK 0
-//#define DEFAULT_DIRECTION_INVERT_MASK 0
+#define DEFAULT_STEPPING_INVERT_MASK (0)
+#define DEFAULT_DIRECTION_INVERT_MASK (0b10) //(0b00cbazyx)
 
 // Inverts logic of the input signals based on a mask. This essentially means you are using
 // normally-open (NO) switches on the specified pins, rather than the default normally-closed (NC) switches.
 // NOTE: The first option will invert all control pins. The second option is an example of
 // inverting only a few pins. See the start of this file for other signal definitions.
 // #define INVERT_CONTROL_PIN_MASK SIGNALS_BITMASK // Default disabled. Uncomment to enable.
-// #define INVERT_CONTROL_PIN_MASK (SIGNALS_SAFETYDOOR_BIT|SIGNALS_RESET_BIT) // Default disabled. Uncomment to enable.
+ #define INVERT_CONTROL_PIN_MASK (SIGNALS_FEEDHOLD_BIT) //(SIGNALS_SAFETYDOOR_BIT) // Default disabled. Uncomment to enable.
 // #define INVERT_LIMIT_PIN_MASK AXES_BITMASK // Default disabled. Uncomment to enable. Uncomment to enable.
-// #define INVERT_LIMIT_PIN_MASK (X_AXIS_BIT|Y_AXIS_BIT) // Default disabled. Uncomment to enable.
+ #define INVERT_LIMIT_PIN_MASK (Z_AXIS_BIT|Y_AXIS_BIT|X_AXIS_BIT) // Default disabled. Uncomment to enable.
 // For inverting the probe pin use DEFAULT_INVERT_PROBE_PIN in defaults.h
-
-// Inverts the spindle enable pin from low-disabled/high-enabled to low-enabled/high-disabled. Useful
-// for some pre-built electronic boards.
-// NOTE: If VARIABLE_SPINDLE is enabled(default), this option has no effect as the PWM output and
-// spindle enable are combined to one pin. If you need both this option and spindle speed PWM,
-// uncomment the config option USE_SPINDLE_DIR_AS_ENABLE_PIN below.
-// #define INVERT_SPINDLE_ENABLE_PIN 1 // Default disabled. Uncomment to enable.
-// #define INVERT_SPINDLE_CCW_PIN 1    // Default disabled. Uncomment to enable. NOTE: not supported by all drivers.
-// #define INVERT_SPINDLE_PWM_PIN 1    // Default disabled. Uncomment to enable. NOTE: not supported by all drivers.
-
-// Inverts the selected coolant pin from low-disabled/high-enabled to low-enabled/high-disabled. Useful
-// for some pre-built electronic boards.
-// #define INVERT_COOLANT_FLOOD_PIN 1 // Default disabled. Uncomment to enable.
-// #define INVERT_COOLANT_MIST_PIN 1  // Default disabled. Note: Enable M7 mist coolant in config.h
 
 
 // Used by variable spindle output only. This forces the PWM output to a minimum duty cycle when enabled.
@@ -449,30 +441,33 @@
 // be sent without potential performance issues.
 // NOTE: The options below are here only provide a way to disable certain data fields if a unique
 // situation demands it, but be aware GUIs may depend on this data. If disabled, it may not be compatible.
-//#define DEFAULT_REPORT_MACHINE_POSITION  // Default disabled. Uncomment to enable.
-//#define DEFAULT_NO_REPORT_BUFFER_STATE
-//#define DEFAULT_NO_REPORT_LINE_NUMBERS
-//#define DEFAULT_NO_REPORT_CURRENT_FEED_SPEED
-//#define DEFAULT_NO_REPORT_PIN_STATE
-//#define DEFAULT_NO_REPORT_WORK_COORD_OFFSET
-//#define DEFAULT_NO_REPORT_OVERRIDES
-//#define DEFAULT_REPORT_PARSER_STATE
-//#define DEFAULT_REPORT_ALARM_SUBSTATE
+#define DEFAULT_REPORT_MACHINE_POSITION  // Default disabled. Uncomment to enable.
 
 #if COMPATIBILITY_LEVEL == 0
 // Number of tools in ATC tool table, comment out to disable
 // #define N_TOOLS 8
 #endif
 
+// Max number of entries in log for PID data reporting, to be used for tuning
+//#define PID_LOG 1000 // Default disabled. Uncomment to enable.
 
-/********************************×Ô¶¨Òå¹¦ÄÜ BEGIN****************************************/
+//#define DEFAULT_NO_REPORT_BUFFER_STATE
+//#define DEFAULT_NO_REPORT_LINE_NUMBERS
+//#define DEFAULT_NO_REPORT_CURRENT_FEED_SPEED
+//#define DEFAULT_NO_REPORT_PIN_STATE
+//#define DEFAULT_NO_REPORT_WORK_COORD_OFFSET
+//#define DEFAULT_NO_REPORT_OVERRIDES
+#define DEFAULT_REPORT_PARSER_STATE
+#define DEFAULT_REPORT_ALARM_SUBSTATE
 
-/*»ðÑæ±¨¾¯´¥·¢ãÐÖµ*/
+/********************************è‡ªå®šä¹‰åŠŸèƒ½ BEGIN****************************************/
+
+/*ç«ç„°æŠ¥è­¦è§¦å‘é˜ˆå€¼*/
 #define DEFAULT_FIRE_ALARM_TRIGGER_THRESHOLD 		50
 #define DEFAULT_FIRE_ALARM_TRIGGER_TIME_THRESHOLD 	100
 #define USE_ADC_FIRE_CHECK 1
-#define DEFAULT_AUTO_POWEROFF_TIME 					30//·ÖÖÓ
-/*»ØÁãÆ«ÒÆ*/
+#define DEFAULT_AUTO_POWEROFF_TIME 					30//åˆ†é’Ÿ
+/*å›žé›¶åç§»*/
 #if MACHINE_TYPE == OLM_2_PRO || (MACHINE_TYPE == OLM_PRO)
 #define ENABLE_HOMING_FORCE_SET_ORIGIN_OFFSET 0
 #else
@@ -482,70 +477,93 @@
 #define ORIGIN_OFFSET_Z 0
 #endif
 
-#define USB_SERIAL_CDC				1
-/**/
-#define DELAY_OFF_SPINDLE 			1
-/*¼ÓËÙ¶È¼ì²âÊ¹ÄÜ*/
+/*åŠ é€Ÿåº¦æ£€æµ‹ä½¿èƒ½*/
 #define ENABLE_ACCELERATION_DETECT 	1
 #define DEFAULT_ACCELERATION_LIMIT 	255
-/*µçÔ´¼ì²â¹¦ÄÜÓëÍ¨Ñ¶Ö¸Ê¾µÆ*/
+/*ç”µæºæ£€æµ‹åŠŸèƒ½ä¸Žé€šè®¯æŒ‡ç¤ºç¯---ä¸Žè°ƒè¯•å†²çª*/
 #define ENABLE_POWER_SUPPLY_CHECK 	1
-#define ENABLE_COMM_LED2			0
+#define ENABLE_COMM_LED2			1
 
-/********************************×Ô¶¨Òå¹¦ÄÜ END****************************************/
+/********************************è‡ªå®šä¹‰åŠŸèƒ½ END****************************************/
 
+#if MACHINE_TYPE == OLM_2_PRO
+#define DEFAULT_X_STEPS_PER_MM (5.0f*16)
+#define DEFAULT_Y_STEPS_PER_MM (5.0f*16)
+#define DEFAULT_Z_STEPS_PER_MM (5.0f*16)
+#define DEFAULT_X_MAX_RATE (170.0f*60) // mm/min
+#define DEFAULT_Y_MAX_RATE (170.0f*60) // mm/min
+#define DEFAULT_Z_MAX_RATE (20.0f*60) // mm/min
+#define DEFAULT_X_ACCELERATION (2200.0f*60*60) // 10*60*60 mm/min^2 = 10 mm/sec^2
+#define DEFAULT_Y_ACCELERATION (1800.0f*60*60) // 10*60*60 mm/min^2 = 10 mm/sec^2
+#define DEFAULT_Z_ACCELERATION (2200.0f*60*60) // 10*60*60 mm/min^2 = 10 mm/sec^2
+#define DEFAULT_X_MAX_TRAVEL 400.0f // mm NOTE: Must be a positive value.
+#define DEFAULT_Y_MAX_TRAVEL 400.0f // mm NOTE: Must be a positive value.
+#define DEFAULT_Z_MAX_TRAVEL  50.0f // mm NOTE: Must be a positive value.
 
-// Max number of entries in log for PID data reporting, to be used for tuning
-//#define PID_LOG 1000 // Default disabled. Uncomment to enable.
-
-//#define DEFAULT_X_STEPS_PER_MM 250.0f
-//#define DEFAULT_Y_STEPS_PER_MM 250.0f
-//#define DEFAULT_Z_STEPS_PER_MM 250.0f
-//#define DEFAULT_X_MAX_RATE 500.0f // mm/min
-//#define DEFAULT_Y_MAX_RATE 500.0f // mm/min
-//#define DEFAULT_Z_MAX_RATE 500.0f // mm/min
-//#define DEFAULT_X_ACCELERATION (10.0*60*60) // 10*60*60 mm/min^2 = 10 mm/sec^2
-//#define DEFAULT_Y_ACCELERATION (10.0*60*60) // 10*60*60 mm/min^2 = 10 mm/sec^2
-//#define DEFAULT_Z_ACCELERATION (10.0*60*60) // 10*60*60 mm/min^2 = 10 mm/sec^2
-//#define DEFAULT_X_MAX_TRAVEL 200.0f // mm NOTE: Must be a positive value.
-//#define DEFAULT_Y_MAX_TRAVEL 200.0f // mm NOTE: Must be a positive value.
-//#define DEFAULT_Z_MAX_TRAVEL 200.0f // mm NOTE: Must be a positive value.
+#elif (MACHINE_TYPE == OLM_PRO)
+#define DEFAULT_X_STEPS_PER_MM (5.0f*16)
+#define DEFAULT_Y_STEPS_PER_MM (5.0f*16)
+#define DEFAULT_Z_STEPS_PER_MM (5.0f*16)
+#define DEFAULT_X_MAX_RATE (150.0f*60) // mm/min
+#define DEFAULT_Y_MAX_RATE (150.0f*60) // mm/min
+#define DEFAULT_Z_MAX_RATE (20.0f*60) // mm/min
+#define DEFAULT_X_ACCELERATION (2200.0f*60*60) // 10*60*60 mm/min^2 = 10 mm/sec^2
+#define DEFAULT_Y_ACCELERATION (1800.0f*60*60) // 10*60*60 mm/min^2 = 10 mm/sec^2
+#define DEFAULT_Z_ACCELERATION (2200.0f*60*60) // 10*60*60 mm/min^2 = 10 mm/sec^2
+#define DEFAULT_X_MAX_TRAVEL 200.0f // mm NOTE: Must be a positive value.
+#define DEFAULT_Y_MAX_TRAVEL 200.0f // mm NOTE: Must be a positive value.
+#define DEFAULT_Z_MAX_TRAVEL  50.0f // mm NOTE: Must be a positive value.
+#else
+#define DEFAULT_X_STEPS_PER_MM (5.0f*16)
+#define DEFAULT_Y_STEPS_PER_MM (5.0f*16)
+#define DEFAULT_Z_STEPS_PER_MM (5.0f*16)
+#define DEFAULT_X_MAX_RATE (150.0f*60) // mm/min
+#define DEFAULT_Y_MAX_RATE (150.0f*60) // mm/min
+#define DEFAULT_Z_MAX_RATE (20.0f*60) // mm/min
+#define DEFAULT_X_ACCELERATION (2200.0f*60*60) // 10*60*60 mm/min^2 = 10 mm/sec^2
+#define DEFAULT_Y_ACCELERATION (1800.0f*60*60) // 10*60*60 mm/min^2 = 10 mm/sec^2
+#define DEFAULT_Z_ACCELERATION (2200.0f*60*60) // 10*60*60 mm/min^2 = 10 mm/sec^2
+#define DEFAULT_X_MAX_TRAVEL 290.0f // mm NOTE: Must be a positive value.
+#define DEFAULT_Y_MAX_TRAVEL 260.0f // mm NOTE: Must be a positive value.
+#define DEFAULT_Z_MAX_TRAVEL  50.0f // mm NOTE: Must be a positive value.
+#endif
 //#define DEFAULT_X_CURRENT 0.0 // amps
 //#define DEFAULT_Y_CURRENT 0.0 // amps
 //#define DEFAULT_Z_CURRENT 0.0 // amps
 //#define DEFAULT_A_CURRENT 0.0 // amps
-//#define DEFAULT_SPINDLE_PWM_FREQ 5000 // Hz
-//#define DEFAULT_SPINDLE_PWM_OFF_VALUE 0.0f // Percent
-//#define DEFAULT_SPINDLE_PWM_MAX_VALUE 100.0f // Percent
+#define DEFAULT_SPINDLE_PWM_FREQ 1000 // Hz
+#define DEFAULT_SPINDLE_PWM_OFF_VALUE 0.0f // Percent
+#define DEFAULT_SPINDLE_PWM_MAX_VALUE 100.0f // Percent
 //#define DEFAULT_SPINDLE_AT_SPEED_TOLERANCE 0.0f // Percent - 0 means not checked
-//#define DEFAULT_SPINDLE_RPM_MAX 1000.0 // rpm
-//#define DEFAULT_SPINDLE_RPM_MIN 0.0 // rpm
-//#define DEFAULT_SPINDLE_PWM_ACTION 0 // 0 = NONE, 1 = ENABLE_OFF_WITH_ZERO_SPEED, 2 =
-//#define DEFAULT_STEP_PULSE_MICROSECONDS 10.0f
+#define DEFAULT_SPINDLE_RPM_MAX 1000.0 // rpm
+#define DEFAULT_SPINDLE_RPM_MIN 0.0 // rpm
+//#define DEFAULT_SPINDLE_ENABLE_OFF_WITH_ZERO_SPEED 0
+#define DEFAULT_INVERT_SPINDLE_ENABLE_PIN
+#define DEFAULT_STEP_PULSE_MICROSECONDS 5.0f
 //#define DEFAULT_STEP_PULSE_DELAY 5.0f // uncomment to set default > 0.0f
-//#define DEFAULT_STEPPER_IDLE_LOCK_TIME 25 // msec (0-65535, 255 keeps steppers enabled)
-//#define DEFAULT_JUNCTION_DEVIATION 0.01f // mm
-//#define DEFAULT_ARC_TOLERANCE 0.002f // mm
+#define DEFAULT_STEPPER_IDLE_LOCK_TIME (5) // msec (0-65535, 255 keeps steppers enabled)
+#define DEFAULT_JUNCTION_DEVIATION 0.05f // mm
+#define DEFAULT_ARC_TOLERANCE 0.002f // mm
 //#define DEFAULT_REPORT_INCHES
 //#define DEFAULT_INVERT_LIMIT_PINS
-//#define DEFAULT_SOFT_LIMIT_ENABLE
-//#define DEFAULT_JOG_LIMIT_ENABLE
-//#define DEFAULT_HARD_LIMIT_ENABLE
-//#define DEFAULT_INVERT_PROBE_PIN
-//#define DEFAULT_LASER_MODE
+#define DEFAULT_SOFT_LIMIT_ENABLE
+#define DEFAULT_JOG_LIMIT_ENABLE
+#define DEFAULT_HARD_LIMIT_ENABLE
+#define DEFAULT_INVERT_PROBE_PIN
+#define DEFAULT_LASER_MODE
 //#define DEFAULT_LATHE_MODE
-//#define DEFAULT_HOMING_ENABLE
-//#define DEFAULT_HOMING_ALLOW_MANUAL
-//#define DEFAULT_HOMING_DIR_MASK 0 // move positive dir
-//#define DEFAULT_HOMING_FEED_RATE 25.0f // mm/min
-//#define DEFAULT_HOMING_SEEK_RATE 500.0f // mm/min
-//#define DEFAULT_HOMING_DEBOUNCE_DELAY 250 // msec (0-65k)
-//#define DEFAULT_HOMING_PULLOFF 1.0f // mm
+#define DEFAULT_HOMING_ENABLE
+#define DEFAULT_HOMING_ALLOW_MANUAL
+#define DEFAULT_HOMING_DIR_MASK (0b000111) // move positive dir (0b00cbazyx)
+#define DEFAULT_HOMING_FEED_RATE (10.0f*60) // mm/min
+#define DEFAULT_HOMING_SEEK_RATE (50.0f*60) // mm/min
+#define DEFAULT_HOMING_DEBOUNCE_DELAY 100 // msec (0-65k)
+#define DEFAULT_HOMING_PULLOFF 3.0f // mm
 
-//#define DEFAULT_A_STEPS_PER_MM 250.0f
-//#define DEFAULT_A_MAX_RATE 500.0f // mm/min
-//#define DEFAULT_A_ACCELERATION (10.0*60*60) // 10*60*60 mm/min^2 = 10 mm/sec^2
-//#define DEFAULT_A_MAX_TRAVEL 200.0f // mm
+#define DEFAULT_A_STEPS_PER_MM (50.0f*16)
+#define DEFAULT_A_MAX_RATE (100.0f*60) // mm/min
+#define DEFAULT_A_ACCELERATION (10.0*60*60) // 10*60*60 mm/min^2 = 10 mm/sec^2
+#define DEFAULT_A_MAX_TRAVEL 0 // mm
 
 //#define DEFAULT_B_STEPS_PER_MM 250.0f
 //#define DEFAULT_B_MAX_RATE 500.0f // mm/min
@@ -564,16 +582,12 @@
 // Number of homing cycles performed after when the machine initially jogs to limit switches.
 // This help in preventing overshoot and should improve repeatability. This value should be one or
 // greater.
-//#define DEFAULT_N_HOMING_LOCATE_CYCLE 1 // Integer (1-127)
+#define DEFAULT_N_HOMING_LOCATE_CYCLE 1 // Integer (1-127)
 
-// If homing is enabled, homing init lock sets Grbl into an alarm state upon power up or a soft reset.
-// This forces the user to perform the homing cycle before doing anything else. This is
+// If homing is enabled, homing init lock sets Grbl into an alarm state upon power up. This forces
+// the user to perform the homing cycle (or override the locks) before doing anything else. This is
 // mainly a safety feature to remind the user to home, since position is unknown to Grbl.
 //#define DEFAULT_HOMING_INIT_LOCK // Default disabled. Uncomment to enable.
-
-// If homing init lock is enabled this sets Grbl into an alarm state upon power up or a soft reset.
-// To allow a soft reset to override the lock uncomment the line below.
-//#define DEFAULT_HOMING_OVERRIDE_LOCKS // Default disabled. Uncomment to enable.
 
 // Define the homing cycle patterns with bitmasks. The homing cycle first performs a search mode
 // to quickly engage the limit switches, followed by a slower locate mode, and finished by a short
@@ -591,7 +605,7 @@
 // will not be affected by pin sharing.
 // NOTE: Defaults are set for a traditional 3-axis CNC machine. Z-axis first to clear, followed by X & Y.
 
-//#define HOMING_CYCLE_0 (Z_AXIS_BIT)             // REQUIRED: First move Z to clear workspace.
+#define HOMING_CYCLE_0 (X_AXIS_BIT|Y_AXIS_BIT) //(Z_AXIS_BIT)             // REQUIRED: First move Z to clear workspace.
 //#define HOMING_CYCLE_1 (X_AXIS_BIT|Y_AXIS_BIT)  // OPTIONAL: Then move X,Y at the same time.
 //#define HOMING_CYCLE_2 0                        // OPTIONAL: Uncomment and add axes mask to enable
 #if N_AXIS > 3
@@ -604,12 +618,14 @@
 // cycle is still invoked by the $H command. This is disabled by default. It's here only to address
 // users that need to switch between a two-axis and three-axis machine. This is actually very rare.
 // If you have a two-axis machine, DON'T USE THIS. Instead, just alter the homing cycle for two-axes.
-//#define HOMING_SINGLE_AXIS_COMMANDS // Default disabled. Uncomment to enable.
+#define HOMING_SINGLE_AXIS_COMMANDS // Default disabled. Uncomment to enable.
 
 // After homing, Grbl will set by default the entire machine space into negative space, as is typical
 // for professional CNC machines, regardless of where the limit switches are located. Set this
 // define to 1 to force Grbl to always set the machine origin at the homed location despite switch orientation.
-//#define HOMING_FORCE_SET_ORIGIN // Default disabled. Uncomment to enable.
+#if MACHINE_TYPE == OLM_2_PRO || (MACHINE_TYPE == OLM_PRO)
+#define HOMING_FORCE_SET_ORIGIN // Default disabled. Uncomment to enable.
+#endif
 
 // To prevent the homing cycle from racking the dual axis, when one limit triggers before the
 // other due to switch failure or noise, the homing cycle will automatically abort if the second
@@ -635,7 +651,11 @@
 // NOTE: Still a work-in-progress. Machine coordinates must be in all negative space and
 // does not work with HOMING_FORCE_SET_ORIGIN enabled. Parking motion also moves only in
 // positive direction.
-//#define DEFAULT_PARKING_ENABLE // Default disabled. Uncomment to enable.
+#if (MACHINE_TYPE == OLM_2_PRO) || (MACHINE_TYPE == OLM_PRO)
+
+#elif
+#define DEFAULT_PARKING_ENABLE // Default disabled. Uncomment to enable.
+#endif
 
 // End default values for run time configurable settings
 

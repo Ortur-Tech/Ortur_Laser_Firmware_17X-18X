@@ -1,9 +1,9 @@
 /*
   planner.c - buffers movement commands and manages the acceleration profile plan
 
-  Part of grblHAL
+  Part of GrblHAL
 
-  Copyright (c) 2017-2021 Terje Io
+  Copyright (c) 2017-2020 Terje Io
   Copyright (c) 2011-2016 Sungeun K. Jeon for Gnea Research LLC
   Copyright (c) 2009-2011 Simen Svale Skogsrud
   Copyright (c) 2011 Jens Geisler
@@ -45,6 +45,11 @@ static plan_block_t *block_buffer_tail;                 // Pointer to the block 
 static plan_block_t *block_buffer_head;                 // Pointer to the next block to be pushed
 static plan_block_t *next_buffer_head;                  // Pointer to the next buffer head
 static plan_block_t *block_buffer_planned;              // Pointer to the optimally planned block
+
+plan_block_t *get_block_buffer() { return block_buffer; }
+plan_block_t *get_block_buffer_head() { return block_buffer_head; }
+plan_block_t *get_block_buffer_tail() { return block_buffer_tail; }
+
 
 static planner_t pl;
 
@@ -281,7 +286,7 @@ bool plan_check_full_buffer ()
 // NOTE: All system motion commands, such as homing/parking, are not subject to overrides.
 float plan_compute_profile_nominal_speed (plan_block_t *block)
 {
-    float nominal_speed = block->condition.spindle.synchronized ? block->programmed_rate * hal.spindle.get_data(SpindleData_RPM)->rpm : block->programmed_rate;
+    float nominal_speed = block->condition.spindle.synchronized ? block->programmed_rate * hal.spindle.get_data(SpindleData_RPM).rpm : block->programmed_rate;
 
     if (block->condition.rapid_motion)
         nominal_speed *= (0.01f * sys.override.rapid_rate);
@@ -382,7 +387,7 @@ bool plan_buffer_line (float *target, plan_line_data_t *pl_data)
     pl_data->message = NULL;
 
     // Copy position data based on type of motion being planned.
-    memcpy(position_steps, block->condition.system_motion ? sys.position : pl.position, sizeof(position_steps));
+    memcpy(position_steps, block->condition.system_motion ? sys_position : pl.position, sizeof(position_steps));
 
     // Compute and store initial move distance data.
 
@@ -535,16 +540,16 @@ bool plan_buffer_line (float *target, plan_line_data_t *pl_data)
 // Reset the planner position vectors. Called by the system abort/initialization routine.
 void plan_sync_position ()
 {
-    memcpy(pl.position, sys.position, sizeof(pl.position));
+    memcpy(pl.position, sys_position, sizeof(pl.position));
 }
 
 
 // Returns the number of available blocks are in the planner buffer.
-uint_fast16_t plan_get_block_buffer_available ()
+uint8_t plan_get_block_buffer_available ()
 {
-    return (uint_fast16_t)(block_buffer_head >= block_buffer_tail
-                            ? ((BLOCK_BUFFER_SIZE - 1) - (block_buffer_head - block_buffer_tail))
-                            : ((block_buffer_tail - block_buffer_head) - 1));
+    return (uint8_t)(block_buffer_head >= block_buffer_tail
+                      ? ((BLOCK_BUFFER_SIZE - 1) - (block_buffer_head - block_buffer_tail))
+                      : ((block_buffer_tail - block_buffer_head) - 1));
 }
 
 

@@ -3,7 +3,7 @@
 
   Part of grblHAL
 
-  Copyright (c) 2017-2021 Terje Io
+  Copyright (c) 2017-2020 Terje Io
   Copyright (c) 2015-2016 Sungeun K. Jeon for Gnea Research LLC
 
   Grbl is free software: you can redistribute it and/or modify
@@ -28,13 +28,16 @@
 
 #include "config.h"
 
+
+
+
 // Grbl versioning system
 #if COMPATIBILITY_LEVEL == 0
 #define GRBL_VERSION "1.1f"
 #else
 #define GRBL_VERSION "1.1f"
 #endif
-#define GRBL_VERSION_BUILD "20210313"
+#define GRBL_VERSION_BUILD "20210403"
 
 // The following symbols are set here if not already set by the compiler or in config.h
 // Do NOT change here!
@@ -43,18 +46,9 @@
 #include "esp_attr.h"
 #define ISR_CODE IRAM_ATTR
 #else
-//#define ISR_CODE __attribute__((long_call, section(".data")))
 // Used to decorate code run in interrupt context.
 // Do not remove or change unless you know what you are doing.
 #define ISR_CODE
-#endif
-
-#ifdef ARDUINO
-#include <Arduino.h>
-#endif
-
-#ifndef PROGMEM
-#define PROGMEM
 #endif
 
 #ifndef N_AXIS
@@ -103,7 +97,7 @@
 // g-code programs, maybe selected for interface programs.
 // NOTE: If changed, manually update help message in report.c.
 
-#define CMD_POWERON 0x02 //STX ¿ª»úÃüÁî
+#define CMD_POWERON 0x02 //STX å¼€æœºå‘½ä»¤
 
 #define CMD_EXIT 0x03 // ctrl-C (ETX)
 #define CMD_REBOOT 0x14 // ctrl-T (DC4) - only acted upon if preceeded by 0x1B (ESC)
@@ -127,7 +121,6 @@
 //#define CMD_DEBUG_REPORT 0x86 // Only when DEBUG enabled, sends debug report in '{}' braces.
 #define CMD_STATUS_REPORT_ALL 0x87
 #define CMD_OPTIONAL_STOP_TOGGLE 0x88
-#define CMD_SINGLE_BLOCK_TOGGLE 0x89
 #define CMD_OVERRIDE_FEED_RESET 0x90         // Restores feed override value to 100%.
 #define CMD_OVERRIDE_FEED_COARSE_PLUS 0x91
 #define CMD_OVERRIDE_FEED_COARSE_MINUS 0x92
@@ -270,11 +263,7 @@
 #define TOOL_LENGTH_OFFSET_AXIS Z_AXIS // Default z-axis. Valid values are X_AXIS, Y_AXIS, or Z_AXIS.
 #endif
 
-// Max length of gcode lines (blocks) stored in non-volatile storage
-#if N_AXIS == 6 && COMPATIBILITY_LEVEL <= 1
-#define MAX_STORED_LINE_LENGTH 60 // do not change!
-#else
-#define MAX_STORED_LINE_LENGTH 70 // do not set > 70 unless less than 5 axes are enabled or COMPATIBILITY_LEVEL > 1
-#endif
-	void test_function(void);
+// Max length of gcode lines (blocks) stored in non-volatile storage, do not set > 70 unless less than 6 axes are enabled
+#define MAX_STORED_LINE_LENGTH 70
+
 #endif

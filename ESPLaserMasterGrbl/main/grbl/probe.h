@@ -1,7 +1,7 @@
 /*
   probe.h - An embedded CNC Controller with rs274/ngc (g-code) support
 
-  Part of grblHAL
+  Part of GrblHAL
 
   Copyright (c) 2020 Terje Io
 

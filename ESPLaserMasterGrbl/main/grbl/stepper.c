@@ -1,9 +1,9 @@
 /*
   stepper.c - stepper motor driver: executes motion plans using stepper motors
 
-  Part of grblHAL
+  Part of GrblHAL
 
-  Copyright (c) 2016-2021 Terje Io
+  Copyright (c) 2016-2020 Terje Io
   Copyright (c) 2011-2016 Sungeun K. Jeon for Gnea Research LLC
   Copyright (c) 2009-2011 Simen Svale Skogsrud
 
@@ -27,7 +27,6 @@
 
 #include "hal.h"
 #include "protocol.h"
-#include "state_machine.h"
 
 //#include "debug.h"
 
@@ -98,7 +97,6 @@ static segment_t *segment_buffer_head, *segment_next_head;
 // main program. Pointers may be planning segments or planner blocks ahead of what being executed.
 static plan_block_t *pl_block;     // Pointer to the planner block being prepped
 static st_block_t *st_prep_block;  // Pointer to the stepper block data being prepped
-static st_block_t st_hold_block;   // Copy of stepper block data for block put on hold during parking
 
 // Segment preparation data struct. Contains all the necessary information to compute new segments
 // based on the current executing planner block.
@@ -173,7 +171,7 @@ static st_prep_t prep;
 //
 
 // Output message in sync with motion, called by foreground process.
-static void output_message (sys_state_t state)
+static void output_message (uint_fast16_t state)
 {
     if(message) {
         report_message(message, Message_Plain);
@@ -196,14 +194,10 @@ void st_deenergize ()
 // enabled. Startup init and limits call this function but shouldn't start the cycle.
 void st_wake_up ()
 {
-    if(sys.steppers_deenergize) {
-        sys.steppers_deenergize = false;
-//        hal.delay_ms(0, st_deenergize); // Cancel any pending steppers deenergize
-    }
-
     // Initialize stepper data to ensure first ISR call does not step and
     // cancel any pending steppers deenergize
-    //st.exec_block = NULL;
+    st.exec_block = NULL;
+    sys.steppers_deenergize = false;
 
     hal.stepper.wake_up();
 }
@@ -214,18 +208,20 @@ ISR_CODE void st_go_idle ()
 {
     // Disable Stepper Driver Interrupt. Allow Stepper Port Reset Interrupt to finish, if active.
 
-    sys_state_t state = state_get();
-
     hal.stepper.go_idle(false);
 
     // Set stepper driver idle state, disabled or enabled, depending on settings and circumstances.
-    if (((settings.steppers.idle_lock_time != 255) || sys.rt_exec_alarm || state == STATE_SLEEP) && state != STATE_HOMING) {
+    if (((settings.steppers.idle_lock_time != 255) || sys_rt_exec_alarm || sys.state == STATE_SLEEP) && sys.state != STATE_HOMING) {
         // Force stepper dwell to lock axes for a defined amount of time to ensure the axes come to a complete
         // stop and not drift from residual inertial forces at the end of the last movement.
         sys.steppers_deenergize = true;
         hal.delay_ms(settings.steppers.idle_lock_time, st_deenergize);
-    } else
-        hal.stepper.enable(settings.steppers.idle_lock_time == 255 ? (axes_signals_t){AXES_BITMASK} : settings.steppers.deenergize);
+    }
+//    if(sys.steppers_deenergize == true)
+//    {
+//       hal.stepper.enable(settings.steppers.deenergize);
+//    }
+
 }
 
 
@@ -294,7 +290,7 @@ ISR_CODE void stepper_driver_interrupt_handler (void)
     // If there is no step segment, attempt to pop one from the stepper buffer
     if (st.exec_segment == NULL) {
         // Anything in the buffer? If so, load and initialize next step segment.
-        if (segment_buffer_tail != segment_buffer_head) {
+        if (segment_buffer_head != segment_buffer_tail) {
 
             // Initialize new step segment and load number of steps to execute
             st.exec_segment = (segment_t *)segment_buffer_tail;
@@ -388,7 +384,6 @@ ISR_CODE void stepper_driver_interrupt_handler (void)
             if (st.exec_block->dynamic_rpm && settings.mode == Mode_Laser)
                 hal.spindle.set_state((spindle_state_t){0}, 0.0f);
 
-            st.exec_block = NULL;
             system_set_exec_state_flag(EXEC_CYCLE_COMPLETE); // Flag main program for cycle complete
 
             return; // Nothing to do but exit.
@@ -398,10 +393,10 @@ ISR_CODE void stepper_driver_interrupt_handler (void)
     // Check probing state.
     // Monitors probe pin state and records the system position when detected.
     // NOTE: This function must be extremely efficient as to not bog down the stepper ISR.
-    if (sys.probing_state == Probing_Active && hal.probe.get_state().triggered) {
-        sys.probing_state = Probing_Off;
-        memcpy(sys.probe_position, sys.position, sizeof(sys.position));
-        bit_true(sys.rt_exec_state, EXEC_MOTION_CANCEL);
+    if (sys_probing_state == Probing_Active && hal.probe.get_state().triggered) {
+        sys_probing_state = Probing_Off;
+        memcpy(sys_probe_position, sys_position, sizeof(sys_position));
+        bit_true(sys_rt_exec_state, EXEC_MOTION_CANCEL);
     }
 
     register axes_signals_t step_outbits = (axes_signals_t){0};
@@ -415,7 +410,7 @@ ISR_CODE void stepper_driver_interrupt_handler (void)
 #ifdef ENABLE_BACKLASH_COMPENSATION
         if(!backlash_motion)
 #endif
-            sys.position[X_AXIS] = sys.position[X_AXIS] + (st.dir_outbits.x ? -1 : 1);
+            sys_position[X_AXIS] = sys_position[X_AXIS] + (st.dir_outbits.x ? -1 : 1);
     }
 
     st.counter_y += st.steps[Y_AXIS];
@@ -425,7 +420,7 @@ ISR_CODE void stepper_driver_interrupt_handler (void)
 #ifdef ENABLE_BACKLASH_COMPENSATION
         if(!backlash_motion)
 #endif
-            sys.position[Y_AXIS] = sys.position[Y_AXIS] + (st.dir_outbits.y ? -1 : 1);
+            sys_position[Y_AXIS] = sys_position[Y_AXIS] + (st.dir_outbits.y ? -1 : 1);
     }
 
     st.counter_z += st.steps[Z_AXIS];
@@ -435,7 +430,7 @@ ISR_CODE void stepper_driver_interrupt_handler (void)
 #ifdef ENABLE_BACKLASH_COMPENSATION
         if(!backlash_motion)
 #endif
-            sys.position[Z_AXIS] = sys.position[Z_AXIS] + (st.dir_outbits.z ? -1 : 1);
+            sys_position[Z_AXIS] = sys_position[Z_AXIS] + (st.dir_outbits.z ? -1 : 1);
     }
 
   #ifdef A_AXIS
@@ -446,7 +441,7 @@ ISR_CODE void stepper_driver_interrupt_handler (void)
 #ifdef ENABLE_BACKLASH_COMPENSATION
         if(!backlash_motion)
 #endif
-              sys.position[A_AXIS] = sys.position[A_AXIS] + (st.dir_outbits.a ? -1 : 1);
+              sys_position[A_AXIS] = sys_position[A_AXIS] + (st.dir_outbits.a ? -1 : 1);
       }
   #endif
 
@@ -458,7 +453,7 @@ ISR_CODE void stepper_driver_interrupt_handler (void)
 #ifdef ENABLE_BACKLASH_COMPENSATION
         if(!backlash_motion)
 #endif
-              sys.position[B_AXIS] = sys.position[B_AXIS] + (st.dir_outbits.b ? -1 : 1);
+              sys_position[B_AXIS] = sys_position[B_AXIS] + (st.dir_outbits.b ? -1 : 1);
       }
   #endif
 
@@ -470,14 +465,14 @@ ISR_CODE void stepper_driver_interrupt_handler (void)
 #ifdef ENABLE_BACKLASH_COMPENSATION
         if(!backlash_motion)
 #endif
-              sys.position[C_AXIS] = sys.position[C_AXIS] + (st.dir_outbits.c ? -1 : 1);
+              sys_position[C_AXIS] = sys_position[C_AXIS] + (st.dir_outbits.c ? -1 : 1);
       }
   #endif
 
     st.step_outbits.value = step_outbits.value;
 
     // During a homing cycle, lock out and prevent desired axes from moving.
-    if (state_get() == STATE_HOMING)
+    if (sys.state == STATE_HOMING)
         st.step_outbits.value &= sys.homing_axis_lock.mask;
 
     if (st.step_count == 0 || --st.step_count == 0) {
@@ -560,9 +555,8 @@ void st_update_plan_block_parameters ()
 void st_parking_setup_buffer()
 {
     // Store step execution data of partially completed block, if necessary.
-    if (prep.recalculate.hold_partial_block && !prep.recalculate.parking) {
+    if (prep.recalculate.hold_partial_block) {
         prep.last_st_block = st_prep_block;
-        memcpy(&st_hold_block, st_prep_block, sizeof(st_block_t));
         prep.last_steps_remaining = prep.steps_remaining;
         prep.last_dt_remainder = prep.dt_remainder;
         prep.last_steps_per_mm = prep.steps_per_mm;
@@ -579,7 +573,6 @@ void st_parking_restore_buffer()
 {
     // Restore step execution data and flags of partially completed block, if necessary.
     if (prep.recalculate.hold_partial_block) {
-        memcpy(prep.last_st_block, &st_hold_block, sizeof(st_block_t));
         st_prep_block = prep.last_st_block;
         prep.steps_remaining = prep.last_steps_remaining;
         prep.dt_remainder = prep.last_dt_remainder;
@@ -785,7 +778,7 @@ void st_prep_buffer()
                 }
             }
 
-            if(state_get() != STATE_HOMING)
+            if(sys.state != STATE_HOMING)
                 sys.step_control.update_spindle_rpm |= (settings.mode == Mode_Laser); // Force update whenever updating block in laser mode.
         }
 
@@ -1036,5 +1029,5 @@ void st_prep_buffer()
 // divided by the ACCELERATION TICKS PER SECOND in seconds.
 float st_get_realtime_rate()
 {
-    return state_get() & (STATE_CYCLE|STATE_HOMING|STATE_HOLD|STATE_JOG|STATE_SAFETY_DOOR) ? prep.current_speed : 0.0f;
+    return sys.state & (STATE_CYCLE|STATE_HOMING|STATE_HOLD|STATE_JOG|STATE_SAFETY_DOOR) ? prep.current_speed : 0.0f;
 }

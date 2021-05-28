@@ -1,9 +1,9 @@
 /*
   nvs_buffer.c - RAM based non-volatile storage buffer/emulation
 
-  Part of grblHAL
+  Part of GrblHAL
 
-  Copyright (c) 2017-2021 Terje Io
+  Copyright (c) 2017-2020 Terje Io
   Copyright (c) 2012-2016 Sungeun K. Jeon for Gnea Research LLC
   Copyright (c) 2009-2011 Simen Svale Skogsrud
 
@@ -131,7 +131,7 @@ static nvs_transfer_result_t memcpy_to_ram (uint32_t destination, uint8_t *sourc
 
         settings_dirty.is_dirty = true;
 
-        if(hal.nvs.driver_area.address && destination >= hal.nvs.driver_area.address)
+        if(hal.nvs.driver_area.address && destination == hal.nvs.driver_area.address)
             settings_dirty.driver_settings = true;
 
         else {
@@ -182,7 +182,7 @@ static nvs_transfer_result_t memcpy_from_ram (uint8_t *destination, uint32_t sou
     return with_checksum ? (checksum == ram_get_byte(source) ? NVS_TransferResult_OK : NVS_TransferResult_Failed) : NVS_TransferResult_OK;
 }
 
-static void nvs_warning (sys_state_t state)
+static void nvs_warning (uint_fast16_t state)
 {
     report_message("Not enough heap for NVS buffer!", Message_Warning);
 }
@@ -190,7 +190,7 @@ static void nvs_warning (sys_state_t state)
 // Try to allocate RAM from heap for buffer/emulation.
 bool nvs_buffer_alloc (void)
 {
-    assert(NVS_SIZE >= GRBL_NVS_SIZE);
+    assert(NVS_SIZE > GRBL_NVS_SIZE);
 
     nvsbuffer = malloc(NVS_SIZE);
 
@@ -199,11 +199,9 @@ bool nvs_buffer_alloc (void)
 
 //
 // Switch over to RAM based copy.
-// Changes to RAM based copy will be written to physical storage when grblHAL is in IDLE state.
+// Changes to RAM based copy will be written to physical storage when Grbl is in IDLE state.
 bool nvs_buffer_init (void)
 {
-    hal.nvs.size = ((hal.nvs.size - 1) | 0x03) + 1; // Ensure NVS area ends on a word boundary
-
     if(nvsbuffer) {
 
         memcpy(&physical_nvs, &hal.nvs, sizeof(nvs_io_t)); // save pointers to physical storage handler functions
@@ -229,10 +227,9 @@ bool nvs_buffer_init (void)
             settings_restore(settings_all);
             if(physical_nvs.type == NVS_Flash)
                 physical_nvs.memcpy_to_flash(nvsbuffer);
-            else if(physical_nvs.memcpy_to_nvs)
+            else
                 physical_nvs.memcpy_to_nvs(0, nvsbuffer, GRBL_NVS_SIZE + hal.nvs.driver_area.size, false);
-            if(physical_nvs.type != NVS_None)
-                grbl.report.status_message(Status_SettingReadFail);
+            grbl.report.status_message(Status_SettingReadFail);
         }
     } else
         protocol_enqueue_rt_command(nvs_warning);
@@ -245,11 +242,11 @@ bool nvs_buffer_init (void)
 
 // Allocate NVS block for driver settings.
 // NOTE: allocation has to be done before content is copied from physical storage.
-nvs_address_t nvs_alloc (size_t size)
+uint32_t nvs_alloc (size_t size)
 {
     static uint8_t *mem_address;
 
-    nvs_address_t addr = 0;
+    uint32_t addr = 0;
 
     // Check if already switched to emulation or buffer allocation failed, return NULL if so.
     if(hal.nvs.type == NVS_Emulated || nvsbuffer == NULL)
