@@ -1,12 +1,12 @@
 /*
 
-  ioexpand.h - driver code for Espressif ESP32 processor
+  eeprom.h - driver code for Espressif ESP32 processor
 
-  I2C I/O expander
+  for 2K EEPROM on CNC Boosterpack (Microchip 24LC16B)
 
-  Part of GrblHAL
+  Part of Grbl
 
-  Copyright (c) 2018 Terje Io
+  Copyright (c) 2017-2018 Terje Io
 
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -23,19 +23,15 @@
 
 */
 
-#ifndef _IOEXPAND_H_
-#define _IOEXPAND_H_
+#ifndef _EEPROM_H_
+#define _EEPROM_H_
 
-#include "driver.h"
+#define HAS_EEPROM
 
-#define IOEX_ADDRESS 0x40
-#define READ_INPUT   0
-#define RW_OUTPUT    1
-#define RW_INVERSION 2
-#define RW_CONFIG    3
-
-void ioexpand_init (void);
-void ioexpand_out (ioexpand_t pins);
-ioexpand_t ioexpand_in (void);
+uint8_t eepromGetByte (uint32_t addr);
+void eepromPutByte (uint32_t addr, uint8_t new_value);
+nvs_transfer_result_t eepromWriteBlockWithChecksum (uint32_t destination, uint8_t *source, uint32_t size, bool with_checksum);
+nvs_transfer_result_t eepromReadBlockWithChecksum (uint8_t *destination, uint32_t source, uint32_t size, bool with_checksum);
 
 #endif
+

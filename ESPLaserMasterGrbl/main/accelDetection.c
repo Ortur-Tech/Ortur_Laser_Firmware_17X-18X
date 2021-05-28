@@ -1,7 +1,7 @@
 /*
  * accelDetection.c
  *
- *  Created on: 2021Äê5ÔÂ20ÈÕ
+ *  Created on: 2021å¹´5æœˆ20æ—¥
  *      Author: c
  */
 #include "accelDetection.h"
@@ -10,6 +10,7 @@
 #include "driver/i2c.h"
 #include "grbl/grbl.h"
 #include "grbl/state_machine.h"
+#include "my_machine_map.h"
 
 #define BMA250_DEVICE 0X03
 #define BMA253_DEVICE 0XFA
@@ -21,10 +22,10 @@
 int16_t accel_x,accel_y, accel_z;
 int16_t accel_x_old,accel_y_old,accel_z_old;
 uint16_t accel_slope;
-uint8_t shake_detected = 0; //ÊÇ·ñ¼ì²âµ½Õğ¶¯
-#define  accel_check_interval_ms 100 //100ºÁÃë¼ì²âÒ»´Î
+uint8_t shake_detected = 0; //æ˜¯å¦æ£€æµ‹åˆ°éœ‡åŠ¨
+#define  accel_check_interval_ms 100 //100æ¯«ç§’æ£€æµ‹ä¸€æ¬¡
 uint32_t last_accel_check_ms = 0;
-uint32_t detection_count = 0; //¿ªÊ¼¼ì²â
+uint32_t detection_count = 0; //å¼€å§‹æ£€æµ‹
 int16_t gsensor_extern_scale = 1;
 
 uint8_t Check_BMA250_ID(void);
@@ -55,7 +56,7 @@ void BMA250_Get_Acceleration(short *gx, short *gy, short *gz);
 #define BMP_AS_BANDWIDTH 8
 #define BMP_AS_SLEEPPHASE 2
 
-uint8_t GsensorDeviceType=0;    //!<gsensorĞ¾Æ¬ÀàĞÍ
+uint8_t GsensorDeviceType=0;    //!<gsensorèŠ¯ç‰‡ç±»å‹
 
 
 
@@ -198,7 +199,7 @@ void BMA250_Init(void)
 }
 
 /**
- * @brief Sc7a20_Init ³õÊ¼»¯ sc7a20
+ * @brief Sc7a20_Init åˆå§‹åŒ– sc7a20
  */
 void Sc7a20_Init(void)
 {
@@ -209,7 +210,7 @@ void Sc7a20_Init(void)
 }
 /**
  * @brief Get_GsensorType
- * @return ·µ»ØĞ¾Æ¬id
+ * @return è¿”å›èŠ¯ç‰‡id
  */
 uint8_t Get_GsensorType(void)
 {
@@ -224,10 +225,10 @@ uint8_t Get_GsensorType(void)
 }
 
 /**
- * @brief Sc7a20_Get_AccelerationµÃµ½¼ÓËÙ¶ÈÖµ(Ô­Ê¼Öµ)
- * @param gx xÖá¼ÓËÙ¶ÈµÄÔ­Ê¼¶ÁÊı(´ø·ûºÅ)
- * @param gy yÖá¼ÓËÙ¶ÈµÄÔ­Ê¼¶ÁÊı(´ø·ûºÅ)
- * @param gz zÖá¼ÓËÙ¶ÈµÄÔ­Ê¼¶ÁÊı(´ø·ûºÅ)
+ * @brief Sc7a20_Get_Accelerationå¾—åˆ°åŠ é€Ÿåº¦å€¼(åŸå§‹å€¼)
+ * @param gx xè½´åŠ é€Ÿåº¦çš„åŸå§‹è¯»æ•°(å¸¦ç¬¦å·)
+ * @param gy yè½´åŠ é€Ÿåº¦çš„åŸå§‹è¯»æ•°(å¸¦ç¬¦å·)
+ * @param gz zè½´åŠ é€Ÿåº¦çš„åŸå§‹è¯»æ•°(å¸¦ç¬¦å·)
  */
 void Sc7a20_Get_Acceleration(short *gx, short *gy, short *gz)
 {
@@ -282,7 +283,7 @@ void Gsensor_Init(void)
 
 /**
  * @brief Check_BMA250_ID
- * @return Ğ¾Æ¬id
+ * @return èŠ¯ç‰‡id
  */
 uint8_t Check_BMA250_ID(void)
 {
@@ -290,8 +291,8 @@ uint8_t Check_BMA250_ID(void)
 }
 
 /**
- * @brief BMA250_Get_Acceleration µÃµ½¼ÓËÙ¶ÈÖµ(Ô­Ê¼Öµ)
- * @param gx ÍÓÂİÒÇx,y,zÖáµÄÔ­Ê¼¶ÁÊı(´ø·ûºÅ)
+ * @brief BMA250_Get_Acceleration å¾—åˆ°åŠ é€Ÿåº¦å€¼(åŸå§‹å€¼)
+ * @param gx é™€èºä»ªx,y,zè½´çš„åŸå§‹è¯»æ•°(å¸¦ç¬¦å·)
  * @param gy
  * @param gz
  */
@@ -318,17 +319,17 @@ void BMA250_Get_Acceleration(short *gx, short *gy, short *gz)
 
 /**
  * @brief Get_Acceleration
- * @param devAddr Éè±¸µØÖ·
- * @param firstAddr ¶ÁÈ¡Ê×µØÖ·
- * @param gx xÖá¼ÓËÙ¶Èvalue
- * @param gy yÖá¼ÓËÙ¶Èvalue
- * @param gz zÖá¼ÓËÙ¶ÈÖµ
+ * @param devAddr è®¾å¤‡åœ°å€
+ * @param firstAddr è¯»å–é¦–åœ°å€
+ * @param gx xè½´åŠ é€Ÿåº¦value
+ * @param gy yè½´åŠ é€Ÿåº¦value
+ * @param gz zè½´åŠ é€Ÿåº¦å€¼
  */
 void Get_Acceleration(uint8_t devAddr ,uint8_t firstAddr,short *gx, short *gy, short *gz)
 {
 	uint16_t x_l8,x_h8,y_l8,y_h8,z_l8,z_h8;
 
-    /*¶Á¼ÓËÙ¶ÈÖµ*/
+    /*è¯»åŠ é€Ÿåº¦å€¼*/
     x_l8 = Read_One_Byte(devAddr, firstAddr);
     x_h8 = Read_One_Byte(devAddr, firstAddr+1);
     y_l8 = Read_One_Byte(devAddr, firstAddr+2);
@@ -336,7 +337,7 @@ void Get_Acceleration(uint8_t devAddr ,uint8_t firstAddr,short *gx, short *gy, s
     z_l8 = Read_One_Byte(devAddr, firstAddr+4);
     z_h8 = Read_One_Byte(devAddr, firstAddr+5);
 
-    /*È¡¸ß10bit*/
+    /*å–é«˜10bit*/
     *gx=(short)((x_h8<<8)|x_l8);
     *gy=(short)((y_h8<<8)|y_l8);
     *gz=(short)((z_h8<<8)|z_l8);
@@ -347,9 +348,9 @@ void Get_Acceleration(uint8_t devAddr ,uint8_t firstAddr,short *gx, short *gy, s
 }
 
 #if ENABLE_ACCELERATION_DETECT
-//³õÊ¼»¯²¢¶ÁÈ¡¼ÓËÙ¶È¼ÆÊı¾İ
+//åˆå§‹åŒ–å¹¶è¯»å–åŠ é€Ÿåº¦è®¡æ•°æ®
 /**
- * @brief ¼ì²â¼ÓËÙ¶ÈÊÇ·ñ³¬ÏŞÖÆ
+ * @brief æ£€æµ‹åŠ é€Ÿåº¦æ˜¯å¦è¶…é™åˆ¶
  */
 void accel_detection()
 {
@@ -361,16 +362,16 @@ void accel_detection()
 
 	mprintf(LOG_INFO,"xValue:%d. yValue:%d. zValue:%d.\r\n",accel_x,accel_y,accel_z);
 
-	//¼ÆËã¼ÓËÙ¶ÈĞ±ÂÊ(¼Ó¼ÓËÙ¶È)Í»±ä
-	//Èç¹û¼ÓËÙ¶ÈÍ»±ä,¾Í±íÃ÷ÓĞ½Ï´óµÄÕğ¶¯»òÎ»ÒÆ,ÕâÑùµñ¿Ì»á´íÎ»,ÎŞ·¨¼ÌĞø
-	//ÖÁÉÙ¼ÇÂ¼2´ÎÖµÒÔÉÏ¼ÓËÙ¶ÈÖµ
+	//è®¡ç®—åŠ é€Ÿåº¦æ–œç‡(åŠ åŠ é€Ÿåº¦)çªå˜
+	//å¦‚æœåŠ é€Ÿåº¦çªå˜,å°±è¡¨æ˜æœ‰è¾ƒå¤§çš„éœ‡åŠ¨æˆ–ä½ç§»,è¿™æ ·é›•åˆ»ä¼šé”™ä½,æ— æ³•ç»§ç»­
+	//è‡³å°‘è®°å½•2æ¬¡å€¼ä»¥ä¸ŠåŠ é€Ÿåº¦å€¼
 	if(detection_count > 2)
 	{
-		//¼ÆËã¼ÓËÙ¶È±ä»¯,µñ¿ÌÊ±,²»ÔÊĞí¼ÓËÙ¶ÈÍ»±ä
+		//è®¡ç®—åŠ é€Ÿåº¦å˜åŒ–,é›•åˆ»æ—¶,ä¸å…è®¸åŠ é€Ÿåº¦çªå˜
 		// 3.91mg   g==10m/s
-        #define G2MS(g) (g*10) // g ×ª mm/s
-        #define MG2G(mg) (mg*1000/391) // mg ×ª g
-        #define GS_K  1000  * 10 / 391 / accel_check_interval_ms //¼ÆËãĞ±ÂÊµÄ³£ÊıK
+        #define G2MS(g) (g*10) // g è½¬ mm/s
+        #define MG2G(mg) (mg*1000/391) // mg è½¬ g
+        #define GS_K  1000  * 10 / 391 / accel_check_interval_ms //è®¡ç®—æ–œç‡çš„å¸¸æ•°K
 		accel_slope = ( ABS(accel_x - accel_x_old) + ABS(accel_y - accel_y_old) + ABS(accel_z - accel_z_old) ) * GS_K * gsensor_extern_scale;
 		mprintf(LOG_INFO,"accel_slope:%d.\r\n",accel_slope);
 
@@ -386,9 +387,9 @@ void accel_detection()
 	{
 		shake_detected = 0;
 
-		//½øÈë¾¯¸æ×´Ì¬,ÖÕÖ¹µñ¿Ì
+		//è¿›å…¥è­¦å‘ŠçŠ¶æ€,ç»ˆæ­¢é›•åˆ»
 		//if(sys.trust_state == STATE_CYCLE)
-		if(state_get() == STATE_CYCLE)  //---TOCHECK
+		if(sys.state == STATE_CYCLE)  //---TOCHECK
 		{
 			switch(GsensorDeviceType)
 			{
@@ -406,26 +407,24 @@ void accel_detection()
 			}
 			hal.stream.write(appendbuf(1,uitoa((uint32_t)accel_slope)));
 			hal.stream.write_all(") Shock and Movement detected! Check TroubleShooting Section in User Manual.]"ASCII_EOL);
-
+			sys.state = STATE_ALARM;
 			sys.abort = 1;
 			spindle_set_speed(0);
 			spindle_off_directly();
-
-			state_set(STATE_ALARM);
 		}
 	}
 
-	//¼ÆËã¾ùÖµ
+	//è®¡ç®—å‡å€¼
 	accel_x_old = accel_x;
 	accel_y_old = accel_y;
 	accel_z_old = accel_z;
 
-	++detection_count;//Í³¼Æ¼ì²â´ÎÊı
+	++detection_count;//ç»Ÿè®¡æ£€æµ‹æ¬¡æ•°
 }
 
 /**
  * @brief
- *  ÏŞÖÆ¼ÓËÙ¶È¼ì²âµÄÆµÂÊ100ms¶ÁÈ¡Ò»´Î
+ *  é™åˆ¶åŠ é€Ÿåº¦æ£€æµ‹çš„é¢‘ç‡100msè¯»å–ä¸€æ¬¡
  */
 void accel_detection_limit()
 {
@@ -433,15 +432,15 @@ void accel_detection_limit()
 
   if(!iic_init_flag) return;
 
-  if(!recursion)//·ÀÖ¹µİ¹éµ÷ÓÃ
+  if(!recursion)//é˜²æ­¢é€’å½’è°ƒç”¨
   {
 	recursion++;
 
-	//µñ¿ÌÔËĞĞÊ±²Å¼ì²â
+	//é›•åˆ»è¿è¡Œæ—¶æ‰æ£€æµ‹
 	//if(sys.trust_state == STATE_CYCLE)
-	if(state_get() == STATE_CYCLE)
+	if(sys.state == STATE_CYCLE)
 	{
-		//¶¨Ê±¼ì²é,±ÜÃâËÙ¶ÈÌ«Æµ·±
+		//å®šæ—¶æ£€æŸ¥,é¿å…é€Ÿåº¦å¤ªé¢‘ç¹
 		if(last_accel_check_ms + accel_check_interval_ms <= HAL_GetTick())
 		{
 			accel_detection();

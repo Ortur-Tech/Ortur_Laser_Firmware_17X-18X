@@ -2,6 +2,11 @@
 
 */
 
+#ifndef _MY_MACHINE_MAP_H_
+#define _MY_MACHINE_MAP_H_
+
+
+
 #include "board.h"
 
 #if (BOARD_VERSION == OLM_ESP_V1X)
@@ -28,14 +33,19 @@
 #define X_STEP_PIN  GPIO_NUM_12
 #define Y_STEP_PIN  GPIO_NUM_14
 #define Z_STEP_PIN  GPIO_NUM_35
+#define STEP_MASK       (1ULL << X_STEP_PIN|1ULL << Y_STEP_PIN|1ULL << Z_STEP_PIN) // All step bits
 
 // Define step direction output pins. NOTE: All direction pins must be on the same port.
 #define X_DIRECTION_PIN GPIO_NUM_11
 #define Y_DIRECTION_PIN GPIO_NUM_13
 #define Z_DIRECTION_PIN GPIO_NUM_34
+#define DIRECTION_MASK      (1ULL << X_DIRECTION_PIN|1ULL << Y_DIRECTION_PIN|1ULL << Z_DIRECTION_PIN) // All direction bits
+
 
 // Define stepper driver enable/disable output pin(s).
 #define STEPPERS_DISABLE_PIN    GPIO_NUM_21
+#define STEPPERS_DISABLE_MASK   (1ULL << STEPPERS_DISABLE_PIN)
+
 
 #define ENABLE_JTAG 0
 
@@ -44,11 +54,14 @@
 #define X_LIMIT_PIN GPIO_NUM_5
 #define Y_LIMIT_PIN GPIO_NUM_4
 #define Z_LIMIT_PIN GPIO_NUM_3
+#define LIMIT_MASK      (1ULL << X_LIMIT_PIN|1ULL << Y_LIMIT_PIN|1ULL << Z_LIMIT_PIN) // All limit bits
+
 
 // Define spindle enable and spindle direction output pins.
 
 #ifndef VFD_SPINDLE
 #define SPINDLE_ENABLE_PIN  GPIO_NUM_16
+#define SPINDLE_MASK        (1ULL << SPINDLE_ENABLE_PIN)
 #define SPINDLEPWMPIN       GPIO_NUM_17
 #endif
 
@@ -57,6 +70,7 @@
 #define COOLANT_FLOOD_PIN   GPIO_NUM_7
 #ifndef VFD_SPINDLE
 #define COOLANT_MIST_PIN    GPIO_NUM_8
+#define COOLANT_MASK        (1ULL << COOLANT_FLOOD_PIN|1ULL << COOLANT_MIST_PIN)
 #endif
 
 // Define user-control CONTROLs (cycle start, reset, feed hold) input pins.
@@ -73,6 +87,7 @@
 #ifdef ENABLE_SAFETY_DOOR_INPUT_PIN
 #define SAFETY_DOOR_PIN GPIO_NUM_42
 #endif
+#define CONTROL_MASK        (1ULL << RESET_PIN|1ULL << FEED_HOLD_PIN|1ULL << CYCLE_START_PIN)
 
 // Define probe switch input pin.
 #if PROBE_ENABLE
@@ -92,19 +107,19 @@
 #error No free pins for keypad!
 #endif
 
-/*¿ª»ú°´¼ü*/
+/*å¼€æœºæŒ‰é”®*/
 #define POWER_KEY_PIN 			GPIO_NUM_0
-/*µçÔ´ºÍ±¨´íLED*/
+/*ç”µæºå’ŒæŠ¥é”™LED*/
 #define POWER_LED_PIN			GPIO_NUM_33
-/*USBÍ¨ÐÅLED*/
+/*USBé€šä¿¡LED*/
 #define COMM_LED_PIN			GPIO_NUM_45
-/*»ðÑæ¼ì²é*/
+/*ç«ç„°æ£€æŸ¥*/
 #define FIRE_CHECK_PIN			GPIO_NUM_2
-/*¹©µç¼ì²â*/
+/*ä¾›ç”µæ£€æµ‹*/
 #define POWER_CHECK_PIN			GPIO_NUM_38
-/*ÕÕÃ÷Light*/
+/*ç…§æ˜ŽLight*/
 #define LIGHT_PIN				GPIO_NUM_1
-/*·äÃùÆ÷beep*/
+/*èœ‚é¸£å™¨beep*/
 #define BEEP_PIN				GPIO_NUM_18
 /*IIC SCL*/
 #define IIC_SCL_PIN				GPIO_NUM_10
@@ -200,6 +215,9 @@
 
 #if KEYPAD_ENABLE
 #error No free pins for keypad!
+#endif
+
+
 #endif
 
 

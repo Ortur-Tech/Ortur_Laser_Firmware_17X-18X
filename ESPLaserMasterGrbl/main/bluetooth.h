@@ -3,7 +3,7 @@
 
   Bluetooth comms
 
-  Part of grblHAL
+  Part of GrblHAL
 
   Copyright (c) 2018-2020 Terje Io
 

@@ -3,9 +3,9 @@
 
   Driver code for ESP32
 
-  Part of grblHAL
+  Part of GrblHAL
 
-  Copyright (c) 2018-2021 Terje Io
+  Copyright (c) 2018-2020 Terje Io
 
   Some parts
    Copyright (c) 2011-2015 Sungeun K. Jeon
@@ -29,15 +29,11 @@
 #include <stdbool.h>
 #include <string.h>
 
-#include "grbl/limits.h"
-
 #include "driver.h"
 #include "esp32-hal-uart.h"
 #include "nvs.h"
 #include "grbl/protocol.h"
 #include "esp_log.h"
-#include "driver/ledc.h"
-//#include "grbl_esp32_if/grbl_esp32_if.h"
 
 #include "board.h"
 #include "grbl/state_machine.h"
@@ -46,6 +42,7 @@
 #include "accelDetection.h"
 #include "esp_adc_cal.h"
 #include "driver/adc.h"
+
 
 #ifdef USE_I2S_OUT
 #include "i2s_out.h"
@@ -60,11 +57,11 @@
 #endif
 
 #if TELNET_ENABLE
-#include "networking/TCPStream.h"
+#include "networking/TCPSTream.h"
 #endif
 
 #if WEBSOCKET_ENABLE
-#include "networking/WsStream.h"
+#include "networking/WsSTream.h"
 #endif
 
 #if BLUETOOTH_ENABLE
@@ -88,7 +85,7 @@
 #include "eeprom/eeprom.h"
 #endif
 
-#if I2C_ENABLE
+#ifdef I2C_PORT
 #include "i2c.h"
 #endif
 
@@ -156,20 +153,29 @@ typedef struct {
     volatile bool debounce;
 } state_signal_t;
 
+int16_t multiSteamGetC (void);
+void multiSteamWriteS (const char *s);
+void multiSteamWriteSAll (const char *s);
+uint16_t multiSteamRxFree (void);
+void multiSteamRxFlush (void);
+void multiSteamRxCancel (void);
+bool multiSteamSuspendInput (bool suspend);
+
 
 #if MPG_MODE_ENABLE
 static io_stream_t prev_stream = {0};
 #endif
 
 const io_stream_t serial_stream = {
+	.switchable = true,
     .type = StreamType_Serial,
-    .read = serialRead,
-    .write = serialWriteS,
-    .write_all = serialWriteS,
-    .get_rx_buffer_available = serialRXFree,
-    .reset_read_buffer = serialFlush,
-    .cancel_read_buffer = serialCancel,
-    .suspend_read = serialSuspendInput,
+    .read = multiSteamGetC,
+    .write = multiSteamWriteS,
+    .write_all = multiSteamWriteSAll,
+    .get_rx_buffer_available = multiSteamRxFree,
+    .reset_read_buffer = multiSteamRxFlush,
+    .cancel_read_buffer = multiSteamRxCancel,
+    .suspend_read = multiSteamSuspendInput,
     .enqueue_realtime_command = protocol_enqueue_realtime_command
 };
 
@@ -199,7 +205,7 @@ const io_stream_t telnet_stream = {
     .get_rx_buffer_available = TCPStreamRxFree,
     .reset_read_buffer = TCPStreamRxFlush,
     .cancel_read_buffer = TCPStreamRxCancel,
-    .suspend_read = TCPStreamSuspendInput,
+    .suspend_read = serialSuspendInput,
     .enqueue_realtime_command = protocol_enqueue_realtime_command
 };
 #endif
@@ -213,8 +219,12 @@ const io_stream_t websocket_stream = {
     .get_rx_buffer_available = WsStreamRxFree,
     .reset_read_buffer = WsStreamRxFlush,
     .cancel_read_buffer = WsStreamRxCancel,
-    .suspend_read = WsStreamSuspendInput,
     .enqueue_realtime_command = protocol_enqueue_realtime_command,
+#if M6_ENABLE
+    .suspend_read = NULL // for now...
+#else
+    .suspend_read = NULL
+#endif
 };
 #endif
 
@@ -260,9 +270,7 @@ state_signal_t inputpin[] = {
 #ifdef SAFETY_DOOR_PIN
     { .id = Input_SafetyDoor,   .pin = SAFETY_DOOR_PIN, .group = INPUT_GROUP_CONTROL },
 #endif
-#ifdef PROBE_PIN
     { .id = Input_Probe,        .pin = PROBE_PIN,       .group = INPUT_GROUP_PROBE },
-#endif
     { .id = Input_LimitX,       .pin = X_LIMIT_PIN,     .group = INPUT_GROUP_LIMIT },
     { .id = Input_LimitY,       .pin = Y_LIMIT_PIN,     .group = INPUT_GROUP_LIMIT },
     { .id = Input_LimitZ,       .pin = Z_LIMIT_PIN,     .group = INPUT_GROUP_LIMIT }
@@ -283,36 +291,11 @@ state_signal_t inputpin[] = {
 #endif
 };
 
-gpio_num_t outputpin[] =
-{
-#ifdef STEPPERS_DISABLE_PIN
-    STEPPERS_DISABLE_PIN,
-#endif
-#if defined(SPINDLE_ENABLE_PIN) && SPINDLE_ENABLE_PIN != IOEXPAND
-    SPINDLE_ENABLE_PIN,
-#endif
-#if defined(SPINDLE_DIRECTION_PIN) && SPINDLE_DIRECTION_PIN != IOEXPAND
-    SPINDLE_DIRECTION_PIN,
-#endif
-#if defined(COOLANT_FLOOD_PIN) && COOLANT_FLOOD_PIN != IOEXPAND
-    COOLANT_FLOOD_PIN,
-#endif
-#if defined(COOLANT_MIST_PIN) && COOLANT_MIST_PIN != IOEXPAND
-    COOLANT_MIST_PIN,
-#endif
-    X_DIRECTION_PIN,
-    Y_DIRECTION_PIN,
-    Z_DIRECTION_PIN
-};
-
 static volatile uint32_t ms_count = 1; // NOTE: initial value 1 is for "resetting" systick timer
 static bool IOInitDone = false;
 static portMUX_TYPE mux = portMUX_INITIALIZER_UNLOCKED;
-#if PROBE_ENABLE
-static probe_state_t probe = {
-    .connected = On
-};
-#endif
+// Inverts the probe pin state depending on user settings and probing cycle mode.
+static uint8_t probe_invert;
 
 #ifdef USE_I2S_OUT
 #define DIGITAL_IN(pin) i2s_out_state(pin)
@@ -328,7 +311,6 @@ static ioexpand_t iopins = {0};
 #endif
 
 #ifndef VFD_SPINDLE
-
 
 
 static ledc_timer_config_t ledTimerConfig = {
@@ -351,7 +333,11 @@ static ledc_channel_config_t ledConfig = {
 #endif
 
 #if MODBUS_ENABLE
+#ifndef MODBUS_BAUD
+#define MODBUS_BAUD 19200
+#endif
 static modbus_stream_t modbus_stream = {0};
+static TimerHandle_t xModBusTimer = NULL;
 #endif
 
 // Interrupt handler prototypes
@@ -388,17 +374,17 @@ void selectStream (stream_type_t stream)
 
 #if TELNET_ENABLE
         case StreamType_Telnet:
-            hal.stream.write_all("[MSG:TELNET STREAM ACTIVE]\r\n");
             activateStream(&telnet_stream);
             services.telnet = On;
+            hal.stream.write_all("[MSG:TELNET STREAM ACTIVE]\r\n");
             break;
 #endif
 
 #if WEBSOCKET_ENABLE
         case StreamType_WebSocket:
-            hal.stream.write_all("[MSG:WEBSOCKET STREAM ACTIVE]\r\n");
             activateStream(&websocket_stream);
             services.websocket = On;
+            hal.stream.write_all("[MSG:WEBSOCKET STREAM ACTIVE]\r\n");
             break;
 #endif
 
@@ -523,6 +509,7 @@ inline IRAM_ATTR static void set_dir_outputs (axes_signals_t dir_outbits)
 #endif
 }
 
+
 // Enable/disable steppers
 static void stepperEnable (axes_signals_t enable)
 {
@@ -602,7 +589,7 @@ IRAM_ATTR static void I2S_stepperCyclesPerTick (uint32_t cycles_per_tick)
 // Sets stepper direction and pulse pins and starts a step pulse
 IRAM_ATTR static void I2S_stepperPulseStart (stepper_t *stepper)
 {
-    if(stepper->dir_change)
+    if(stepper->dir_change) {
         set_dir_outputs(stepper->dir_outbits);
 
     if(stepper->step_outbits.value) {
@@ -748,25 +735,25 @@ static void limitsEnable (bool on, bool homing)
 
 // Returns limit state as an axes_signals_t variable.
 // Each bitfield bit indicates an axis limit, where triggered is 1 and not triggered is 0.
-inline IRAM_ATTR static limit_signals_t limitsGetState()
+inline IRAM_ATTR static axes_signals_t limitsGetState()
 {
-    limit_signals_t signals = {0};
+    axes_signals_t signals;
 
-    signals.min.x = gpio_get_level(X_LIMIT_PIN);
-    signals.min.y = gpio_get_level(Y_LIMIT_PIN);
-    signals.min.z = gpio_get_level(Z_LIMIT_PIN);
+    signals.x = gpio_get_level(X_LIMIT_PIN);
+    signals.y = gpio_get_level(Y_LIMIT_PIN);
+    signals.z = gpio_get_level(Z_LIMIT_PIN);
 #ifdef A_LIMIT_PIN
-    signals.min.a = gpio_get_level(A_LIMIT_PIN);
+    signals.a = gpio_get_level(A_LIMIT_PIN);
 #endif
 #ifdef B_LIMIT_PIN
-    signals.min.b = gpio_get_level(B_LIMIT_PIN);
+    signals.b = gpio_get_level(B_LIMIT_PIN);
 #endif
 #ifdef C_LIMIT_PIN
-    signals.min.c = gpio_get_level(C_LIMIT_PIN);
+    signals.c = gpio_get_level(C_LIMIT_PIN);
 #endif
 
     if (settings.limits.invert.value)
-        signals.min.value ^= settings.limits.invert.value;
+        signals.value ^= settings.limits.invert.value;
 
     return signals;
 }
@@ -798,8 +785,6 @@ inline IRAM_ATTR static control_signals_t systemGetState (void)
     return signals;
 }
 
-#ifdef PROBE_PIN
-
 // Sets up the probe pin invert mask to
 // appropriately set the pin logic according to setting for normal-high/normal-low operation
 // and the probing cycle modes for toward-workpiece/away-from-workpiece.
@@ -809,10 +794,10 @@ static void probeConfigure(bool is_probe_away, bool probing)
     i2s_set_streaming_mode(!probing);
 #endif
 
-    probe.triggered = Off;
-    probe.is_probing = probing;
-    probe.inverted = is_probe_away ? !settings.probe.invert_probe_pin : settings.probe.invert_probe_pin;
+    probe_invert = settings.probe.invert_probe_pin ? 0 : 1;
 
+    if(is_probe_away)
+        probe_invert ^= 1;
 #if PROBE_ISR
     gpio_set_intr_type(inputpin[INPUT_PROBE].pin, probe_invert ? GPIO_INTR_NEGEDGE : GPIO_INTR_POSEDGE);
     inputpin[INPUT_PROBE].active = false;
@@ -822,22 +807,20 @@ static void probeConfigure(bool is_probe_away, bool probing)
 // Returns the probe connected and triggered pin states.
 probe_state_t probeGetState (void)
 {
-    probe_state_t state = {0};
-
-    state.connected = probe.connected;
+    probe_state_t state = {
+        .connected = On
+    };
 
 #if PROBE_ISR
     // TODO: verify!
-    inputpin[INPUT_PROBE].active = inputpin[INPUT_PROBE].active || ((uint8_t)gpio_get_level(PROBE_PIN) ^ probe.inverted);
+    inputpin[INPUT_PROBE].active = inputpin[INPUT_PROBE].active || ((uint8_t)gpio_get_level(PROBE_PIN) ^ probe_invert);
     state.triggered = inputpin[INPUT_PROBE].active;
 #else
-    state.triggered = (uint8_t)gpio_get_level(PROBE_PIN) ^ probe.inverted;
+    state.triggered = (uint8_t)gpio_get_level(PROBE_PIN) ^ probe_invert;
 #endif
 
     return state;
 }
-
-#endif
 
 #ifndef VFD_SPINDLE
 
@@ -861,6 +844,7 @@ IRAM_ATTR inline static void spindle_on (void)
     gpio_set_level(SPINDLE_ENABLE_PIN, settings.spindle.invert.on ? 0 : 1);
 #endif
 }
+
 
 IRAM_ATTR inline static void spindle_dir (bool ccw)
 {
@@ -898,12 +882,14 @@ uint8_t esp32s2_read_output_pin(uint32_t num)
 	return 0;
 }
 
+
 uint8_t is_SpindleEnable(void)
 {
 
 	return esp32s2_read_output_pin(SPINDLE_ENABLE_PIN) ? 0:1 ;
 }
-/*¼¤¹âÊÇ·ñ´ò¿ª*/
+
+/*æ¿€å…‰æ˜¯å¦æ‰“å¼€*/
 uint8_t is_SpindleOpen(void)
 {
 	uint32_t duty = 0;
@@ -911,7 +897,7 @@ uint8_t is_SpindleOpen(void)
 	duty = settings.spindle.invert.pwm ? pwm_max_value - duty : duty;
 	return duty && is_SpindleEnable();
 }
-/*»ñÈ¡¼¤¹âpwm¹¦ÂÊ£¬*/
+/*è·å–æ¿€å…‰pwmåŠŸç‡ï¼Œ*/
 uint16_t laser_GetPower(void)
 {
 	uint32_t duty = 0;
@@ -925,7 +911,7 @@ uint16_t laser_GetPower(void)
 IRAM_ATTR void spindle_set_speed (uint_fast16_t pwm_value)
 {
     if (pwm_value == spindle_pwm.off_value) {
-        if(settings.spindle.flags.pwm_action == SpindleAction_DisableWithZeroSPeed)
+        if(settings.spindle.disable_with_zero_speed)
             spindle_off();
 #if PWM_RAMPED
         pwm_ramp.pwm_target = pwm_value;
@@ -1079,16 +1065,6 @@ IRAM_ATTR static uint_fast16_t valueSetAtomic (volatile uint_fast16_t *ptr, uint
     return prev;
 }
 
-static void enable_irq (void)
-{
-    portEXIT_CRITICAL(&mux);
-}
-
-static void disable_irq (void)
-{
-    portENTER_CRITICAL(&mux);
-}
-
 #if MPG_MODE_ENABLE
 
 IRAM_ATTR static void modeSelect (bool mpg_mode)
@@ -1169,8 +1145,8 @@ static void settings_changed (settings_t *settings)
         if(ledTimerConfig.freq_hz != (uint32_t)settings->spindle.pwm_freq) {
             ledTimerConfig.freq_hz = (uint32_t)settings->spindle.pwm_freq;
             if(ledTimerConfig.freq_hz <= 100) {
-                if(ledTimerConfig.duty_resolution != LEDC_TIMER_14_BIT) {
-                    ledTimerConfig.duty_resolution = LEDC_TIMER_14_BIT;
+                if(ledTimerConfig.duty_resolution != LEDC_TIMER_10_BIT) {
+                    ledTimerConfig.duty_resolution = LEDC_TIMER_10_BIT;
                     ledc_timer_config(&ledTimerConfig);
                 }
             } else if(ledTimerConfig.duty_resolution != LEDC_TIMER_10_BIT) {
@@ -1190,7 +1166,7 @@ static void settings_changed (settings_t *settings)
                 spindle_pwm.off_value = pwm_max_value - spindle_pwm.off_value;
         }
         spindle_pwm.min_value = (uint32_t)(pwm_max_value * settings->spindle.pwm_min_value / 100.0f);
-        spindle_pwm.max_value = (uint32_t)(pwm_max_value * settings->spindle.pwm_max_value / 100.0f) + (settings->spindle.invert.pwm ? -1 : 1);
+        spindle_pwm.max_value = (uint32_t)(pwm_max_value * settings->spindle.pwm_max_value / 100.0f);
         spindle_pwm.pwm_gradient = (float)(spindle_pwm.max_value - spindle_pwm.min_value) / (settings->spindle.rpm_max - settings->spindle.rpm_min);
         spindle_pwm.always_on = settings->spindle.pwm_off_value != 0.0f;
 
@@ -1200,6 +1176,10 @@ static void settings_changed (settings_t *settings)
 #endif
 
     if(IOInitDone) {
+
+      #if TRINAMIC_ENABLE
+        trinamic_configure();
+      #endif
 
       #ifndef VFD_SPINDLE
         hal.spindle.set_state = hal.driver_cap.variable_spindle ? spindleSetStateVariable : spindleSetState;
@@ -1281,12 +1261,12 @@ static void settings_changed (settings_t *settings)
                     inputpin[i].invert = control_fei.safety_door_ajar;
                     config.intr_type = inputpin[i].invert ? GPIO_INTR_NEGEDGE : GPIO_INTR_POSEDGE;
                     break;
-#ifdef PROBE_PIN
+
                 case Input_Probe:
                     pullup = hal.driver_cap.probe_pull_up;
                     inputpin[i].invert = false;
                     break;
-#endif
+
                 case Input_LimitX:
                     pullup = !settings->limits.disable_pullup.x;
                     inputpin[i].invert = limit_fei.x;
@@ -1357,7 +1337,6 @@ static void settings_changed (settings_t *settings)
                 inputpin[i].active   = gpio_get_level(inputpin[i].pin) == (inputpin[i].invert ? 0 : 1);
                 inputpin[i].debounce = hal.driver_cap.software_debounce && !(inputpin[i].group == INPUT_GROUP_PROBE || inputpin[i].group == INPUT_GROUP_KEYPAD || inputpin[i].group == INPUT_GROUP_MPG);
             }
-            //test_function();
         } while(i);
 
 #if MPG_MODE_ENABLE
@@ -1365,19 +1344,31 @@ static void settings_changed (settings_t *settings)
             // Delay mode enable a bit so grbl can finish startup and MPG controller can check ready status
             hal.delay_ms(50, modeEnable);
 #endif
+
     }
 }
 
 #if WIFI_ENABLE
-static void reportConnection (bool newopt)
+static void reportConnection (void)
 {
-    if(!newopt && (services.telnet || services.websocket)) {
+    if(services.telnet || services.websocket) {
         hal.stream.write("[NETCON:");
         hal.stream.write(services.telnet ? "Telnet" : "Websocket");
         hal.stream.write("]" ASCII_EOL);
     }
 }
 #endif
+
+
+void fan_PwmSet(uint8_t duty)
+{
+
+}
+
+uint8_t fan_GetSpeed(void)
+{
+	return 0;
+}
 
 void light_Init(void)
 {
@@ -1478,7 +1469,7 @@ static uint8_t fire_alarm_state = 0;
 static uint8_t fire_triggle_when_cycle = 0;
 static uint8_t fire_temp_enable_flag = 1;
 #define FIRE_CHECK_DEBOUNCE_TIME 10	//MS
-//#define FIRE_CHECK_MAX_CNT 	10	//´Î
+//#define FIRE_CHECK_MAX_CNT 	10	//æ¬¡
 #define FIRE_CHECK_MAX_TIME 1000 //MS
 
 void fire_CheckTempEnable(void)
@@ -1491,23 +1482,23 @@ void fire_CheckTempDisable(void)
 	fire_temp_enable_flag = 0;
 }
 
-/*ÊÇ·ñ»ñÈ¡µ½»·¾³adÖµ£¬ÔÚÎ´»ñÈ¡µ½¸ÃÖµÇ°²»ÄÜÊ¹ÓÃ»ğÑæ¼ì²â*/
+/*æ˜¯å¦è·å–åˆ°ç¯å¢ƒadå€¼ï¼Œåœ¨æœªè·å–åˆ°è¯¥å€¼å‰ä¸èƒ½ä½¿ç”¨ç«ç„°æ£€æµ‹*/
 uint8_t fire_evn_flag = 0;
 uint16_t fire_evn_value = 0;
 uint16_t sensor_data_head = 0;
 uint16_t sensor_data_tail = 0;
 
 #define EVN_CAL_VALUE_TIME  	3000
-#define EVN_GET_INTERVAL 		50	 //Ã¿50ms²É¼¯Ò»´ÎÊı¾İ
-#define EVN_MAX_RATE_OF_CHANGE 	20   //×î´óÈÏÎªÊÇ»·¾³²¨¶¯µÄ±ä»¯Öµ
-#define EVN_MAX_VALUE 			4000 //µ±µÍÓÚ3000Ê±²»ÄÜ½øĞĞ»ğÑæ¼ì²â
-#define EVN_MAX_DATA_NUM 		(1000*5/EVN_GET_INTERVAL) //10SÃ¿50ms²É¼¯Ò»´ÎÊı¾İ
+#define EVN_GET_INTERVAL 		50	 //æ¯50msé‡‡é›†ä¸€æ¬¡æ•°æ®
+#define EVN_MAX_RATE_OF_CHANGE 	20   //æœ€å¤§è®¤ä¸ºæ˜¯ç¯å¢ƒæ³¢åŠ¨çš„å˜åŒ–å€¼
+#define EVN_MAX_VALUE 			4000 //å½“ä½äº3000æ—¶ä¸èƒ½è¿›è¡Œç«ç„°æ£€æµ‹
+#define EVN_MAX_DATA_NUM 		(1000*5/EVN_GET_INTERVAL) //10Sæ¯50msé‡‡é›†ä¸€æ¬¡æ•°æ®
 uint16_t sensor_data[EVN_MAX_DATA_NUM] = {0};
 
-/*ÖĞÎ»ÖµÆ½¾ùÂË²¨+»¬¶¯ÂË²¨ Ëã·¨»ñÈ¡»·¾³Öµ*/
+/*ä¸­ä½å€¼å¹³å‡æ»¤æ³¢+æ»‘åŠ¨æ»¤æ³¢ ç®—æ³•è·å–ç¯å¢ƒå€¼*/
 void fire_UpdateEnvironmentValue1(void)
 {
-	/*»ñÈ¡»·¾³ÖµÊ±µÄÍ»±äÖµÏŞÖÆ*/
+	/*è·å–ç¯å¢ƒå€¼æ—¶çš„çªå˜å€¼é™åˆ¶*/
 #define FIRE_MUTATION_VALUE_LIMIT 500
 
 	uint8_t str[50] = {0};
@@ -1519,29 +1510,29 @@ void fire_UpdateEnvironmentValue1(void)
 	uint32_t min_value = 0xffff;
 	uint32_t err_cnt = 0;
 	static uint32_t cal_value_timer = 0 ;
-	/*Ã¿3s¼ÆËãÒ»´Î»·¾³Öµ*/
+	/*æ¯3sè®¡ç®—ä¸€æ¬¡ç¯å¢ƒå€¼*/
 	if((HAL_GetTick() - cal_value_timer) > EVN_CAL_VALUE_TIME)
 	{
 		cal_value_timer = HAL_GetTick();
 
 		if(next >= EVN_MAX_DATA_NUM) next = 0;
-		/*Êı¾İÂúÁË¿ªÊ¼¼ÆËã*/
+		/*æ•°æ®æ»¡äº†å¼€å§‹è®¡ç®—*/
 		if(sensor_data_head != next) return;
 
 		for(i = 0; i< EVN_MAX_DATA_NUM; i++)
 		{
-			/*»ñÈ¡×î´óÖµ*/
+			/*è·å–æœ€å¤§å€¼*/
 			if(max_value < sensor_data[i]) max_value = sensor_data[i];
-			/*»ñÈ¡×îĞ¡Öµ*/
+			/*è·å–æœ€å°å€¼*/
 			if(min_value > sensor_data[i]) min_value = sensor_data[i];
 			sum_value = sum_value + sensor_data[i];
 		}
-		/*È¥µô×î´óÖµºÍ×îĞ¡Öµ*/
+		/*å»æ‰æœ€å¤§å€¼å’Œæœ€å°å€¼*/
 		sum_value = sum_value - max_value - min_value;
-		/*Çó×ÜÌåÆ½¾ùÖµ*/
+		/*æ±‚æ€»ä½“å¹³å‡å€¼*/
 		avg_value = sum_value / (EVN_MAX_DATA_NUM -2);
 
-//		/*ÌŞ³ıµôÏà¶ÔÓÚÆ½¾ùÖµµÄÎó²îÖµ--ÏŞ·ù*/
+//		/*å‰”é™¤æ‰ç›¸å¯¹äºå¹³å‡å€¼çš„è¯¯å·®å€¼--é™å¹…*/
 //		for(i = 0; i< EVN_MAX_DATA_NUM; i++)
 //		{
 //			if(abs((int)sensor_data[i] - (int)avg_value) > FIRE_MUTATION_VALUE_LIMIT)
@@ -1550,7 +1541,7 @@ void fire_UpdateEnvironmentValue1(void)
 //				sum_value = sum_value - sensor_data[i];
 //			}
 //		}
-//		/*Çó×îÖÕÆ½¾ùÖµ*/
+//		/*æ±‚æœ€ç»ˆå¹³å‡å€¼*/
 //		avg_value = sum_value / (EVN_MAX_DATA_NUM - err_cnt);
 
 
@@ -1559,27 +1550,27 @@ void fire_UpdateEnvironmentValue1(void)
 	}
 }
 
-/*»ñÈ¡»·¾³ad value Á¬Ğø10ÃëÄÚµÄÆ½»¬ÇúÏß¼´Ğ±ÂÊĞ¡ÓÚÒ»¸ö¹Ì¶¨Öµ*/
+/*è·å–ç¯å¢ƒad value è¿ç»­10ç§’å†…çš„å¹³æ»‘æ›²çº¿å³æ–œç‡å°äºä¸€ä¸ªå›ºå®šå€¼*/
 void fire_UpdateEnvironmentValue(void)
 {
 	uint8_t str[50] = {0};
 	uint32_t i  = 0 ;
 	uint32_t next = sensor_data_tail +1;
 	static uint32_t cal_value_timer = 0 ;
-	/*Ã¿3s¼ÆËãÒ»´Î»·¾³Öµ*/
+	/*æ¯3sè®¡ç®—ä¸€æ¬¡ç¯å¢ƒå€¼*/
 	if((HAL_GetTick() - cal_value_timer) > EVN_CAL_VALUE_TIME)
 	{
 		cal_value_timer = HAL_GetTick();
 
 		if(next >= EVN_MAX_DATA_NUM) next = 0;
-		/*Êı¾İÂúÁË¿ªÊ¼¼ÆËã*/
+		/*æ•°æ®æ»¡äº†å¼€å§‹è®¡ç®—*/
 		if(sensor_data_head != next) return;
 
 		for(i = 0; i< EVN_MAX_DATA_NUM-1; i++)
 		{
 			if(abs((int)sensor_data[i] - (int)sensor_data[i+1]) > EVN_MAX_RATE_OF_CHANGE)
 			{
-				/*¶ªÆúÇ°ÃæµÄÖµ*/
+				/*ä¸¢å¼ƒå‰é¢çš„å€¼*/
 				sensor_data_head = i+1;
 				return ;
 			}
@@ -1588,15 +1579,15 @@ void fire_UpdateEnvironmentValue(void)
 		fire_evn_value = sensor_data[sensor_data_tail];
 	}
 }
-static uint32_t fire_catch_cnt = 0;		/*Í³¼Æ¼ì²âµ½»ğÑæµÄ´ÎÊı*/
-/*ÔÚÖĞ¶ÏtickÖĞ¶ÏÖĞµ÷ÓÃ*/
+static uint32_t fire_catch_cnt = 0;		/*ç»Ÿè®¡æ£€æµ‹åˆ°ç«ç„°çš„æ¬¡æ•°*/
+/*åœ¨ä¸­æ–­tickä¸­æ–­ä¸­è°ƒç”¨*/
 void fire_GetAverageValue(void)
 {
 	uint8_t str[100] = {0};
 	static uint32_t get_value_timer = 0 ;
 	uint16_t next = 0;
 	if(hal.stream.write_all == NULL)return ;
-	/*Ã¿50ms»ñÈ¡Ò»¸öÊı¾İ*/
+	/*æ¯50msè·å–ä¸€ä¸ªæ•°æ®*/
 	if((HAL_GetTick() - get_value_timer) > EVN_GET_INTERVAL)
 	{
 		get_value_timer = HAL_GetTick();
@@ -1629,11 +1620,11 @@ void fire_GetAverageValue(void)
 	fire_UpdateEnvironmentValue();
 }
 
-/*¼ÆËãÏàÁÚÁ½µãµÄĞ±ÂÊ*/
+/*è®¡ç®—ç›¸é‚»ä¸¤ç‚¹çš„æ–œç‡*/
 float curve_GetSmoothness(uint16_t* data,uint32_t len)
 {
 	uint32_t i = 0;
-	/*Á½¸öÊı¾İÖ®¼äµÄ¼ä¸ôÊÇ50ms--10s 200¸öÊı¾İÑù±¾*/
+	/*ä¸¤ä¸ªæ•°æ®ä¹‹é—´çš„é—´éš”æ˜¯50ms--10s 200ä¸ªæ•°æ®æ ·æœ¬*/
 	float sensor_data_slope[EVN_MAX_DATA_NUM-1] = {0};
 	for(i = 0; i< (EVN_MAX_DATA_NUM - 1); i++)
 	{
@@ -1685,37 +1676,37 @@ uint32_t fire_GetCurrentValue(void)
 
 
 /*
- * ¼ì²â1sÄÚµÄ´¥·¢´ÎÊı
+ * æ£€æµ‹1så†…çš„è§¦å‘æ¬¡æ•°
  */
 void fire_Check(void)
 {
-	static uint32_t check_timer = 0; //Ïû¶¶¼ÆÊ±
+	static uint32_t check_timer = 0; //æ¶ˆæŠ–è®¡æ—¶
 	uint16_t average_value = 0;
 
 	uint32_t limit_min_value = 0;
 
 	control_signals_t signalss = {0};
-	/*ÁÙÊ±¹Ø±Õ,Ó²¼ş¸´Î»ºóÊ¹ÄÜ*/
+	/*ä¸´æ—¶å…³é—­,ç¡¬ä»¶å¤ä½åä½¿èƒ½*/
 	if(fire_temp_enable_flag == 0)
 	{
 		return;
 	}
-	/*»ğÑæ¼ì²â¹¦ÄÜ¹Ø±Õ*/
+	/*ç«ç„°æ£€æµ‹åŠŸèƒ½å…³é—­*/
 	if(settings.fire_alarm_time_threshold == 0)
 	{
 		return;
 	}
-	/*ÒÑ¾­´¦ÓÚ±¨¾¯×´Ì¬£¬Ôò²»ÔÙ½øĞĞ»ğÑæ¼ì²â*/
+	/*å·²ç»å¤„äºæŠ¥è­¦çŠ¶æ€ï¼Œåˆ™ä¸å†è¿›è¡Œç«ç„°æ£€æµ‹*/
 	if(fire_alarm_state == 1)
 	{
 		return;
 	}
-	/*»¹Î´µÃµ½»·¾³Öµ*/
+	/*è¿˜æœªå¾—åˆ°ç¯å¢ƒå€¼*/
 	if(fire_evn_flag == 0)
 	{
 		return;
 	}
-	/*»·¾³Öµ¹ıĞ¡*/
+	/*ç¯å¢ƒå€¼è¿‡å°*/
 	if(fire_evn_value < EVN_MAX_VALUE)
 	{
 		return ;
@@ -1725,7 +1716,7 @@ void fire_Check(void)
 	{
 		check_timer = HAL_GetTick();
 
-		/*¸ù¾İ²»Í¬µÄ»·¾³¹âÇ¿¶ÈÏÂ¼ÆËã´¥·¢Öµ*/
+		/*æ ¹æ®ä¸åŒçš„ç¯å¢ƒå…‰å¼ºåº¦ä¸‹è®¡ç®—è§¦å‘å€¼*/
 		#define K_VALUE 0.2
 		#define B_VALUE (-500)
 		/**/
@@ -1748,8 +1739,8 @@ void fire_Check(void)
 	{
 		beep_PwmSet(100);
 
-		/*ÀûÓÃhold¹¦ÄÜÊµÏÖÔİÍ£´òÓ¡¹¦ÄÜ*/
-		if(state_get() == STATE_CYCLE)
+		/*åˆ©ç”¨holdåŠŸèƒ½å®ç°æš‚åœæ‰“å°åŠŸèƒ½*/
+		if(sys.state == STATE_CYCLE)
 		{
 			fire_triggle_when_cycle = 1;
 			signalss.feed_hold = 1;
@@ -1758,28 +1749,28 @@ void fire_Check(void)
 
 		spindle_off_directly();
 
-		/*´¥·¢»ğÑæ±¨¾¯ºóĞèÖØĞÂ»ñÈ¡»·¾³Öµ*/
+		/*è§¦å‘ç«ç„°æŠ¥è­¦åéœ€é‡æ–°è·å–ç¯å¢ƒå€¼*/
 		fire_evn_flag = 0;
-//		fan_PwmSet(0);//¹Ø·çÉÈ
+//		fan_PwmSet(0);//å…³é£æ‰‡
 		hal.stream.write_all("[MSG: Flame Alarm! If Safe, press Power Button to Resume]" ASCII_EOL);
 //		sys.state = STATE_ALARM;
 //		sys.abort = 1;
 		fire_alarm_state = 1;
-		/*ĞŞ¸´Õâ¸öÎÊÌâ£º ½ô¼±Í£Ö¹ÔÚ¹Ø±Õ×´Ì¬ÏÂÔÙ´¥·¢»ğÑæºóÎŞ·¨¹Ø±Õ·äÃùÆ÷*/
+		/*ä¿®å¤è¿™ä¸ªé—®é¢˜ï¼š ç´§æ€¥åœæ­¢åœ¨å…³é—­çŠ¶æ€ä¸‹å†è§¦å‘ç«ç„°åæ— æ³•å…³é—­èœ‚é¸£å™¨*/
 		pre_state = 1;
 
 	}
-	else/*»·¾³¹âÏßÌ«Ç¿*/
+	else/*ç¯å¢ƒå…‰çº¿å¤ªå¼º*/
 	{
 
 	}
 }
 
 
-/*Ê¹ÄÜ»òÏû³ı»ğÑæ±¨¾¯×´Ì¬*/
+/*ä½¿èƒ½æˆ–æ¶ˆé™¤ç«ç„°æŠ¥è­¦çŠ¶æ€*/
 void fire_AlarmStateSet(uint8_t state)
 {
-	/*Ã¿´Î¹Ø±¨¾¯µÄÊ±ºò¶¼ĞèÒªÖØÖÃ»ñÈ¡»·¾³µÄ±êÖ¾Î»,ÒÔ±ÜÃâÖØ¸´´¥·¢*/
+	/*æ¯æ¬¡å…³æŠ¥è­¦çš„æ—¶å€™éƒ½éœ€è¦é‡ç½®è·å–ç¯å¢ƒçš„æ ‡å¿—ä½,ä»¥é¿å…é‡å¤è§¦å‘*/
 	if((fire_alarm_state == 1) && (state == 0))
 	{
 		if(fire_triggle_when_cycle == 1)
@@ -1803,7 +1794,7 @@ void fire_Alarm(void)
 
 	if(fire_alarm_state)
 	{
-		/*Éù¹â±¨¾¯*/
+		/*å£°å…‰æŠ¥è­¦*/
 		if((HAL_GetTick()-flash_timer)>500)
 		{
 			//HAL_GPIO_TogglePin(LIGHT_PWM_PORT, LIGHT_PWM_BIT);
@@ -1814,11 +1805,11 @@ void fire_Alarm(void)
 	}
 	else
 	{
-		/*±ÜÃâ¶à´Î¹Ø±Õ±¨¾¯¶¯×÷*/
+		/*é¿å…å¤šæ¬¡å…³é—­æŠ¥è­¦åŠ¨ä½œ*/
 		if(pre_state == 1)
 		{
 			pre_state = 0;
-			/*¹Ø±Õ±¨¾¯*/
+			/*å…³é—­æŠ¥è­¦*/
 			light_SetState(1);
 			beep_PwmSet(0);
 		}
@@ -1842,7 +1833,7 @@ void led_Init(void)
 void power_LedAlarm(void)
 {
 	static uint32_t flash_time = 0;
-	if((state_get() == STATE_ALARM) && (gpio_get_level(POWER_KEY_PIN) != 0))
+	if((sys.state == STATE_ALARM) && (gpio_get_level(POWER_KEY_PIN) != 0))
 	{
 		if((HAL_GetTick() - flash_time) > 500)
 		{
@@ -1904,7 +1895,7 @@ uint8_t power_KeyDown(void)
 
 static uint32_t auto_poweroff_time = 0;
 
-/*×Ô¶¯¹Ø»ú¹¦ÄÜ*/
+/*è‡ªåŠ¨å…³æœºåŠŸèƒ½*/
 void system_UpdateAutoPoweroffTime(void)
 {
 	auto_poweroff_time = HAL_GetTick();
@@ -1912,7 +1903,7 @@ void system_UpdateAutoPoweroffTime(void)
 void system_AutoPowerOff(void)
 {
 	if(settings.sys_auto_poweroff_time == 0) return;
-	/*usb,uart³¤Ê±¼äÃ»ÓĞÊäÈëÊı¾İÔò×Ô¶¯¹Ø»ú*/
+	/*usb,uarté•¿æ—¶é—´æ²¡æœ‰è¾“å…¥æ•°æ®åˆ™è‡ªåŠ¨å…³æœº*/
 	if((HAL_GetTick() - auto_poweroff_time) > (1000 * 60 * settings.sys_auto_poweroff_time))
 	{
 		hal.stream.write_all(" [MSG: Power saving Mode enabled. Ortur powering off]"ASCII_EOL);
@@ -1920,9 +1911,9 @@ void system_AutoPowerOff(void)
 		esp_restart();
 	}
 }
-/*µçÔ´¼ì²â*/
-uint8_t report_power_flag = 0;//ÊÇ·ñ±¨¸æµçÔ´×´Ì¬
-static uint8_t last_power_flag=0;//±ä»¯Ç°µçÔ´×´Ì¬
+/*ç”µæºæ£€æµ‹*/
+uint8_t report_power_flag = 0;//æ˜¯å¦æŠ¥å‘Šç”µæºçŠ¶æ€
+static uint8_t last_power_flag=0;//å˜åŒ–å‰ç”µæºçŠ¶æ€
 
 #define IsMainPowrBitSet() (gpio_get_level(POWER_CHECK_PIN) ? 1:0)
 
@@ -1941,7 +1932,7 @@ void Main_PowerCheckInit(void)
 
 
 /**
- *µôµçÈ¥¶¶
+ *æ‰ç”µå»æŠ–
  */
 uint8_t IsMainPowrIn(void)
 {
@@ -1959,7 +1950,7 @@ uint8_t IsMainPowrIn(void)
 /*0:check power 1:report power*/
 void Main_PowerCheckReport(uint8_t mode)
 {
-	/*±¨¸æ×´Ì¬*/
+	/*æŠ¥å‘ŠçŠ¶æ€*/
 	if(mode)
 	{
 		if(report_power_flag)
@@ -1968,7 +1959,7 @@ void Main_PowerCheckReport(uint8_t mode)
 		  report_power_flag=0;
 		}
 	}
-	else /*¼ì²â×´Ì¬*/
+	else /*æ£€æµ‹çŠ¶æ€*/
 	{
 		if(!IsMainPowrIn())
 		 {
@@ -1978,7 +1969,7 @@ void Main_PowerCheckReport(uint8_t mode)
 	}
 }
 /**
- * ¼ì²âÖ÷µçÔ´×´Ì¬
+ * æ£€æµ‹ä¸»ç”µæºçŠ¶æ€
  */
 void Main_PowerCheck(void)
 {
@@ -1991,7 +1982,7 @@ void Main_PowerCheck(void)
 	}
 	else
 	{
-		/*µôµçÈ¥¶¶*/
+		/*æ‰ç”µå»æŠ–*/
 		if(!IsMainPowrBitSet())
 		{
 			HAL_Delay(10);
@@ -2004,9 +1995,14 @@ void Main_PowerCheck(void)
 	}
 }
 
+
 // Initializes MCU peripherals for Grbl use
 static bool driver_setup (settings_t *settings)
 {
+#if TRINAMIC_ENABLE && CNC_BOOSTERPACK // Trinamic BoosterPack does not support mixed drivers
+    driver_settings.trinamic.driver_enable.mask = AXES_BITMASK;
+#endif
+
     /******************
      *  Stepper init  *
      ******************/
@@ -2029,19 +2025,20 @@ static bool driver_setup (settings_t *settings)
      *  Output signals  *
      ********************/
 
-
-    uint32_t idx;
-    for(idx = 0; idx < N_AXIS; idx++)
-        rmt_set_source_clk(idx, RMT_BASECLK_APB);
-
-    uint64_t mask = 0; // this is insane...
-    idx = sizeof(outputpin) / sizeof(gpio_num_t);
-    do {
-        mask |= ((uint64_t)1ULL << outputpin[--idx]);
-    } while(idx);
+    uint32_t channel;
+    for(channel = 0; channel < N_AXIS; channel++)
+        rmt_set_source_clk(channel, RMT_BASECLK_APB);
 
     gpio_config_t gpioConfig = {
-        .pin_bit_mask = mask,
+#if IOEXPAND_ENABLE
+        .pin_bit_mask = DIRECTION_MASK,
+#else
+  #ifdef COOLANT_MASK
+        .pin_bit_mask = DIRECTION_MASK|STEPPERS_DISABLE_MASK|SPINDLE_MASK|COOLANT_MASK,
+  #else
+        .pin_bit_mask = DIRECTION_MASK|STEPPERS_DISABLE_MASK|SPINDLE_MASK,
+  #endif
+#endif
         .mode = GPIO_MODE_OUTPUT,
         .pull_up_en = GPIO_PULLUP_DISABLE,
         .pull_down_en = GPIO_PULLDOWN_DISABLE,
@@ -2051,13 +2048,13 @@ static bool driver_setup (settings_t *settings)
     gpio_config(&gpioConfig);
 
 #if MPG_MODE_ENABLE
-ccc
+
     /************************
      *  MPG mode (pre)init  *
      ************************/
 
     // Set as output low (until boot is complete)
-    gpioConfig.pin_bit_mask = ((uint64_t)1ULL << MPG_ENABLE_PIN);
+    gpioConfig.pin_bit_mask = (1ULL << MPG_ENABLE_PIN);
     gpio_config(&gpioConfig);
     gpio_set_level(MPG_ENABLE_PIN, 0);
 
@@ -2121,42 +2118,163 @@ ccc
     ioexpand_init();
 #endif
 
+#if TRINAMIC_ENABLE
+  #if CNC_BOOSTERPACK // Trinamic BoosterPack does not support mixed drivers
+    trinamic_start(false);
+  #else
+    trinamic_start(true);
+  #endif
+#endif
+
 #if WEBUI_ENABLE
     webui_init();
 #endif
 
 #if ENABLE_POWER_SUPPLY_CHECK
-    /*Ö÷µçÔ´¹©µç¼ì²â*/
+    /*ä¸»ç”µæºä¾›ç”µæ£€æµ‹*/
     Main_PowerCheckInit();
 #endif
-    /*ÕÕÃ÷³õÊ¼»¯*/
+    /*ç…§æ˜åˆå§‹åŒ–*/
     light_Init();
-    /*·äÃùÆ÷³õÊ¼»¯*/
+    /*èœ‚é¸£å™¨åˆå§‹åŒ–*/
     beep_Init();
-    /*»ğÑæ¼ì²â³õÊ¼»¯*/
+    /*ç«ç„°æ£€æµ‹åˆå§‹åŒ–*/
     fire_CheckInit();
 #if ENABLE_ACCELERATION_DETECT
-    /*¼ÓËÙ¶È´«¸ĞÆ÷³õÊ¼»¯*/
+    /*åŠ é€Ÿåº¦ä¼ æ„Ÿå™¨åˆå§‹åŒ–*/
     Gsensor_Init();
 #endif
+
   // Set defaults
 
-    IOInitDone = settings->version == 19;
+    IOInitDone = settings->version == SETTINGS_VERSION;
 
-    hal.settings_changed(settings);
+    settings_changed(settings);
 
     hal.stepper.go_idle(true);
 
     return IOInitDone;
 }
-void test_function(void)
+
+
+#define USBCDC 1  //USB CDC VCP
+#define HWUART 2  //HW UART
+
+uint8_t last_steam = HWUART;
+
+//
+// Get a char - returns -1 if no data available
+//
+int16_t multiSteamGetC (void)
 {
-	//while(1)
-	 {
-		//printf("hello world.\r\n");
-		//vTaskDelay(1000 / portTICK_PERIOD_MS);
-	 }
+	int16_t c = -1;
+
+	if( isUsbCDCConnected() )
+	{
+		if( last_steam == USBCDC || hal.stream.switchable)
+		{
+			c = usbGetC();
+			if(last_steam != USBCDC && (c != -1))
+			{
+				last_steam = USBCDC;
+			}
+		}
+	}
+	else if( last_steam == USBCDC ) //åœ¨CDCå·²ç»æ–­å¼€è¿æ¥çš„æƒ…å†µä¸‹,åº”è¯¥å°†steamæŒ‡å‘è½¬åˆ° ç¡¬ä»¶ä¸²å£ HWUART
+	{
+		//å¼ºåˆ¶åˆ‡æ¢åˆ°ç¡¬ä»¶ä¸²å£
+		hal.stream.switchable = true;
+		last_steam = HWUART;
+		usbRxFlush();//æ¸…ç©ºUSBCDCä¸­å‰©ä½™çš„æ•°æ®
+		serialFlush();//æ¸…ç©ºä¸²å£ç§¯ç´¯çš„æ•°æ®
+		c = '\n'; //å¼ºè¡Œè¡¥æ¢è¡Œç¬¦é˜²æ­¢å‘½ä»¤è¢«æˆªæ–­,æˆ–è€…æ±¡æŸ“åç»­çš„å‘½ä»¤å­—ç¬¦ä¸²
+	}
+
+	if(c == -1 )
+	{
+		if( last_steam == HWUART || hal.stream.switchable )
+		{
+			c = serialRead();
+			if(last_steam != HWUART && (c != -1))
+			{
+				last_steam = HWUART;
+			}
+		}
+	}
+
+	return c;
 }
+
+//
+// Writes a null terminated string to active stream, blocks if buffer full
+//
+void multiSteamWriteS (const char *s)
+{
+	if(last_steam == USBCDC)
+	{
+		if(isUsbCDCConnected())
+		    usbWriteS(s); //ä»…åœ¨VCPè¿æ¥çš„æƒ…å†µä¸‹å‘é€å­—ç¬¦ä¸²,å¦åˆ™ä¼šé€ æˆå‘é€ç¼“å†²æº¢å‡ºé˜»å¡
+	}
+	else if(last_steam == HWUART)
+		serialWriteS(s);
+}
+
+//
+// Writes a null terminated string to all output stream, blocks if buffer full
+//
+void multiSteamWriteSAll (const char *s)
+{
+	if(isUsbCDCConnected())
+		usbWriteS(s); //ä»…åœ¨VCPè¿æ¥çš„æƒ…å†µä¸‹å‘é€å­—ç¬¦ä¸²,å¦åˆ™ä¼šé€ æˆå‘é€ç¼“å†²æº¢å‡ºé˜»å¡
+	serialWriteS(s);
+}
+
+//
+// Returns number of free characters in active input buffer
+//
+uint16_t multiSteamRxFree (void)
+{
+	//BUG:å¯èƒ½å­˜åœ¨steamåˆ‡æ¢æ—¶çš„å¹²æ‰°
+	if(last_steam == USBCDC)
+		return usbRxFree();
+	else
+		return serialRXFree();
+}
+
+//
+// Flushes the serial input buffer
+//
+void multiSteamRxFlush (void)
+{
+	usbRxFlush();
+	serialFlush();
+}
+
+//
+// Flushes and adds a CAN character to active input buffer
+//
+void multiSteamRxCancel (void)
+{
+	usbRxCancel();
+	serialCancel();
+}
+
+//
+// Suspend/resume the active input buffer
+//
+bool multiSteamSuspendInput (bool suspend)
+{
+	return usbSuspendInput(suspend) && serialSuspendInput(suspend);
+}
+
+
+#if MODBUS_ENABLE
+static void vModBusPollCallback (TimerHandle_t xTimer)
+{
+    modbus_poll();
+}
+#endif
+
 // Initialize HAL pointers, setup serial comms and enable EEPROM
 // NOTE: Grbl is not yet configured (from EEPROM data), driver_setup() will be called when done
 bool driver_init (void)
@@ -2164,11 +2282,13 @@ bool driver_init (void)
     // Enable EEPROM and serial port here for Grbl to be able to configure itself and report any errors
 
     serialInit();
-
     usb_SerialInit();
+#ifdef I2C_PORT
+    I2CInit();
+#endif
 
-    hal.info = "ESP32 S2";
-    hal.driver_version = "210314";
+    hal.info = "ESP32";
+    hal.driver_version = "201014";
 #ifdef BOARD_NAME
     hal.board = BOARD_NAME;
 #endif
@@ -2218,12 +2338,7 @@ bool driver_init (void)
 
     hal.control.get_state = systemGetState;
 
-
     selectStream(StreamType_Serial);
-
-#if I2C_ENABLE
-    I2CInit();
-#endif
 
 #if EEPROM_ENABLE
     i2c_eeprom_init();
@@ -2236,9 +2351,7 @@ bool driver_init (void)
         hal.nvs.type = NVS_None;
 #endif
 
-//    hal.reboot = esp_restart; crashes the MCU...
-    hal.irq_enable = enable_irq;
-    hal.irq_disable = disable_irq;
+    hal.reboot = esp_restart; //crashes the MCU...
     hal.set_bits_atomic = bitsSetAtomic;
     hal.clear_bits_atomic = bitsClearAtomic;
     hal.set_value_atomic = valueSetAtomic;
@@ -2274,29 +2387,28 @@ bool driver_init (void)
     hal.driver_cap.limits_pull_up = On;
     hal.driver_cap.probe_pull_up = On;
 #ifdef SAFETY_DOOR_PIN
-    hal.signals_cap.safety_door_ajar = On;
+    hal.driver_cap.safety_door = On;
 #endif
 #if MPG_MODE_ENABLE
     hal.driver_cap.mpg_mode = On;
 #endif
 
 #if MODBUS_ENABLE
-
+    serial2Init(MODBUS_BAUD);
+    modbus_stream.rx_timeout = 50;
     modbus_stream.write = serial2Write;
     modbus_stream.read = serial2Read;
     modbus_stream.flush_rx_buffer = serial2Flush;
     modbus_stream.flush_tx_buffer = serial2Flush;
     modbus_stream.get_rx_buffer_count = serial2Available;
     modbus_stream.get_tx_buffer_count = serial2txCount;
-    modbus_stream.set_baud_rate = serial2SetBaudRate;
+  #ifdef MODBUS_DIRECTION_PIN
+    modbus_stream.set_direction = serial2Direction;
+  #endif
+    modbus_init(&modbus_stream);
 
-    bool modbus = modbus_init(&modbus_stream);
-
-#if SPINDLE_HUANYANG > 0
-    if(modbus)
-        huanyang_init(&modbus_stream);
-#endif
-
+    if((xModBusTimer = xTimerCreate("ModBusPoll", pdMS_TO_TICKS(10), pdTRUE, NULL, vModBusPollCallback)))
+        xTimerStart(xModBusTimer, 0);
 #endif
 
 #if WIFI_ENABLE
@@ -2315,12 +2427,14 @@ bool driver_init (void)
     keypad_init();
 #endif
 
-//    grbl_esp32_if_init();
+#ifdef SPINDLE_HUANYANG
+    huanyang_init(&modbus_stream);
+#endif
 
     //my_plugin_init();
-    //test_function();
+
     // no need to move version check before init - compiler will fail any mismatch for existing entries
-    return hal.version == 8;
+    return hal.version == 7;
 }
 
 /* interrupt handlers */
@@ -2328,7 +2442,7 @@ bool driver_init (void)
 // Main stepper driver
 IRAM_ATTR static void stepper_driver_isr (void *arg)
 {
-    TIMERG0.int_clr.t0 = 1;
+	TIMERG0.int_clr.t0 = 1;
     TIMERG0.hw_timer[STEP_TIMER_INDEX].config.alarm_en = TIMER_ALARM_EN;
 
     hal.stepper.interrupt_callback();
@@ -2387,6 +2501,7 @@ IRAM_ATTR static void gpio_isr (void *arg)
 }
 
 
+
 #ifndef _MAX
   #define _MAX(a,b) ((a)>(b)?(a):(b))
 #endif
@@ -2395,18 +2510,18 @@ IRAM_ATTR static void gpio_isr (void *arg)
   #define _MIN(a,b) ((a)<(b)?(a):(b))
 #endif
 
-  /* Ö÷Öá/¼¤¹â ÊÇ·ñ¹Ø±ÕµÄ±êÊ¶ */
+  /* ä¸»è½´/æ¿€å…‰ æ˜¯å¦å…³é—­çš„æ ‡è¯† */
   uint8_t spindle_disable_by_grbl = 0;
-  /* Ö÷Öá/¼¤¹â ±»¹Ø±ÕµÄÊ±¼ä */
+  /* ä¸»è½´/æ¿€å…‰ è¢«å…³é—­çš„æ—¶é—´ */
   uint32_t spindle_disabled_time = 0;
-  /* Ö÷Öá/¼¤¹â ÀÛ»ıÈÈÁ¿*/
+  /* ä¸»è½´/æ¿€å…‰ ç´¯ç§¯çƒ­é‡*/
   uint32_t spindle_cumulative_heat = 0;
-  /* Ö÷Öá/¼¤¹â ÊÇ·ñ¹ÒÆğµÄ±êÊ¶ */
+  /* ä¸»è½´/æ¿€å…‰ æ˜¯å¦æŒ‚èµ·çš„æ ‡è¯† */
   uint8_t spindle_suspend_flag = 0;
-  /* Ö÷Öá/¼¤¹â ·çÉÈÑÓÊ±Ê±¼ä*/
+  /* ä¸»è½´/æ¿€å…‰ é£æ‰‡å»¶æ—¶æ—¶é—´*/
   uint32_t spindle_fan_delay_time = 0;
 
-/*ÓÃÓÚ¹Ø±Õ¼¤¹â*/
+/*ç”¨äºå…³é—­æ¿€å…‰*/
 void spindle_reset(void)
 {
 	spindle_set_speed(0);
@@ -2414,7 +2529,7 @@ void spindle_reset(void)
 }
 void spindle_off_directly(void)
 {
-	/*¹ØÖ÷Öá¹©µç*/
+	/*å…³ä¸»è½´ä¾›ç”µ*/
 	gpio_set_level(SPINDLE_ENABLE_PIN, settings.spindle.invert.on ? 1 : 0);
 
 }
@@ -2428,7 +2543,7 @@ void spindle_off_directly(void)
   		{
   			spindle_disable_by_grbl = 0;
   			spindle_cumulative_heat = 0;
-  			/*¹ØÖ÷Öá¹©µç*/
+  			/*å…³ä¸»è½´ä¾›ç”µ*/
   			gpio_set_level(SPINDLE_ENABLE_PIN, settings.spindle.invert.on ? 1 : 0);
   		}
   		else
@@ -2456,10 +2571,10 @@ void spindle_calculate_heat()
   static uint32_t equivalent_power = 0;
   if(HAL_GetTick() - last_time >= 1000)
   {
-	  //µçÔ´¿ªÆô
+	  //ç”µæºå¼€å¯
 	  if(is_SpindleEnable())
 	  {
-		  //¼ÆËãÃ¿Ãë²úÉúµÄÈÈÁ¿ºÍÉ¥Ê§µÄÈÈÁ¿
+		  //è®¡ç®—æ¯ç§’äº§ç”Ÿçš„çƒ­é‡å’Œä¸§å¤±çš„çƒ­é‡
 		  if(spindle_cumulative_heat < MAX_SPINDLE_HEAT)
 			  spindle_cumulative_heat += equivalent_power / 1000;
 		  if(spindle_cumulative_heat >= FAN_HEAT_DISSIPATION_PER_SECOND)
@@ -2479,13 +2594,13 @@ void spindle_calculate_heat()
   }
 }
 
-/*¸Ãº¯ÊıÔÚÏµÍ³¶¨Ê±Æ÷ÖĞµ÷ÓÃÓÃÓÚ½ô¼±°´Å¥Ïû¶¶
+/*è¯¥å‡½æ•°åœ¨ç³»ç»Ÿå®šæ—¶å™¨ä¸­è°ƒç”¨ç”¨äºç´§æ€¥æŒ‰é’®æ¶ˆæŠ–
  *
  * "Emergency switch Engaged"
 "Emergency switch Cleared"
  * */
 
-/*¼ÇÂ¼Ö®Ç°µÄreset×´Ì¬*/
+/*è®°å½•ä¹‹å‰çš„resetçŠ¶æ€*/
 static uint32_t pre_reset_flag = 0;
 
 void reset_report(void)
@@ -2516,3 +2631,5 @@ void reset_report(void)
 		}
 	}
 }
+
+

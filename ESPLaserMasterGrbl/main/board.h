@@ -1,7 +1,7 @@
 /*
  * board.h
  *
- *  Created on: 2021Äê5ÔÂ20ÈÕ
+ *  Created on: 2021å¹´5æœˆ20æ—¥
  *      Author: c
  */
 
@@ -12,16 +12,16 @@
 #include "config.h"
 
 
-/*******************Ó²¼þ°æ±¾¶¨Òå BEGIN*******************/
+/*******************ç¡¬ä»¶ç‰ˆæœ¬å®šä¹‰ BEGIN*******************/
 #define BOARD_UNKOWN 		0
 #define OLM_ESP_V1X			1
 
 
 #define BOARD_VERSION 		OLM_ESP_V1X
-/*******************Ó²¼þ°æ±¾¶¨Òå END*******************/
+/*******************ç¡¬ä»¶ç‰ˆæœ¬å®šä¹‰ END*******************/
 
 
-/*******************»úÐÍ¶¨Òå BEGIN*******************/
+/*******************æœºåž‹å®šä¹‰ BEGIN*******************/
 #define BOARD_UNKOWN 		0
 #define CNC_AUFERO			1
 #define OLM_2_PRO			2
@@ -30,12 +30,12 @@
 
 
 #define MACHINE_TYPE 		OLM_2_PRO
-/*******************»úÐÍ¶¨Òå END*******************/
+/*******************æœºåž‹å®šä¹‰ END*******************/
 
 
 
 #define DEBUG_LEVEL 0x00//LOG_INFO//LOG_ERROR
-/*µ÷ÊÔµÈ¼¶*/
+/*è°ƒè¯•ç­‰çº§*/
 typedef enum{
     LOG_DEBUG=1,
     LOG_INFO=2,

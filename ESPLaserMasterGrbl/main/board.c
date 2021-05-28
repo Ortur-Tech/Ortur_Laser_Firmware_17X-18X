@@ -25,16 +25,16 @@ void Usb_ForceReset(void)
 	gpio_set_level(GPIO_NUM_20, 0);
 }
 
-/*À©Õ¹¹¦ÄÜÈÎÎñ*/
+/*æ‰©å±•åŠŸèƒ½ä»»åŠ¡*/
 void extended_FuncTask( void * pvParameters )
 {
 	for( ;; )
 	{
 #if ENABLE_ACCELERATION_DETECT
-		/*¼ÓËÙ¶È¼ì²â*/
+		/*åŠ é€Ÿåº¦æ£€æµ‹*/
 		accel_detection_limit();
 #endif
-		/*¶¼Æ½¾ùÖµ*/
+		/*éƒ½å¹³å‡å€¼*/
 		fire_GetAverageValue();
 		// Task code goes here.
 		vTaskDelay(10/portTICK_PERIOD_MS);
@@ -59,7 +59,7 @@ void creat_ExtFuncTask( void )
 /*
  * board.c
  *
- *  Created on: 2021Äê5ÔÂ20ÈÕ
+ *  Created on: 2021å¹´5æœˆ20æ—¥
  *      Author: c
  */
 void HAL_Delay(uint32_t ms)
@@ -72,14 +72,14 @@ static bool IRAM_ATTR HAL_TickInc(void *args)
 {
 	hal_tick_timer++;
 #if ENABLE_ACCELERATION_DETECT
-	/*¼ÓËÙ¶È¼ì²â*/
+	/*åŠ é€Ÿåº¦æ£€æµ‹*/
 	//accel_detection_limit();
 #endif
-	/*±¨¾¯×´Ì¬´¦Àí*/
+	/*æŠ¥è­¦çŠ¶æ€å¤„ç†*/
 	fire_Alarm();
 
 #ifdef DELAY_OFF_SPINDLE
-	/*ÑÓ³Ù¹Ø¼¤¹âÉ¢ÈÈ·çÉÈ*/
+	/*å»¶è¿Ÿå…³æ¿€å…‰æ•£çƒ­é£æ‰‡*/
 	spindle_calculate_heat();
 	spindle_delay_stop();
 #endif
@@ -95,7 +95,7 @@ static bool IRAM_ATTR HAL_TickInc(void *args)
 
 	return 1;
 }
-/*1ms¶¨Ê±Æ÷*/
+/*1mså®šæ—¶å™¨*/
 void HAL_TickInit(void)
 {
 	/* Select and initialize basic parameters of the timer */
@@ -126,8 +126,8 @@ uint32_t HAL_GetTick(void)
 	return hal_tick_timer;
 }
 /**
- * @brief µ±µ¥Æ¬»úÖ÷ÆµÎª72Õ×ºÕ×ÈÊ±±È½Ï¾«×¼µÄÈí¼şÑÓÊ±
- * @param nusµ¥Î»Î¢Ãë
+ * @brief å½“å•ç‰‡æœºä¸»é¢‘ä¸º72å…†èµ«å…¹æ—¶æ¯”è¾ƒç²¾å‡†çš„è½¯ä»¶å»¶æ—¶
+ * @param nuså•ä½å¾®ç§’
  */
 void soft_delay_us(uint32_t nus)
 {
@@ -135,7 +135,7 @@ void soft_delay_us(uint32_t nus)
 }
 /**
  * @brief soft_delay_ms
- * @param nmsµ¥Î»ºÁÃë
+ * @param nmså•ä½æ¯«ç§’
  */
 void soft_delay_ms(uint32_t nms)
 {
@@ -144,16 +144,16 @@ void soft_delay_ms(uint32_t nms)
 		soft_delay_us(1000);
 	}
 }
-/*½öÓÃÓÚÔÚÎ´¿ª»úµÄÇé¿öÏÂ½ÓÊÕÆÁÄ»µÄ¸´Î»Ö¸Áî*/
+/*ä»…ç”¨äºåœ¨æœªå¼€æœºçš„æƒ…å†µä¸‹æ¥æ”¶å±å¹•çš„å¤ä½æŒ‡ä»¤*/
 void UsartInit(void)
 {
 
 }
 
 
-#define KEY_PRESS_POWERON_TIME 1000 //3S¿ª»ú
-#define KEY_PRESS_POWEROFF_TIME 4000 //5S¹Ø»ú
-#define REPORT_STAUTS_INTERVAL_TIME  200  //200MSÉÏ±¨Ò»´Î
+#define KEY_PRESS_POWERON_TIME 1000 //3Så¼€æœº
+#define KEY_PRESS_POWEROFF_TIME 4000 //5Så…³æœº
+#define REPORT_STAUTS_INTERVAL_TIME  200  //200MSä¸ŠæŠ¥ä¸€æ¬¡
 
 uint8_t key_power_status = 0;
 
@@ -162,7 +162,7 @@ uint8_t get_PowerKeyStatus(void)
 	return key_power_status ;
 }
 /*
- *   µÚÒ»¸ö×Ö±íÊ¾¿ª¹Ø×´Ì¬£¬µÚ¶ş¸ö±íÊ¾24vÍâ²¿¹©µç×´Ì¬--µÈ´ı¿ª»ú--<PS:0,0>°´ÏÂ¿ª»ú°´¼ü--<PS:1>¿ª»ú--<PS:2>°´ÏÂ¹Ø»ú°´¼ü--<PS:3>¹Ø»ú³É¹¦--<PS:4>
+ *   ç¬¬ä¸€ä¸ªå­—è¡¨ç¤ºå¼€å…³çŠ¶æ€ï¼Œç¬¬äºŒä¸ªè¡¨ç¤º24vå¤–éƒ¨ä¾›ç”µçŠ¶æ€--ç­‰å¾…å¼€æœº--<PS:0,0>æŒ‰ä¸‹å¼€æœºæŒ‰é”®--<PS:1>å¼€æœº--<PS:2>æŒ‰ä¸‹å…³æœºæŒ‰é”®--<PS:3>å…³æœºæˆåŠŸ--<PS:4>
  *
  */
 void report_KeyPowerSupplyStatus(system_status s,uint8_t mode)
@@ -192,8 +192,9 @@ void poweron_CmdSet(uint8_t cmd)
 {
 	poweron_cmd = cmd;
 }
+
 /*
- * 1£º¿ª»ú		0£º¹Ø»ú
+ * 1ï¼šå¼€æœº		0ï¼šå…³æœº
  */
 void key_func(uint8_t m)
 {
@@ -211,23 +212,23 @@ void key_func(uint8_t m)
 		power_KeyInit();
 		while(1)
 		{
-			/*½ÓÊÕÃüÁî¿ª»ú*/
+			/*æ¥æ”¶å‘½ä»¤å¼€æœº*/
 			if(poweron_cmd == CMD_POWERON)
 			{
-				/*Á¢¼´ÉÏ±¨¿ª»ú×´Ì¬*/
+				/*ç«‹å³ä¸ŠæŠ¥å¼€æœºçŠ¶æ€*/
 				report_KeyPowerSupplyStatus(SYSTEM_POWERON,1);
 				key_release_flag = 1;
 				power_LedOn();
 				break;
 			}
-			/*TODO:ÕâÀï¿ÉÄÜĞèÒªÎ¹¹·*/
+			/*TODO:è¿™é‡Œå¯èƒ½éœ€è¦å–‚ç‹—*/
 			if(power_KeyDown() == 0)
 			{
-				/*¼ä¸ôÉÏ±¨°´¼ü°´ÏÂ×´Ì¬*/
+				/*é—´éš”ä¸ŠæŠ¥æŒ‰é”®æŒ‰ä¸‹çŠ¶æ€*/
 				report_KeyPowerSupplyStatus(SYSTEM_KEY_PRESS_FOR_POWERON,0);
 				if((HAL_GetTick()-press_start_time) > KEY_PRESS_POWERON_TIME)
 				{
-					/*Á¢¼´ÉÏ±¨¿ª»ú×´Ì¬*/
+					/*ç«‹å³ä¸ŠæŠ¥å¼€æœºçŠ¶æ€*/
 					report_KeyPowerSupplyStatus(SYSTEM_POWERON,1);
 					key_release_flag = 1;
 					power_LedOn();
@@ -242,7 +243,7 @@ void key_func(uint8_t m)
 			else
 			{
 				power_LedOff();
-				/*¼ä¸ôÉÏ±¨¹Ø»ú×´Ì¬*/
+				/*é—´éš”ä¸ŠæŠ¥å…³æœºçŠ¶æ€*/
 				report_KeyPowerSupplyStatus(SYSTEM_WAIT_FOR_POWERON,0);
 				press_start_time = HAL_GetTick();
 			}
@@ -251,7 +252,7 @@ void key_func(uint8_t m)
 	}
 	else
 	{
-		/*¿ª»úºóĞèÊÍ·Å°´¼ü²ÅÄÜ½øĞĞ¹Ø»úÅĞ¶Ï*/
+		/*å¼€æœºåéœ€é‡Šæ”¾æŒ‰é”®æ‰èƒ½è¿›è¡Œå…³æœºåˆ¤æ–­*/
 		if(key_release_flag == 1)
 		{
 			if(power_KeyDown() == 0)
@@ -268,7 +269,7 @@ void key_func(uint8_t m)
 		{
 			if(report_onece == 0)
 			{
-				/*¼ä¸ôÉÏ±¨°´¼ü°´ÏÂ×´Ì¬*/
+				/*é—´éš”ä¸ŠæŠ¥æŒ‰é”®æŒ‰ä¸‹çŠ¶æ€*/
 				report_KeyPowerSupplyStatus(SYSTEM_KEY_PRESS_FOR_POWEROFF,0);
 			}
 
@@ -278,7 +279,7 @@ void key_func(uint8_t m)
 				if(report_onece == 0)
 				{
 					report_onece = 1;
-					/*Á¢¼´ÉÏ±¨¹Ø»ú³É¹¦*/
+					/*ç«‹å³ä¸ŠæŠ¥å…³æœºæˆåŠŸ*/
 					report_KeyPowerSupplyStatus(SYSTEM_POWEROFF,1);
 
 				}
@@ -286,11 +287,11 @@ void key_func(uint8_t m)
 				while(power_KeyDown() == 0)
 				{
 					report_KeyPowerSupplyStatus(SYSTEM_POWEROFF,0);
-					/*TODO:ĞèÒªÎ¹¹·*/
+					/*TODO:éœ€è¦å–‚ç‹—*/
 				}
 				power_LedOff();
 				HAL_Delay(5);
-				/*Èí¼ş¸´Î»*/
+				/*è½¯ä»¶å¤ä½*/
 				esp_restart();
 				while(1);
 			}

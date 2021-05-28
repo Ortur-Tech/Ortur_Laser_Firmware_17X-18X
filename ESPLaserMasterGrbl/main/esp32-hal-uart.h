@@ -71,7 +71,6 @@ void serialCancel (void);
 #if SERIAL2_ENABLE
 
 void serial2Init (uint32_t baud_rate);
-bool serial2SetBaudRate (uint32_t baud_rate);
 void serial2Stop (void);
 void serial2Start (void);
 uint16_t serial2txCount (void);

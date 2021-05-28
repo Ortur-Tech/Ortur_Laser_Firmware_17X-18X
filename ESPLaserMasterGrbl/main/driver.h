@@ -3,7 +3,7 @@
 
   Driver code for ESP32
 
-  Part of grblHAL
+  Part of GrblHAL
 
   Copyright (c) 2018-2020 Terje Io
   Copyright (c) 2011-2015 Sungeun K. Jeon
@@ -42,6 +42,19 @@
 //
 #else
 //
+// options for cmake (idf.py)
+//
+#ifdef CNC_BOOSTERPACK
+#define BOARD_CNC_BOOSTERPACK  1
+#else
+// NOTE: Only one board may be enabled!
+// If none is enabled pin mappings from generic_map.h will be used
+//#define BOARD_BDRING_V3P5
+//#define BOARD_BDRING_V4
+//#define BOARD_BDRING_I2S6A // NOT production ready!
+#endif
+
+//
 // Set options from CMakeLists.txt
 //
 #ifdef WEBUI_ENABLE
@@ -76,7 +89,7 @@
 
 #ifdef TRINAMIC_ENABLE
 #undef TRINAMIC_ENABLE
-#define TRINAMIC_ENABLE 2130
+#define TRINAMIC_ENABLE 1
 #define TRINAMIC_I2C    1
 #endif
 
@@ -95,18 +108,7 @@
 #define HTTP_ENABLE 1
 #endif
 
-#ifdef RS485_DIR_ENABLE
-#undef RS485_DIR_ENABLE
-#if SPINDLE_HUANYANG
-#define RS485_DIR_ENABLE 1
-#else
-#define RS485_DIR_ENABLE 0
-#endif
-#endif
-
-#ifndef EEPROM_ENABLE
 #define EEPROM_ENABLE 0
-#endif
 
 #endif
 
@@ -125,11 +127,7 @@
 static const DRAM_ATTR float FZERO = 0.0f;
 
 #define PWM_RAMPED       0 // Ramped spindle PWM.
-#ifdef NOPROBE
-#define PROBE_ENABLE     0 // No probe input.
-#else
-#define PROBE_ENABLE     0 // Probe input.
-#endif
+#define PROBE_ENABLE     1 // Probe input
 #define PROBE_ISR        0 // Catch probe state change by interrupt TODO: needs verification!
 #define TRINAMIC_DEV     0 // Development mode, adds a few M-codes to aid debugging. Do not enable in production code
 
@@ -174,8 +172,6 @@ static const DRAM_ATTR float FZERO = 0.0f;
 #define TRINAMIC_ENABLE  0
 #define TRINAMIC_I2C     0
 #endif
-
-#define IOEXPAND 0xFF   // Dummy pin number for I2C IO expander
 
 // end configuration
 
@@ -225,18 +221,8 @@ static const DRAM_ATTR float FZERO = 0.0f;
 
 // End configuration
 
-#if IOEXPAND_ENABLE || KEYPAD_ENABLE || EEPROM_ENABLE || (TRINAMIC_ENABLE && TRINAMIC_I2C)
-#define I2C_ENABLE 1
-#else
-#define I2C_ENABLE 0
-#endif
-
 #if TRINAMIC_ENABLE
-#ifndef TRINAMIC_MIXED_DRIVERS
-#define TRINAMIC_MIXED_DRIVERS 1
-#endif
-#include "motors/trinamic.h"
-#include "trinamic/common.h"
+#include "tmc2130/trinamic.h"
 #endif
 
 #ifdef SPINDLE_HUANYANG
@@ -268,27 +254,18 @@ typedef struct {
   #include "bdring_v3.5_map.h"
 #elif defined(BOARD_BDRING_I2S6A)
   #include "bdring_i2s_6_axis_map.h"
-#elif defined(BOARD_ESPDUINO32)
-  #include "espduino-32_wemos_d1_r32_uno_map.h"
-#elif defined(BOARD_MY_MACHINE)
-  #include "my_machine_map.h"
 #else // default board - NOTE: NOT FINAL VERSION!
-  #warning "Compiling for generic board!"
-  #include "generic_map.h"
+  #include "my_machine_map.h"
 #endif
 
 #ifndef GRBL_ESP32
 #error "Add #define GRBL_ESP32 in grbl/config.h or update your CMakeLists.txt to the latest version!"
 #endif
 
-#if IOEXPAND_ENABLE == 0 && ((DIRECTION_MASK|STEPPERS_DISABLE_MASK|SPINDLE_MASK|COOLANT_MASK) & 0xC00000000ULL)
-#error "Pins 34 - 39 are input only!"
-#endif
-
 #ifdef I2C_PORT
 extern QueueHandle_t i2cQueue;
 extern SemaphoreHandle_t i2cBusy;
-#elif I2C_ENABLE == 1
+#elif IOEXPAND_ENABLE || KEYPAD_ENABLE || EEPROM_ENABLE || (TRINAMIC_ENABLE && TRINAMIC_I2C)
 #error "I2C port not available!"
 #endif
 
@@ -310,31 +287,31 @@ void selectStream (stream_type_t stream);
 
 #ifdef DELAY_OFF_SPINDLE
 
-  #define MAX_SPINDLE_FAN_TIME (2*60*1000) //×î´óµÄ·çÉÈÀäÈ´Ê±¼ä
-  #define MIN_SPINDLE_FAN_TIME (30*1000)   //×îĞ¡µÄ·çÉÈÀäÈ´Ê±¼ä
+  #define MAX_SPINDLE_FAN_TIME (2*60*1000) //æœ€å¤§çš„é£æ‰‡å†·å´æ—¶é—´
+  #define MIN_SPINDLE_FAN_TIME (30*1000)   //æœ€å°çš„é£æ‰‡å†·å´æ—¶é—´
 
-  //¼Ù¶¨É¢ÈÈºÍ·¢ÈÈ¶¼ÊÇÏßĞÔ¹ØÏµ
-  //¼¤¹âÆ÷È«¹¤×÷³¬¹ı30·ÖÖÓ·çÉÈÑÓÊ±¹¤×÷120Ãë£¬È·±£¼¤¹âÆ÷ÀäÈ´
-  #define FAN_HEAT_DISSIPATION_PER_SECOND  400  //·çÉÈ¸¨ÖúÃ¿ÃëÉ¢ÈÈÁ¿
-  #define AIR_HEAT_DISSIPATION_PER_SECOND  100  //×ÔÈ»¿ÕÀäÃ¿ÃëÉ¢ÈÈÁ¿
-  #define LASER_CALORIFIC_PER_SECOND      1000  //¼¤¹âÃ¿Ãë·¢ÈÈÁ¿
+  //å‡å®šæ•£çƒ­å’Œå‘çƒ­éƒ½æ˜¯çº¿æ€§å…³ç³»
+  //æ¿€å…‰å™¨å…¨å·¥ä½œè¶…è¿‡30åˆ†é’Ÿé£æ‰‡å»¶æ—¶å·¥ä½œ120ç§’ï¼Œç¡®ä¿æ¿€å…‰å™¨å†·å´
+  #define FAN_HEAT_DISSIPATION_PER_SECOND  400  //é£æ‰‡è¾…åŠ©æ¯ç§’æ•£çƒ­é‡
+  #define AIR_HEAT_DISSIPATION_PER_SECOND  100  //è‡ªç„¶ç©ºå†·æ¯ç§’æ•£çƒ­é‡
+  #define LASER_CALORIFIC_PER_SECOND      1000  //æ¿€å…‰æ¯ç§’å‘çƒ­é‡
 
-  //×î´ó·¢ÈÈÁ¿
+  //æœ€å¤§å‘çƒ­é‡
   #define MAX_SPINDLE_HEAT   ( MAX_SPINDLE_FAN_TIME / 1000 * FAN_HEAT_DISSIPATION_PER_SECOND)
 
-  /* Ö÷Öá/¼¤¹â ÊÇ·ñ¹Ø±ÕµÄ±êÊ¶ */
+  /* ä¸»è½´/æ¿€å…‰ æ˜¯å¦å…³é—­çš„æ ‡è¯† */
   extern uint8_t spindle_disable_by_grbl;
-  /* Ö÷Öá/¼¤¹â ±»¹Ø±ÕµÄÊ±¼ä */
+  /* ä¸»è½´/æ¿€å…‰ è¢«å…³é—­çš„æ—¶é—´ */
   extern uint32_t spindle_disabled_time;
-  /* Ö÷Öá/¼¤¹â ÀÛ»ıÈÈÁ¿*/
+  /* ä¸»è½´/æ¿€å…‰ ç´¯ç§¯çƒ­é‡*/
   extern uint32_t spindle_cumulative_heat;
-  /* Ö÷Öá/¼¤¹â ÊÇ·ñ¹ÒÆğµÄ±êÊ¶ */
+  /* ä¸»è½´/æ¿€å…‰ æ˜¯å¦æŒ‚èµ·çš„æ ‡è¯† */
   extern uint8_t spindle_suspend_flag;
-  /* Ö÷Öá/¼¤¹â ·çÉÈÑÓÊ±Ê±¼ä*/
+  /* ä¸»è½´/æ¿€å…‰ é£æ‰‡å»¶æ—¶æ—¶é—´*/
   extern uint32_t spindle_fan_delay_time;
 
   /**
-   * @brief spindle_suspend_flag_set ÉèÖÃ¹ÒÆğ×´Ì¬£¬ÓÃÓÚ¹ÒÆğ»Ö¸´ÊÇ¿ª¼¤¹âÊ¹ÄÜ
+   * @brief spindle_suspend_flag_set è®¾ç½®æŒ‚èµ·çŠ¶æ€ï¼Œç”¨äºæŒ‚èµ·æ¢å¤æ˜¯å¼€æ¿€å…‰ä½¿èƒ½
    * @param status
    */
   inline void spindle_suspend_flag_set(uint8_t status)
@@ -343,7 +320,7 @@ void selectStream (stream_type_t stream);
   }
 
   /**
-   * @brief is_spindle_suspend_flag_set ¶ÁÈ¡¹ÒÆğ×´Ì¬
+   * @brief is_spindle_suspend_flag_set è¯»å–æŒ‚èµ·çŠ¶æ€
    * @return
    */
   inline uint8_t is_spindle_suspend_flag_set(void)
@@ -352,19 +329,19 @@ void selectStream (stream_type_t stream);
   }
 
   /**
-   * @brief grbl ²ãÃæ¹Ø¼¤¹â¹©µç
+   * @brief grbl å±‚é¢å…³æ¿€å…‰ä¾›ç”µ
    * @param status
    */
   void spindle_disable_by_grbl_set(uint8_t status);
 
   /**
    * @brief delay_stop_spindle
-   * @return 1: ÔÊĞí¹Ø¼¤¹â 0£ºĞèÒªÑÓÊ±¹Ø¼¤¹â
+   * @return 1: å…è®¸å…³æ¿€å…‰ 0ï¼šéœ€è¦å»¶æ—¶å…³æ¿€å…‰
    */
   uint8_t spindle_delay_stop(void);
 
   /**
-   * @brief ¼ÆËãÖ÷ÖáÈÈÁ¿ÀÛ»ı
+   * @brief è®¡ç®—ä¸»è½´çƒ­é‡ç´¯ç§¯
    */
   void spindle_calculate_heat();
 
@@ -374,11 +351,13 @@ void Main_PowerCheckReport(uint8_t mode);
 void Main_PowerCheck(void);
 void spindle_off (void);
 bool driver_init (void);
-/*¼¤¹âÊÇ·ñ´ò¿ª*/
+/*æ¿€å…‰æ˜¯å¦æ‰“å¼€*/
 uint8_t is_SpindleOpen(void);
-/*»ñÈ¡¼¤¹âpwm¹¦ÂÊ£¬*/
+/*è·å–æ¿€å…‰pwmåŠŸç‡ï¼Œ*/
 uint16_t laser_GetPower(void);
 void light_SetState(uint8_t s);
+
+uint8_t fan_GetSpeed(void);
 void fan_PwmSet(uint8_t duty);
 void beep_PwmSet(uint8_t duty);
 
@@ -415,5 +394,6 @@ void spindle_reset(void);
 
 void system_UpdateAutoPoweroffTime(void);
 void system_AutoPowerOff(void);
+
 
 #endif // __DRIVER_H__

@@ -3,9 +3,9 @@
 
   NOTE: only in use if not compiling with cmake (idf.py)
 
-  Part of grblHAL
+  Part of GrblHAL
 
-  Copyright (c) 2020-2021 Terje Io
+  Copyright (c) 2020 Terje Io
 
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -21,13 +21,31 @@
   along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#define PLACE_ORIGIN "China"
+
+#define PRODUCER_NAME "ORTUR"
+
+#define FW_AUTHOR "ORTUR"
+
+#define ORTUR_FW_NAME "OLF " ORTUR_FW_VERSION
+
+#define ORTUR_FW_VERSION_NUM 153
+#define ORTUR_FW_VERSION "153"
+
+#if (MACHINE_TYPE == OLM_2_PRO)
+#define ORTUR_MODEL_NAME "Ortur Laser Master 2 Pro"
+#elif (MACHINE_TYPE == OLM_PRO)
+#define ORTUR_MODEL_NAME "Ortur Laser Master Pro"
+#elif
+#define ORTUR_MODEL_NAME "Unkown Machine"
+#endif
+
+
 // NOTE: Only one board may be enabled!
 // If none is enabled pin mappings from generic_map.h will be used
-//#define BOARD_ESPDUINO32
 //#define BOARD_BDRING_V3P5
 //#define BOARD_BDRING_V4
 //#define BOARD_BDRING_I2S6A // NOT production ready!
-//#define BOARD_MY_MACHINE // Add my_machine_map.h before enabling this!
 
 // Configuration
 // Uncomment to enable, for some a value > 1 may be assigned, if so the default value is shown.
@@ -40,7 +58,6 @@
 //#define SDCARD_ENABLE      1 // Run gcode programs from SD card, requires sdcard plugin.
 //#define BLUETOOTH_ENABLE   1 // Enable Bloetooht streaming.
 //#define MPG_MODE_ENABLE    1 // Enable MPG mode (secondary serial port)
-//#define NOPROBE            1 // Comment out to disable porbe input.
 //#define EEPROM_ENABLE      1 // I2C EEPROM support. Set to 1 for 24LC16(2K), 2 for larger sizes. Requires eeprom plugin.
 //#define EEPROM_IS_FRAM     1 // Uncomment when EEPROM is enabled and chip is FRAM, this to remove write delay.
 

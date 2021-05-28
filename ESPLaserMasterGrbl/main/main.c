@@ -3,7 +3,7 @@
 
   Startup entry point for ESP32
 
-  Part of grblHAL
+  Part of GrblHAL
 
   Copyright (c) 2018-2020 Terje Io
 
@@ -45,6 +45,7 @@
 #include "freertos/task.h"
 #include "sdkconfig.h"
 #include "board.h"
+
 
 static void vGrblTask (void *pvParameters)
 {
