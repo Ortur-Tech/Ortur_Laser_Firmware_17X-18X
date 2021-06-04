@@ -70,7 +70,10 @@ void Check_Rst_Source(void);
 void poweron_CmdSet(uint8_t cmd);
 void key_func(uint8_t m);
 void HAL_Delay(uint32_t ms);
+void HAL_TickInit(void);
 uint32_t HAL_GetTick(void);
 void creat_ExtFuncTask(void );
+
+void Usb_ForceReset(void);
 
 #endif /* MAIN_BOARD_H_ */

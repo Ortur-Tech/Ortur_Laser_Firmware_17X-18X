@@ -46,9 +46,14 @@
 #include "sdkconfig.h"
 #include "board.h"
 
+#include "tusb_msc_disk.h"
 
 static void vGrblTask (void *pvParameters)
 {
+
+	HAL_TickInit();
+	Usb_ForceReset();
+	creat_UsbMscTask();
 	key_func(1);
 	creat_ExtFuncTask();
     grbl_enter();
