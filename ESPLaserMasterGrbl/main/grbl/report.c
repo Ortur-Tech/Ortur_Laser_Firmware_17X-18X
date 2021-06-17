@@ -1310,6 +1310,10 @@ void report_realtime_status (void)
 			/*火焰检测环境值和时时值*/
 			hal.stream.write_all(appendbuf(2, "|ER:", uitoa((uint32_t)fire_GetEvnValue())));
 			hal.stream.write_all(appendbuf(2, ",", uitoa((uint32_t)fire_GetCurrentValue())));
+			/*输出电压电流*/
+			hal.stream.write_all(appendbuf(2, "|VA:", uitoa((uint32_t)power_GetVotage())));
+		    hal.stream.write_all(appendbuf(2, ",", uitoa((uint32_t)power_GetCurrent())));
+
 
 		}
     }
