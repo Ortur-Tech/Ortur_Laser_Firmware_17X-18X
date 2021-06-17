@@ -154,23 +154,19 @@ bool protocol_main_loop(bool cold_start)
 
     /*开机归零动作*/
 
-//  if(powerOnHomingFlag == 0)
-//  {
-//	  powerOnHomingFlag = 1;
-////#if ORTUR_MODEL == OLM_MODEL_400
-////	  memcpy(line,"$HZ\0",4);
-////	  report_status_message(system_execute_line(line));
-////#endif
-//
-//#if MACHINE_TYPE == OLM_2_PRO
-//	  memcpy(line,"$H\0",3);
-//	  report_status_message(system_execute_line(line));
-//#elif MACHINE_TYPE == OLM_PRO
-//	  memcpy(line,"$H\0",3);
-//	  report_status_message(system_execute_line(line));
-//
-//#endif
-//  }
+	if(powerOnHomingFlag == 0)
+	{
+	  powerOnHomingFlag = 1;
+	//#if ORTUR_MODEL == OLM_MODEL_400
+	//	  memcpy(line,"$HZ\0",4);
+	//	  report_status_message(system_execute_line(line));
+	//#endif
+
+	#if MACHINE_TYPE == OLM_2_PRO ||  MACHINE_TYPE == OLM_PRO
+		  memcpy(line,"$H\0",3);
+		  report_status_message(system_execute_line(line));
+	#endif
+	}
 
     // ---------------------------------------------------------------------------------
     // Primary loop! Upon a system abort, this exits back to main() to reset the system.
