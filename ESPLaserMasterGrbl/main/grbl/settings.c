@@ -34,6 +34,9 @@
 #include "tool_change.h"
 #include "motion_control.h"
 
+#include "board.h"
+#include "driver.h"
+
 #ifdef ENABLE_SPINDLE_LINEARIZATION
 #include <stdio.h>
 #endif
@@ -433,6 +436,7 @@ static status_code_t store_driver_setting (setting_type_t setting, float value, 
 // A helper method to set settings from command line
 status_code_t settings_store_global_setting (setting_type_t setting, char *svalue)
 {
+
     uint_fast8_t set_idx = 0;
     float value;
 
@@ -956,6 +960,8 @@ status_code_t settings_store_global_setting (setting_type_t setting, char *svalu
     mc_backlash_init();
 #endif
     hal.settings_changed(&settings);
+
+    vTaskDelay(500 / portTICK_PERIOD_MS);
 
     return Status_OK;
 }
