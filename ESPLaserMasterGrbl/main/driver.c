@@ -1324,8 +1324,8 @@ static void settings_changed (settings_t *settings)
 
                 config.pin_bit_mask = 1ULL << inputpin[i].pin;
                 config.mode = GPIO_MODE_INPUT;
-                config.pull_up_en = pullup && inputpin[i].pin < 34 ? GPIO_PULLUP_ENABLE : GPIO_PULLUP_DISABLE;
-                config.pull_down_en = pullup || inputpin[i].pin >= 34 ? GPIO_PULLDOWN_DISABLE : GPIO_PULLDOWN_ENABLE;
+                config.pull_up_en = pullup && inputpin[i].pin < 64 ? GPIO_PULLUP_ENABLE : GPIO_PULLUP_DISABLE;
+                config.pull_down_en = pullup || inputpin[i].pin >= 0 ? GPIO_PULLDOWN_DISABLE : GPIO_PULLDOWN_ENABLE;
 
                 inputpin[i].offset = config.pin_bit_mask > (1ULL << 31) ? 1 : 0;
                 inputpin[i].mask = inputpin[i].offset == 0 ? (uint32_t)config.pin_bit_mask : (uint32_t)(config.pin_bit_mask >> 32);
@@ -1430,6 +1430,8 @@ void beep_PwmSet(uint8_t duty)
 }
 
 
+
+
 static void check_efuse(void)
 {
     if (esp_adc_cal_check_efuse(ESP_ADC_CAL_VAL_EFUSE_TP) == ESP_OK) {
@@ -1456,7 +1458,7 @@ void fire_CheckInit(void)
 	//check_efuse();
     //Configure ADC
     adc1_config_width(ADC_WIDTH_BIT_13);
-    adc1_config_channel_atten(ADC_CHANNEL_1, ADC_ATTEN_DB_11);
+    adc1_config_channel_atten(FIRE_ADC_CHANNEL, ADC_ATTEN_DB_11);
     //Characterize ADC
     //adc_chars = calloc(1, sizeof(esp_adc_cal_characteristics_t));
     //esp_adc_cal_value_t val_type = esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_0, ADC_WIDTH_BIT_13, 1100, adc_chars);
@@ -1482,17 +1484,30 @@ void fire_CheckTempDisable(void)
 	fire_temp_enable_flag = 0;
 }
 
+/*火焰检测低端检测,火焰越强ADC值越大 之前的STM32是采样的高端火焰越强ADC值越小*/
+#define FIRE_SAMPLE_MODE_LOW_ENABLE  1
+
 /*是否获取到环境ad值，在未获取到该值前不能使用火焰检测*/
 uint8_t fire_evn_flag = 0;
 uint16_t fire_evn_value = 0;
 uint16_t sensor_data_head = 0;
 uint16_t sensor_data_tail = 0;
 
+
+#if FIRE_SAMPLE_MODE_LOW_ENABLE
+#define EVN_MAX_RATE_OF_CHANGE 	50    //最大认为是环境波动的变化值
+#define EVN_MAX_VALUE 			1000 //当大于100时不能进行火焰检测
+#else
+#define EVN_MAX_RATE_OF_CHANGE 	20   //最大认为是环境波动的变化值
+#define EVN_MAX_VALUE 			4000 //当低于4000时不能进行火焰检测
+#endif
+
 #define EVN_CAL_VALUE_TIME  	3000
 #define EVN_GET_INTERVAL 		50	 //每50ms采集一次数据
-#define EVN_MAX_RATE_OF_CHANGE 	20   //最大认为是环境波动的变化值
-#define EVN_MAX_VALUE 			4000 //当低于3000时不能进行火焰检测
-#define EVN_MAX_DATA_NUM 		(1000*5/EVN_GET_INTERVAL) //10S每50ms采集一次数据
+
+#define EVN_MAX_DATA_NUM 		(1000 * 5 / EVN_GET_INTERVAL) //10S每50ms采集一次数据
+
+
 uint16_t sensor_data[EVN_MAX_DATA_NUM] = {0};
 
 /*中位值平均滤波+滑动滤波 算法获取环境值*/
@@ -1595,7 +1610,7 @@ void fire_GetAverageValue(void)
 		next = sensor_data_tail + 1;
 		if(next >= EVN_MAX_DATA_NUM)
 			next = 0;
-		sensor_data[sensor_data_tail] = adc1_get_raw((adc1_channel_t)ADC_CHANNEL_1);
+		sensor_data[sensor_data_tail] = fire_GetCurrentValue();
 
 		if(settings.fire_log_enable)
 		{
@@ -1650,7 +1665,11 @@ void fire_InfoReport(void)
 		}
 		else
 		{
+#if FIRE_SAMPLE_MODE_LOW_ENABLE
+			if(fire_evn_value > EVN_MAX_VALUE)
+#else
 			if(fire_evn_value < EVN_MAX_VALUE)
+#endif
 			{
 				hal.stream.write_all("[MSG: Flame detector Inactive. Luminosity too high]" ASCII_EOL);
 			}
@@ -1671,7 +1690,9 @@ uint32_t fire_GetEvnValue(void)
 
 uint32_t fire_GetCurrentValue(void)
 {
-	return adc1_get_raw((adc1_channel_t)ADC_CHANNEL_1);
+	int value = 0;
+	value = adc1_get_raw((adc1_channel_t)FIRE_ADC_CHANNEL);
+	return value;
 }
 
 
@@ -1707,7 +1728,11 @@ void fire_Check(void)
 		return;
 	}
 	/*环境值过小*/
-	if(fire_evn_value < EVN_MAX_VALUE)
+#if FIRE_SAMPLE_MODE_LOW_ENABLE
+	if(fire_evn_value > EVN_MAX_VALUE)
+#else
+    if(fire_evn_value < EVN_MAX_VALUE)
+#endif
 	{
 		return ;
 	}
@@ -1723,8 +1748,12 @@ void fire_Check(void)
 		limit_min_value = fire_evn_value * K_VALUE + B_VALUE;
 		limit_min_value = 50;
 
-		average_value = adc1_get_raw((adc1_channel_t)ADC_CHANNEL_1);
+		average_value = fire_GetCurrentValue();
+#if FIRE_SAMPLE_MODE_LOW_ENABLE
+		if((fire_evn_value < average_value) && (average_value - fire_evn_value > limit_min_value))
+#else
 		if((fire_evn_value > average_value) && (fire_evn_value - average_value > limit_min_value))
+#endif
 		{
 			fire_catch_cnt++;
 		}
@@ -1911,6 +1940,78 @@ void system_AutoPowerOff(void)
 		esp_restart();
 	}
 }
+/*检测到有24v外部供电时才打开*/
+void power_CtrlInit(void)
+{
+#if BOARD_VERSION == OLM_ESP_PRO_V1X
+	gpio_config_t gpioConfig = {
+			.pin_bit_mask = ((uint64_t)1 << PWR_CTR_PIN),
+			.mode = GPIO_MODE_OUTPUT,
+			.pull_up_en = GPIO_PULLUP_DISABLE,
+			.pull_down_en = GPIO_PULLDOWN_ENABLE,
+			.intr_type = GPIO_INTR_DISABLE
+		};
+
+	gpio_config(&gpioConfig);
+	if(IsMainPowrIn())
+	{
+		gpio_set_level(PWR_CTR_PIN,1);
+	}
+	else
+	{
+		gpio_set_level(PWR_CTR_PIN,0);
+	}
+#endif
+
+}
+
+void power_CtrOn(void)
+{
+#if BOARD_VERSION == OLM_ESP_PRO_V1X
+	gpio_set_level(PWR_CTR_PIN,1);
+#endif
+}
+
+void power_CtrOff(void)
+{
+#if BOARD_VERSION == OLM_ESP_PRO_V1X
+	gpio_set_level(PWR_CTR_PIN,0);
+#endif
+}
+
+
+#define SAMPLING_RES 0.02 //欧
+#define AMPLIFICATION_FACTOR 20 //放大系数 = 输出下拉电阻 / 5k
+
+void power_CurrCheckInit(void)
+{
+
+#if BOARD_VERSION == OLM_ESP_PRO_V1X
+	adc1_config_channel_atten(POWER_CURRENT_CHANNEL, ADC_ATTEN_DB_11);
+#endif
+}
+
+/*实际电流*1000*/
+uint32_t power_GetCurrent(void)
+{
+#if BOARD_VERSION == OLM_ESP_PRO_V1X
+	uint32_t value = adc1_get_raw((adc1_channel_t)POWER_CURRENT_CHANNEL);
+
+	uint32_t current = (float)value / 8192 * 2.6 / SAMPLING_RES / AMPLIFICATION_FACTOR * 1000;
+
+	return current;
+#endif
+	return 0;
+}
+
+/*电压使用ADC检测方式*/
+#define POWER_CHECK_ADC_ENABLE 1
+
+#define VOTAGE_SAMPLING_RES 1000
+#define VOTAGE_DIV_RES 10000
+/*大于10V认为有电压*/
+#define VOTAGE_LIMIT 10 //10V
+
 /*电源检测*/
 uint8_t report_power_flag = 0;//是否报告电源状态
 static uint8_t last_power_flag=0;//变化前电源状态
@@ -1919,6 +2020,9 @@ static uint8_t last_power_flag=0;//变化前电源状态
 
 void Main_PowerCheckInit(void)
 {
+#if POWER_CHECK_ADC_ENABLE
+	adc1_config_channel_atten(POWER_CHECK_CHANNEL, ADC_ATTEN_DB_11);
+#else
 	gpio_config_t gpioConfig = {
 			.pin_bit_mask = ((uint64_t)1 << POWER_CHECK_PIN),
 			.mode = GPIO_MODE_INPUT,
@@ -1928,14 +2032,40 @@ void Main_PowerCheckInit(void)
 		};
 
 	gpio_config(&gpioConfig);
+#endif
 }
-
+/*单位mv*/
+uint32_t power_GetVotage(void)
+{
+#if BOARD_VERSION == OLM_ESP_PRO_V1X
+	uint32_t value = adc1_get_raw((adc1_channel_t)POWER_CHECK_CHANNEL);
+	uint32_t votage = (float)value / 8192 * 2.6 * (VOTAGE_SAMPLING_RES + VOTAGE_DIV_RES) / VOTAGE_SAMPLING_RES * 1000;
+	return votage ;
+#endif
+	return 0;
+}
 
 /**
  *掉电去抖
  */
 uint8_t IsMainPowrIn(void)
 {
+#if POWER_CHECK_ADC_ENABLE
+	uint32_t value = adc1_get_raw((adc1_channel_t)POWER_CHECK_CHANNEL);
+
+	uint32_t votage = (float)value / 8192 * 2.6 * (VOTAGE_SAMPLING_RES + VOTAGE_DIV_RES) / VOTAGE_SAMPLING_RES;
+
+	if(votage > 10)
+	{
+		last_power_flag = 1;
+		return 1;
+	}
+	else
+	{
+		return 0;
+	}
+
+#else
 	if(IsMainPowrBitSet())
 	{
 		HAL_Delay(10);
@@ -1946,7 +2076,9 @@ uint8_t IsMainPowrIn(void)
 		}
 	}
 	return 0;
+#endif
 }
+
 /*0:check power 1:report power*/
 void Main_PowerCheckReport(uint8_t mode)
 {
@@ -1973,6 +2105,27 @@ void Main_PowerCheckReport(uint8_t mode)
  */
 void Main_PowerCheck(void)
 {
+#if POWER_CHECK_ADC_ENABLE
+	if(last_power_flag==0)
+	{
+		if(IsMainPowrIn())
+		{
+			power_CtrOn();
+			report_feedback_message(Message_PowerSupplied);
+		}
+	}
+	else
+	{
+		/*掉电去抖*/
+		if(!IsMainPowrIn())
+		{
+			last_power_flag=0;
+			power_CtrOff();
+			report_feedback_message(Message_NoPowerSupply);
+		}
+	}
+#else
+
 	if(last_power_flag==0)
 	{
 		if(IsMainPowrIn())
@@ -1993,6 +2146,7 @@ void Main_PowerCheck(void)
 			}
 		}
 	}
+#endif
 }
 
 
@@ -2044,8 +2198,10 @@ static bool driver_setup (settings_t *settings)
         .pull_down_en = GPIO_PULLDOWN_DISABLE,
         .intr_type = GPIO_INTR_DISABLE
     };
-
+    /*避免开机风扇转*/
+    gpio_set_level(SPINDLE_ENABLE_PIN,1);
     gpio_config(&gpioConfig);
+
 
 #if MPG_MODE_ENABLE
 
@@ -2140,6 +2296,10 @@ static bool driver_setup (settings_t *settings)
     beep_Init();
     /*火焰检测初始化*/
     fire_CheckInit();
+    /*电源控制*/
+    power_CtrlInit();
+    /*电流检测初始化*/
+    power_CurrCheckInit();
 #if ENABLE_ACCELERATION_DETECT
     /*加速度传感器初始化*/
     Gsensor_Init();
@@ -2611,6 +2771,7 @@ void reset_report(void)
 	if((systemGetState().reset == 1) && (pre_reset_flag == 0))
 	{
 		hal.stream.write_all("[MSG:Emergency switch Engaged!]" ASCII_EOL);
+		fire_AlarmStateSet(0);
 		pre_reset_flag = 1;
 		release_reset_timer = HAL_GetTick();
 	}
@@ -2622,6 +2783,7 @@ void reset_report(void)
 			if((HAL_GetTick() - release_reset_timer) > 200)
 			{
 				hal.stream.write_all("[MSG:Emergency switch Cleared.]" ASCII_EOL);
+				fire_AlarmStateSet(0);
 				pre_reset_flag = 0;
 			}
 		}

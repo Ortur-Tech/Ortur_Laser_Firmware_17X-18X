@@ -347,6 +347,7 @@ void selectStream (stream_type_t stream);
 
 #endif
 
+uint8_t IsMainPowrIn(void);
 void Main_PowerCheckReport(uint8_t mode);
 void Main_PowerCheck(void);
 void spindle_off (void);
@@ -390,7 +391,8 @@ void reset_report(void);
 
 void spindle_reset(void);
 
-
+uint32_t power_GetVotage(void);
+uint32_t power_GetCurrent(void);
 
 void system_UpdateAutoPoweroffTime(void);
 void system_AutoPowerOff(void);
