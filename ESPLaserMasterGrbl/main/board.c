@@ -25,7 +25,7 @@ void Usb_ForceReset(void)
 	gpio_set_level(GPIO_NUM_20, 0);
 }
 
-/*扩展功能任务*/
+/*扩展功能任务1.加速度检测 2.火焰ad值获取*/
 void extended_FuncTask( void * pvParameters )
 {
 	for( ;; )
@@ -36,6 +36,8 @@ void extended_FuncTask( void * pvParameters )
 #endif
 		/*都平均值*/
 		fire_GetAverageValue();
+
+		fire_Check();
 		// Task code goes here.
 		vTaskDelay(10/portTICK_PERIOD_MS);
 	}
