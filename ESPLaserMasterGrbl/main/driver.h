@@ -284,6 +284,7 @@ extern SemaphoreHandle_t i2cBusy;
 
 void selectStream (stream_type_t stream);
 
+extern portMUX_TYPE mux ;
 
 #ifdef DELAY_OFF_SPINDLE
 

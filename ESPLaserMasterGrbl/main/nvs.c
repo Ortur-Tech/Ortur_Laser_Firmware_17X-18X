@@ -26,6 +26,8 @@
 
 #include "nvs.h"
 #include "grbl/hal.h"
+#include "board.h"
+#include "driver.h"
 
 #ifndef BUFFER_NVSDATA
 #error BUFFER_NVSDATA must be enabled to use flash for settings storage
@@ -58,8 +60,10 @@ bool nvsRead (uint8_t *dest)
 
 bool nvsWrite (uint8_t *source)
 {
+	portENTER_CRITICAL(&mux);
     // Save and redirect real time command handler here to avoid panic in uart isr
     // due to constants in standard handler residing in flash.
+
     realtime_command_handler = hal.stream.enqueue_realtime_command;
     hal.stream.enqueue_realtime_command = nvs_enqueue_realtime_command;
 
@@ -67,9 +71,11 @@ bool nvsWrite (uint8_t *source)
                esp_partition_erase_range(grblNVS, 0, SPI_FLASH_SEC_SIZE) == ESP_OK &&
                 esp_partition_write(grblNVS, 0, (void *)source, hal.nvs.size) == ESP_OK;
 
+
     // Restore real time command handler
     hal.stream.enqueue_realtime_command = realtime_command_handler;
 
+    portEXIT_CRITICAL(&mux);
     return ok;
 }
 

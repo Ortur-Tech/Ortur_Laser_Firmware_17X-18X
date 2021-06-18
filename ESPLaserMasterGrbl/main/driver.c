@@ -293,7 +293,7 @@ state_signal_t inputpin[] = {
 
 static volatile uint32_t ms_count = 1; // NOTE: initial value 1 is for "resetting" systick timer
 static bool IOInitDone = false;
-static portMUX_TYPE mux = portMUX_INITIALIZER_UNLOCKED;
+portMUX_TYPE mux = portMUX_INITIALIZER_UNLOCKED;
 // Inverts the probe pin state depending on user settings and probing cycle mode.
 static uint8_t probe_invert;
 

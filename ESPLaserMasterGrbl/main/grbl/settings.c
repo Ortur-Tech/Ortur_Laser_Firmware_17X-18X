@@ -961,8 +961,6 @@ status_code_t settings_store_global_setting (setting_type_t setting, char *svalu
 #endif
     hal.settings_changed(&settings);
 
-    vTaskDelay(500 / portTICK_PERIOD_MS);
-
     return Status_OK;
 }
 
