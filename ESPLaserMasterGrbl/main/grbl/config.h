@@ -386,7 +386,9 @@
 // Inverts logic of the stepper enable signal(s).
 // NOTE: Not universally available for individual axes - check driver documentation.
 //       Specify at least X_AXIS_BIT if a common enable signal is used.
-// #define INVERT_ST_ENABLE_MASK (X_AXIS_BIT|Y_AXIS_BIT|Z_AXIS_BIT) // Default disabled. Uncomment to enable.
+#if BOARD_VERSION == OLM_ESP_PRO_V1X
+#define INVERT_ST_ENABLE_MASK (X_AXIS_BIT)//(X_AXIS_BIT|Y_AXIS_BIT|Z_AXIS_BIT) // Default disabled. Uncomment to enable.
+#endif
 // Mask to be OR'ed with stepper disable signal(s). Axes configured will not be disabled.
 // NOTE: Not universally available for individual axes - check driver documentation.
 //       Specify at least X_AXIS_BIT if a common enable signal is used.
