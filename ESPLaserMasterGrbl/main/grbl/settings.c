@@ -83,6 +83,7 @@ const settings_t defaults = {
 	.fire_alarm_delta_threshold = DEFAULT_FIRE_ALARM_TRIGGER_THRESHOLD,
 	.fire_alarm_time_threshold = DEFAULT_FIRE_ALARM_TRIGGER_TIME_THRESHOLD,
 	.sys_auto_poweroff_time = DEFAULT_AUTO_POWEROFF_TIME,
+	.laser_used_time = 0,
     .mode = Mode_Laser,
     .flags.disable_laser_during_hold = DEFAULT_DISABLE_LASER_DURING_HOLD,
 #else
@@ -904,6 +905,9 @@ status_code_t settings_store_global_setting (setting_type_t setting, char *svalu
 #endif
             case Setting_AutoPowerOffTime:	//自动关机功能
 				settings.sys_auto_poweroff_time = int_value;
+				break;
+            case Setting_LaserUsedTime:	//使用时长
+				//settings.laser_used_time = int_value;
 				break;
 /*******************************自定义设置 END****************************************/
 

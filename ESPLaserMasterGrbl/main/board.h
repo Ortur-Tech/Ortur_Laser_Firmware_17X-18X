@@ -17,7 +17,7 @@
 #define OLM_ESP_V1X			1
 #define OLM_ESP_PRO_V1X     2
 
-#define BOARD_VERSION 		OLM_ESP_PRO_V1X
+#define BOARD_VERSION 		OLM_ESP_V1X//OLM_ESP_PRO_V1X
 /*******************硬件版本定义 END*******************/
 
 
@@ -34,15 +34,16 @@
 
 
 
-#define DEBUG_LEVEL 0x00//LOG_INFO//LOG_ERROR
+#define DEBUG_LEVEL LOG_TEMP//LOG_INFO//LOG_ERROR
 /*调试等级*/
 typedef enum{
-    LOG_DEBUG=1,
-    LOG_INFO=2,
-    LOG_WARN=4,
-    LOG_ERROR=8,
-    LOG_FATAL=16,
-	LOG_IMP_INFO=32,
+    LOG_DEBUG = 1,
+    LOG_INFO = 2,
+    LOG_WARN = 4,
+    LOG_ERROR = 8,
+    LOG_FATAL = 16,
+	LOG_IMP_INFO = 32,
+	LOG_TEMP = 64,
 }LogLevel;
 
 

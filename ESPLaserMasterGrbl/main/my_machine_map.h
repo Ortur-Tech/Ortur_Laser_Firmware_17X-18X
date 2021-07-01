@@ -80,7 +80,7 @@
 #define CYCLE_START_PIN GPIO_NUM_45
 #else
 #define RESET_PIN       GPIO_NUM_40
-#define FEED_HOLD_PIN   GPIO_NUM_41
+#define FEED_HOLD_PIN   GPIO_NUM_0
 #define CYCLE_START_PIN GPIO_NUM_39
 #endif
 
@@ -91,7 +91,7 @@
 
 // Define probe switch input pin.
 #if PROBE_ENABLE
-#define PROBE_PIN    GPIO_NUM_39
+#define PROBE_PIN    GPIO_NUM_6
 #endif
 
 #if MODBUS_ENABLE
@@ -108,7 +108,7 @@
 #endif
 
 /*开机按键*/
-#define POWER_KEY_PIN 			GPIO_NUM_0
+#define POWER_KEY_PIN 			GPIO_NUM_41
 /*电源和报错LED*/
 #define POWER_LED_PIN			GPIO_NUM_33
 /*USB通信LED*/
@@ -117,11 +117,12 @@
 #define FIRE_CHECK_PIN			GPIO_NUM_2
 #define FIRE_ADC_CHANNEL		ADC_CHANNEL_1
 /*供电检测*/
-#define POWER_CHECK_PIN			GPIO_NUM_38
+#define POWER_CHECK_PIN			GPIO_NUM_18
+#define POWER_CHECK_CHANNEL		ADC2_CHANNEL_7
 /*照明Light*/
 #define LIGHT_PIN				GPIO_NUM_1
 /*蜂鸣器beep*/
-#define BEEP_PIN				GPIO_NUM_18
+#define BEEP_PIN				GPIO_NUM_38
 /*IIC SCL*/
 #define IIC_SCL_PIN				GPIO_NUM_10
 /*IIC SDA*/
@@ -129,8 +130,138 @@
 
 #elif (BOARD_VERSION == OLM_ESP_PRO_V1X)
 
+#define OLM_ESP_PRO_V11
+
 #define BOARD_NAME "OLM ESP PRO Board"
 
+#ifdef OLM_ESP_PRO_V11
+
+#define KEY_PREES_DOWM_LEVEL_HIGH 1
+
+// timer definitions
+#define STEP_TIMER_GROUP TIMER_GROUP_0
+#define STEP_TIMER_INDEX TIMER_0
+
+#if SDCARD_ENABLE
+
+// Pin mapping when using SPI mode.
+// With this mapping, SD card can be used both in SPI and 1-line SD mode.
+// Note that a pull-up on CS line is required in SD mode.
+#define PIN_NUM_MISO 19
+#define PIN_NUM_MOSI 23
+#define PIN_NUM_CLK  18
+#define PIN_NUM_CS   5
+
+#endif // SDCARD_ENABLE
+
+// Define step pulse output pins.
+#define X_STEP_PIN  GPIO_NUM_21
+#define Y_STEP_PIN  GPIO_NUM_2
+#define Z_STEP_PIN  GPIO_NUM_1
+#define STEP_MASK       (1ULL << X_STEP_PIN|1ULL << Y_STEP_PIN|1ULL << Z_STEP_PIN) // All step bits
+
+// Define step direction output pins. NOTE: All direction pins must be on the same port.
+#define X_DIRECTION_PIN GPIO_NUM_7
+#define Y_DIRECTION_PIN GPIO_NUM_3
+#define Z_DIRECTION_PIN GPIO_NUM_0
+#define DIRECTION_MASK      (1ULL << X_DIRECTION_PIN|1ULL << Y_DIRECTION_PIN|1ULL << Z_DIRECTION_PIN) // All direction bits
+
+
+// Define stepper driver enable/disable output pin(s).
+#define STEPPERS_DISABLE_PIN    GPIO_NUM_4
+#define STEPPERS_DISABLE_MASK   (1ULL << STEPPERS_DISABLE_PIN)
+
+
+#define ENABLE_JTAG 1
+
+// Define homing/hard limit switch input pins and limit interrupt vectors.
+
+#define X_LIMIT_PIN GPIO_NUM_8
+#define Y_LIMIT_PIN GPIO_NUM_45
+#define Z_LIMIT_PIN GPIO_NUM_38
+#define LIMIT_MASK      (1ULL << X_LIMIT_PIN|1ULL << Y_LIMIT_PIN|1ULL << Z_LIMIT_PIN) // All limit bits
+
+
+// Define spindle enable and spindle direction output pins.
+
+#ifndef VFD_SPINDLE
+#define SPINDLE_ENABLE_PIN  GPIO_NUM_18
+#define SPINDLE_MASK        (1ULL << SPINDLE_ENABLE_PIN)
+#define SPINDLEPWMPIN       GPIO_NUM_17
+#endif
+
+// Define flood and mist coolant enable output pins.
+
+#define COOLANT_FLOOD_PIN   GPIO_NUM_13
+#ifndef VFD_SPINDLE
+#define COOLANT_MIST_PIN    GPIO_NUM_13
+#define COOLANT_MASK        (1ULL << COOLANT_FLOOD_PIN|1ULL << COOLANT_MIST_PIN)
+#endif
+
+// Define user-control CONTROLs (cycle start, reset, feed hold) input pins.
+
+#define RESET_PIN       GPIO_NUM_35
+#define FEED_HOLD_PIN   GPIO_NUM_34
+#define CYCLE_START_PIN GPIO_NUM_33
+
+
+#ifdef ENABLE_SAFETY_DOOR_INPUT_PIN
+#define SAFETY_DOOR_PIN GPIO_NUM_42
+#endif
+#define CONTROL_MASK        (1ULL << RESET_PIN|1ULL << FEED_HOLD_PIN|1ULL << CYCLE_START_PIN)
+
+// Define probe switch input pin.
+#if PROBE_ENABLE
+#define PROBE_PIN    GPIO_NUM_36
+#endif
+
+#if MODBUS_ENABLE
+#define UART2_RX_PIN            GPIO_NUM_22
+#define UART2_TX_PIN            GPIO_NUM_21
+#if RS485_DIR_ENABLE
+#define MODBUS_DIRECTION_PIN    GPIO_NUM_2
+#endif
+#endif
+
+
+#if KEYPAD_ENABLE
+#error No free pins for keypad!
+#endif
+
+/*开机按键*/
+#define POWER_KEY_PIN 			GPIO_NUM_46
+/*电源和报错LED*/
+#define POWER_LED_PIN			GPIO_NUM_10
+
+#if ENABLE_JTAG
+/*USB通信LED*/
+#define COMM_LED_PIN			GPIO_NUM_10
+#else
+/*USB通信LED*/
+#define COMM_LED_PIN			GPIO_NUM_41
+#endif
+
+/*火焰检查*/
+#define FIRE_CHECK_PIN			GPIO_NUM_9
+#define FIRE_ADC_CHANNEL		ADC_CHANNEL_8
+/*供电检测*/
+#define POWER_CHECK_PIN			GPIO_NUM_5
+#define POWER_CHECK_CHANNEL		ADC_CHANNEL_4
+/*照明Light*/
+#define LIGHT_PIN				GPIO_NUM_15
+/*蜂鸣器beep*/
+#define BEEP_PIN				GPIO_NUM_16
+/*IIC SCL*/
+#define IIC_SCL_PIN				GPIO_NUM_11
+/*IIC SDA*/
+#define IIC_SDA_PIN				GPIO_NUM_12
+/*电源控制*/
+#define PWR_CTR_PIN				GPIO_NUM_14
+/*电流检测*/
+#define POWER_CURRENT_PIN		GPIO_NUM_6
+#define POWER_CURRENT_CHANNEL   ADC_CHANNEL_5
+
+#else
 // timer definitions
 #define STEP_TIMER_GROUP TIMER_GROUP_0
 #define STEP_TIMER_INDEX TIMER_0
@@ -253,7 +384,7 @@
 /*电流检测*/
 #define POWER_CURRENT_PIN		GPIO_NUM_6
 #define POWER_CURRENT_CHANNEL   ADC_CHANNEL_5
-
+#endif
 #elif
 
 #define BOARD_NAME "ESPLaser"

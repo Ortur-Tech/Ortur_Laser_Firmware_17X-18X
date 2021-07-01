@@ -397,6 +397,9 @@ uint32_t power_GetCurrent(void);
 
 void system_UpdateAutoPoweroffTime(void);
 void system_AutoPowerOff(void);
+void movement_laseron_check(void);
 
+void laser_use_time_save(void);
+void laser_on_time_count(void);
 
 #endif // __DRIVER_H__

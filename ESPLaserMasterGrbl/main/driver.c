@@ -1862,7 +1862,7 @@ void led_Init(void)
 void power_LedAlarm(void)
 {
 	static uint32_t flash_time = 0;
-	if((sys.state == STATE_ALARM) && (gpio_get_level(POWER_KEY_PIN) != 0))
+	if((sys.state == STATE_ALARM) && (!power_KeyDown()))
 	{
 		if((HAL_GetTick() - flash_time) > 500)
 		{
@@ -1870,7 +1870,7 @@ void power_LedAlarm(void)
 			power_LedToggle();
 		}
 	}
-	else if(gpio_get_level(POWER_KEY_PIN) != 0)
+	else if(!power_KeyDown())
 	{
 		gpio_set_level(POWER_LED_PIN, 1);
 	}
@@ -1916,10 +1916,14 @@ void power_KeyInit(void)
 
 	gpio_config(&gpioConfig);
 }
-
+/*返回1：按下  0：没按下*/
 uint8_t power_KeyDown(void)
 {
+#if KEY_PREES_DOWM_LEVEL_HIGH
 	return gpio_get_level(POWER_KEY_PIN);
+#else
+	return !gpio_get_level(POWER_KEY_PIN);
+#endif
 }
 
 static uint32_t auto_poweroff_time = 0;
@@ -2021,7 +2025,11 @@ static uint8_t last_power_flag=0;//变化前电源状态
 void Main_PowerCheckInit(void)
 {
 #if POWER_CHECK_ADC_ENABLE
+#if BOARD_VERSION == OLM_ESP_PRO_V1X
 	adc1_config_channel_atten(POWER_CHECK_CHANNEL, ADC_ATTEN_DB_11);
+#elif BOARD_VERSION == OLM_ESP_V1X
+	adc2_config_channel_atten(POWER_CHECK_CHANNEL, ADC_ATTEN_DB_11);
+#endif
 #else
 	gpio_config_t gpioConfig = {
 			.pin_bit_mask = ((uint64_t)1 << POWER_CHECK_PIN),
@@ -2041,6 +2049,11 @@ uint32_t power_GetVotage(void)
 	uint32_t value = adc1_get_raw((adc1_channel_t)POWER_CHECK_CHANNEL);
 	uint32_t votage = (float)value / 8192 * 2.6 * (VOTAGE_SAMPLING_RES + VOTAGE_DIV_RES) / VOTAGE_SAMPLING_RES * 1000;
 	return votage ;
+#elif BOARD_VERSION == OLM_ESP_V1X
+	int value = 0;
+	adc2_get_raw(POWER_CHECK_CHANNEL,ADC_WIDTH_BIT_13,&value);
+	uint32_t votage = (float)value / 8192 * 2.6 * (VOTAGE_SAMPLING_RES + VOTAGE_DIV_RES) / VOTAGE_SAMPLING_RES * 1000;
+	return votage ;
 #endif
 	return 0;
 }
@@ -2051,17 +2064,30 @@ uint32_t power_GetVotage(void)
 uint8_t IsMainPowrIn(void)
 {
 #if POWER_CHECK_ADC_ENABLE
+	static uint8_t use_time_save_flag = 0;
+#if BOARD_VERSION == OLM_ESP_PRO_V1X
 	uint32_t value = adc1_get_raw((adc1_channel_t)POWER_CHECK_CHANNEL);
+#elif BOARD_VERSION == OLM_ESP_V1X
+	int value = 0;
+	adc2_get_raw(POWER_CHECK_CHANNEL,ADC_WIDTH_BIT_13,&value);
+#endif
 
 	uint32_t votage = (float)value / 8192 * 2.6 * (VOTAGE_SAMPLING_RES + VOTAGE_DIV_RES) / VOTAGE_SAMPLING_RES;
-
-	if(votage > 10)
+	/*大于21v认为有电*/
+	if(votage > 21)
 	{
 		last_power_flag = 1;
+		use_time_save_flag = 1;
 		return 1;
 	}
 	else
 	{
+		if(use_time_save_flag == 1)
+		{
+			/*保存使用时间*/
+			laser_use_time_save();
+			use_time_save_flag = 0;
+		}
 		return 0;
 	}
 
@@ -2793,5 +2819,132 @@ void reset_report(void)
 		}
 	}
 }
+
+
+/*统计激光的使用时长*/
+uint8_t laser_on_count_flag = 0;
+uint32_t laser_used_time = 0;		//单位秒
+uint32_t laser_use_start_time = 0 ;
+uint32_t laser_use_last_time = 0 ;
+
+#define LASER_OFF_TIMEOUT 1000
+
+
+/*在激光器关时调用*/
+void laser_on_time_count(void)
+{
+	if(is_SpindleOpen() && IsMainPowrIn())
+	{
+		if(laser_on_count_flag == 0)
+		{
+			laser_on_count_flag = 1;
+			laser_use_start_time = HAL_GetTick();
+		}
+		laser_use_last_time = HAL_GetTick();
+	}
+
+	if(laser_on_count_flag == 1)
+	{
+		if(!is_SpindleOpen())//激光关闭
+		{
+			if((HAL_GetTick() - laser_use_last_time) > LASER_OFF_TIMEOUT)
+			{
+				laser_used_time = laser_used_time + (HAL_GetTick() - laser_use_start_time) / 1000;
+				laser_on_count_flag = 0;
+			}
+		}
+	}
+}
+
+/*在外部供电掉电时调用*/
+void laser_use_time_save(void)
+{
+	char str[20] = {0};
+	if(laser_on_count_flag == 1)
+	{
+		laser_used_time = laser_used_time + (HAL_GetTick() - laser_use_start_time) / 1000;
+		laser_on_count_flag = 0;
+	}
+	/**/
+	if(!IsMainPowrIn())
+	{
+		/*使用时间小于10s不保存*/
+		if(laser_used_time > 10)
+		{
+			sprintf(str,"%d",laser_used_time + settings.laser_used_time);
+			settings_store_global_setting (Setting_LaserUsedTime, str);
+			mprintf(LOG_TEMP,"used time:%d.total time:%s", laser_used_time, str);
+		}
+	}
+
+}
+
+#ifdef DEFAULT_LASER_MODE
+
+int32_t last_sys_position[N_AXIS]; 		// 	最后一次检测位置
+uint64_t last_check_timestamp = 0; 		// 	最后一次检测时间
+#define  max_exposure_time 60			// 	最长曝光时间 100s
+#define  min_exposure_time 10			//	最短曝光时间
+#define  max_weak_time     100			//	最长弱光时间
+
+uint32_t curr_laser_power;//当前激光功率
+
+uint32_t allow_laser_time;//允许激光静态开启时间
+
+#define max_laser_power  DEFAULT_SPINDLE_RPM_MAX ///< 激光最大功率
+#define weak_laser_power 20//弱光功率
+#define off_laser_power  DEFAULT_SPINDLE_RPM_MIN//认为激光关闭的功率
+
+#endif
+
+
+void movement_laseron_check(void)
+{
+	fire_Check();
+#ifdef DEFAULT_LASER_MODE
+    //检查xyz位置是否变化
+	if(sys_position[0] != last_sys_position[0] ||
+	   sys_position[1] != last_sys_position[1])
+	{
+		last_sys_position[0] = sys_position[0];
+		last_sys_position[1] = sys_position[1];
+		last_check_timestamp = HAL_GetTick()/1000;
+	}
+
+	//注意,激光已经开启
+	if(is_SpindleOpen())
+	{
+		//激光功率过大且长时间未移动
+		curr_laser_power = laser_GetPower();
+		if(curr_laser_power > off_laser_power )
+		{
+			if(curr_laser_power > max_weak_time )
+			{
+				allow_laser_time = min_exposure_time + (max_exposure_time - min_exposure_time) *
+						           (max_laser_power - laser_GetPower()) /(max_laser_power);
+			}
+			else
+			{
+				allow_laser_time = max_weak_time;
+			}
+
+			if((HAL_GetTick()/1000) - last_check_timestamp >= allow_laser_time)
+			{
+				spindle_off();
+				hal.stream.write_all("[MSG:Laser exposure timeout! Check TroubleShooting Section in User Manual.]" ASCII_EOL);
+				sys.state = STATE_ALARM;
+				sys.abort = 1;
+			}
+		}
+	}
+	else
+	{
+		last_check_timestamp = HAL_GetTick()/1000;
+	}
+#endif
+}
+
+
+
 
 

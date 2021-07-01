@@ -19,7 +19,7 @@ extern "C" {
 
 void creat_UsbMscTask( void );
 
-
+void usb_msc_spiffs_init(void);
 
 
 

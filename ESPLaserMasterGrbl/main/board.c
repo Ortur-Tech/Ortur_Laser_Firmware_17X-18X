@@ -30,16 +30,22 @@ void extended_FuncTask( void * pvParameters )
 {
 	for( ;; )
 	{
+
+		vTaskDelay(10/portTICK_PERIOD_MS);
+
 #if ENABLE_ACCELERATION_DETECT
 		/*加速度检测*/
 		accel_detection_limit();
 #endif
+		/*统计激光工作时长*/
+		laser_on_time_count();
+		/*不移动激光检查*/
+		movement_laseron_check();
 		/*都平均值*/
 		fire_GetAverageValue();
 
 		fire_Check();
-		// Task code goes here.
-		vTaskDelay(10/portTICK_PERIOD_MS);
+
 	}
 }
 
@@ -207,7 +213,7 @@ void key_func(uint8_t m)
 	static uint8_t report_onece = 0;
 	if(m)
 	{
-		Usb_ForceReset();
+		//Usb_ForceReset();
 	    HAL_TickInit();
 	    led_Init();
 	    serialInit();
@@ -224,7 +230,7 @@ void key_func(uint8_t m)
 				break;
 			}
 			/*TODO:这里可能需要喂狗*/
-			if(power_KeyDown() == 0)
+			if(power_KeyDown())
 			{
 				/*间隔上报按键按下状态*/
 				report_KeyPowerSupplyStatus(SYSTEM_KEY_PRESS_FOR_POWERON,0);
@@ -257,7 +263,7 @@ void key_func(uint8_t m)
 		/*开机后需释放按键才能进行关机判断*/
 		if(key_release_flag == 1)
 		{
-			if(power_KeyDown() == 0)
+			if(power_KeyDown())
 			{
 				return;
 			}
@@ -267,7 +273,7 @@ void key_func(uint8_t m)
 			}
 		}
 
-		if(power_KeyDown() == 0)
+		if(power_KeyDown())
 		{
 			if(report_onece == 0)
 			{
@@ -286,7 +292,7 @@ void key_func(uint8_t m)
 
 				}
 				power_LedOff();
-				while(power_KeyDown() == 0)
+				while(power_KeyDown())
 				{
 					report_KeyPowerSupplyStatus(SYSTEM_POWEROFF,0);
 					/*TODO:需要喂狗*/

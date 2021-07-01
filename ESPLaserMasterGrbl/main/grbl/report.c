@@ -513,10 +513,12 @@ void report_grbl_settings (bool all)
 		report_uint_setting(Setting_FireLogEnable, settings.fire_log_enable); //火焰传感器数据打印
         report_uint_setting(Setting_FireAlarmDeltaThreshold, settings.fire_alarm_delta_threshold); //火焰传感器报警阈值
         report_uint_setting(Setting_FireAlarmThreshold, settings.fire_alarm_time_threshold); //火焰传感器报警阈值
+
 #if ENABLE_ACCELERATION_DETECT
         report_uint_setting(Setting_AccelerateThreshold, settings.accel_sensitivity); //加速度传感器报警阈值
 #endif
         report_uint_setting(Setting_AutoPowerOffTime, settings.sys_auto_poweroff_time); //自动关机时间
+        report_uint_setting(Setting_LaserUsedTime, settings.laser_used_time); //激光使用时间
 
 #if ENABLE_HOMING_FORCE_SET_ORIGIN_OFFSET
         report_uint_setting(Setting_OriginOffsetX, settings.origin_offset_x); //x轴原点偏移

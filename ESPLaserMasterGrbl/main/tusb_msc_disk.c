@@ -20,14 +20,16 @@
 #include "driver.h"
 
 //#include "msc_device.h"
+#define MSC_OTA		0
+#define MSC_SPIFFS	1
 
-const esp_partition_t *target_ota;
+const esp_partition_t *target_partition;
 uint8_t *msc_disk = NULL;
 static bool idf_flash;
 static uint32_t _lba = 0;
 static long old_millis;
 static uint32_t _offset = 0;
-uint8_t usb_msc_init_flag = 0;
+uint8_t usb_msc_init_flag = MSC_SPIFFS;
 
 /**
  * Task used as workaround to detect when update has been finished
@@ -39,7 +41,7 @@ static void ticker_task(void* p)
     if (HAL_GetTick() - old_millis > 1000)
     {
       //board_led_state(STATE_WRITING_FINISHED);
-      esp_err_t err = esp_ota_set_boot_partition(target_ota);
+      esp_err_t err = esp_ota_set_boot_partition(target_partition);
       if(err)
        mprintf(LOG_ERROR, "BOOT ERR => %x [%d]", err, _offset);
 
@@ -166,26 +168,43 @@ void check_running_partition(void)
 }
 
 
-bool init_disk()
+/*
+ *
+ */
+/*0:ota 盘 1:siffs盘*/
+bool init_disk(uint8_t pan)
 {
-	esp_partition_t *current_partition ;
-	check_running_partition();
-	current_partition = esp_ota_get_running_partition();
-	if(memcmp(current_partition->label,"ota_0",5) == 0)
+	if(pan == MSC_OTA)
 	{
-		target_ota = esp_partition_find_first(ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_ANY, "ota_1");
+		esp_partition_t *current_partition ;
+		check_running_partition();
+		current_partition = esp_ota_get_running_partition();
+		if(memcmp(current_partition->label,"ota_0",5) == 0)
+		{
+			target_partition = esp_partition_find_first(ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_ANY, "ota_1");
+		}
+		else
+		{
+			target_partition = esp_partition_find_first(ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_ANY, "ota_0");
+		}
+		msc_disk = (uint8_t*)heap_caps_calloc(1, DISK_BLOCK_SIZE * DISK_BLOCK_NUM, MALLOC_CAP_32BIT);
+		if(msc_disk == NULL) return false;
+		memcpy(msc_disk, msc_disk0, sizeof(msc_disk0));
+		msc_disk[20] = (uint8_t)(target_partition->size / DISK_BLOCK_SIZE >> 8);
+		msc_disk[19] = (uint8_t)(target_partition->size / DISK_BLOCK_SIZE & 0xff);
+
 	}
 	else
 	{
-		 target_ota = esp_partition_find_first(ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_ANY, "ota_0");
+		target_partition = esp_partition_find_first(ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_ANY, "storage");
+//		msc_disk = (uint8_t*)heap_caps_calloc(1, DISK_BLOCK_SIZE * DISK_BLOCK_NUM, MALLOC_CAP_32BIT);
+//		if(msc_disk == NULL) return false;
+//		memcpy(msc_disk, msc_disk0, sizeof(msc_disk0));
+//		msc_disk[20] = (uint8_t)(target_partition->size / DISK_BLOCK_SIZE >> 8);
+//		msc_disk[19] = (uint8_t)(target_partition->size / DISK_BLOCK_SIZE & 0xff);
 	}
-	msc_disk = (uint8_t*)heap_caps_calloc(1, DISK_BLOCK_SIZE * DISK_BLOCK_NUM, MALLOC_CAP_32BIT);
-	if(msc_disk == NULL) return false;
-	memcpy(msc_disk, msc_disk0, sizeof(msc_disk0));
-	msc_disk[20] = (uint8_t)(target_ota->size / DISK_BLOCK_SIZE >> 8);
-	msc_disk[19] = (uint8_t)(target_ota->size / DISK_BLOCK_SIZE & 0xff);
 
-	usb_msc_init_flag = 1;
+	usb_msc_init_flag = pan;
 	//board_led_state(STATE_BOOTLOADER_STARTED);
 	return true;
 }
@@ -193,7 +212,6 @@ bool init_disk()
 // Invoked to determine max LUN
 uint8_t tud_msc_get_maxlun_cb(void)
 {
-  if(usb_msc_init_flag == 0)return 0;
   return 1; // dual LUN
 }
 
@@ -201,7 +219,6 @@ uint8_t tud_msc_get_maxlun_cb(void)
 // Application fill vendor id, product id and revision with string up to 8, 16, 4 characters respectively
 void tud_msc_inquiry_cb(uint8_t lun, uint8_t vendor_id[8], uint8_t product_id[16], uint8_t product_rev[4])
 {
-  if(usb_msc_init_flag == 0)return ;
 
   (void) lun; // use same ID for both LUNs
 
@@ -218,7 +235,6 @@ void tud_msc_inquiry_cb(uint8_t lun, uint8_t vendor_id[8], uint8_t product_id[16
 // return true allowing host to read/write this LUN e.g SD card inserted
 bool tud_msc_test_unit_ready_cb(uint8_t lun)
 {
-  if(usb_msc_init_flag == 0)return false;
 
   (void) lun;
 
@@ -229,7 +245,6 @@ bool tud_msc_test_unit_ready_cb(uint8_t lun)
 // Application update block count and block size
 void tud_msc_capacity_cb(uint8_t lun, uint32_t* block_count, uint16_t* block_size)
 {
-	if(usb_msc_init_flag == 0)return ;
 
 #ifndef CFG_EXAMPLE_MSC_READONLY
   (void) lun;
@@ -237,18 +252,27 @@ void tud_msc_capacity_cb(uint8_t lun, uint32_t* block_count, uint16_t* block_siz
   *block_count = DISK_BLOCK_NUM;
   *block_size  = DISK_BLOCK_SIZE;
 #else
-  (void)lun;
-  if (target_ota == NULL)
+  if(usb_msc_init_flag == MSC_OTA)
   {
-    *block_count = DISK_BLOCK_NUM;
-    *block_size = DISK_BLOCK_SIZE;
+	  (void)lun;
+	  if (target_partition == NULL)
+	  {
+	    *block_count = DISK_BLOCK_NUM;
+	    *block_size = DISK_BLOCK_SIZE;
+	  }
+	  else
+	  {
+	    *block_count = target_partition->size / DISK_BLOCK_SIZE;
+	    *block_size = DISK_BLOCK_SIZE;
+	    mprintf(LOG_TEMP, "block_count:%x block_size:%x.\r\n", *block_count, *block_size);
+	  }
   }
   else
   {
-    *block_count = target_ota->size / DISK_BLOCK_SIZE;
-    *block_size = DISK_BLOCK_SIZE;
-    mprintf(LOG_INFO, "block_count:%x block_size:%x.\r\n", *block_count, *block_size);
+	  *block_count = 0;
+	  *block_size = 0;
   }
+
 #endif
 }
 
@@ -257,7 +281,6 @@ void tud_msc_capacity_cb(uint8_t lun, uint32_t* block_count, uint16_t* block_siz
 // - Start = 1 : active mode, if load_eject = 1 : load disk storage
 bool tud_msc_start_stop_cb(uint8_t lun, uint8_t power_condition, bool start, bool load_eject)
 {
-	if(usb_msc_init_flag == 0)return true;
 
   (void) lun;
   (void) power_condition;
@@ -280,14 +303,14 @@ bool tud_msc_start_stop_cb(uint8_t lun, uint8_t power_condition, bool start, boo
 // Copy disk's data to buffer (up to bufsize) and return number of copied bytes.
 int32_t tud_msc_read10_cb(uint8_t lun, uint32_t lba, uint32_t offset, void* buffer, uint32_t bufsize)
 {
-	if(usb_msc_init_flag == 0)return 0;
+	if(usb_msc_init_flag != MSC_OTA) return bufsize;
 
 #ifndef CFG_EXAMPLE_MSC_READONLY
   uint8_t const* addr = (lun ? msc_disk1[lba] : msc_disk0[lba]) + offset;
   memcpy(buffer, addr, bufsize);
 #else
    (void)lun;
-  if (target_ota == NULL || lba < 50) // first 50 lba is RAM disk, 50+ its ota partition
+  if (target_partition == NULL || lba < 50) // first 50 lba is RAM disk, 50+ its ota partition
   {
 	  uint8_t *addr = &msc_disk[lba * 512] + offset;
 	  memcpy(buffer, addr, bufsize);
@@ -295,7 +318,7 @@ int32_t tud_msc_read10_cb(uint8_t lun, uint32_t lba, uint32_t offset, void* buff
   }
   else
   {
-    esp_partition_read(target_ota, (lba * 512) + offset - 512, buffer, bufsize);
+    esp_partition_read(target_partition, (lba * 512) + offset - 512, buffer, bufsize);
   }
 #endif
   return bufsize;
@@ -322,8 +345,7 @@ typedef  __attribute__((packed)) struct
 // Process data in buffer to disk's storage and return number of written bytes
 int32_t tud_msc_write10_cb(uint8_t lun, uint32_t lba, uint32_t offset, uint8_t* buffer, uint32_t bufsize)
 {
-	if(usb_msc_init_flag == 0)return 0;
-
+	if(usb_msc_init_flag != MSC_OTA) return bufsize;
 #ifndef CFG_EXAMPLE_MSC_READONLY
   uint8_t* addr = (lun ? msc_disk1[lba] : msc_disk0[lba])  + offset;
   memcpy(addr, buffer, bufsize);
@@ -337,7 +359,7 @@ int32_t tud_msc_write10_cb(uint8_t lun, uint32_t lba, uint32_t offset, uint8_t* 
 
       idf_flash = true;
       _lba = lba;
-      esp_partition_erase_range(target_ota, 0x0, target_ota->size);
+      esp_partition_erase_range(target_partition, 0x0, target_partition->size);
       old_millis = HAL_GetTick();
       xTaskCreate(ticker_task, "tT", 3*1024, NULL, 1, NULL);
     }
@@ -354,7 +376,7 @@ int32_t tud_msc_write10_cb(uint8_t lun, uint32_t lba, uint32_t offset, uint8_t* 
         return bufsize;
       }
       mprintf(LOG_INFO,"write offset:%d,len:%d.to flash.\r\n",_offset,bufsize);
-      err = esp_partition_write(target_ota, _offset, buffer, bufsize);
+      err = esp_partition_write(target_partition, _offset, buffer, bufsize);
       _offset += bufsize;
     }
     old_millis = HAL_GetTick();
@@ -363,74 +385,74 @@ int32_t tud_msc_write10_cb(uint8_t lun, uint32_t lba, uint32_t offset, uint8_t* 
 
   return bufsize;
 }
+#if CONFIG_USB_MSC_ENABLED
+// Callback invoked when received an SCSI command not in built-in list below
+// - READ_CAPACITY10, READ_FORMAT_CAPACITY, INQUIRY, MODE_SENSE6, REQUEST_SENSE
+// - READ10 and WRITE10 has their own callbacks
+int32_t tud_msc_scsi_cb (uint8_t lun, uint8_t const scsi_cmd[16], void* buffer, uint16_t bufsize)
+{
+  if(usb_msc_init_flag != MSC_OTA) return 0;
+  // read10 & write10 has their own callback and MUST not be handled here
 
-//// Callback invoked when received an SCSI command not in built-in list below
-//// - READ_CAPACITY10, READ_FORMAT_CAPACITY, INQUIRY, MODE_SENSE6, REQUEST_SENSE
-//// - READ10 and WRITE10 has their own callbacks
-//int32_t tud_msc_scsi_cb (uint8_t lun, uint8_t const scsi_cmd[16], void* buffer, uint16_t bufsize)
-//{
-//	if(usb_msc_init_flag == 0)return 0;
-//  // read10 & write10 has their own callback and MUST not be handled here
-//
-//  void const* response = NULL;
-//  uint16_t resplen = 0;
-//
-//  // most scsi handled is input
-//  bool in_xfer = true;
-//
-//  switch (scsi_cmd[0])
-//  {
-//    case SCSI_CMD_PREVENT_ALLOW_MEDIUM_REMOVAL:
-//      // Host is about to read/write etc ... better not to disconnect disk
-//      resplen = 0;
-//    break;
-//
-//    case SCSI_CMD_START_STOP_UNIT:
-//      // Host try to eject/safe remove/poweroff us. We could safely disconnect with disk storage, or go into lower power
-//      /* scsi_start_stop_unit_t const * start_stop = (scsi_start_stop_unit_t const *) scsi_cmd;
-//        // Start bit = 0 : low power mode, if load_eject = 1 : unmount disk storage as well
-//        // Start bit = 1 : Ready mode, if load_eject = 1 : mount disk storage
-//        start_stop->start;
-//        start_stop->load_eject;
-//       */
-//       resplen = 0;
-//    break;
-//
-//
-//    default:
-//      // Set Sense = Invalid Command Operation
-//      tud_msc_set_sense(lun, SCSI_SENSE_ILLEGAL_REQUEST, 0x20, 0x00);
-//
-//      // negative means error -> tinyusb could stall and/or response with failed status
-//      resplen = -1;
-//    break;
-//  }
-//
-//  // return resplen must not larger than bufsize
-//  if ( resplen > bufsize ) resplen = bufsize;
-//
-//  if ( response && (resplen > 0) )
-//  {
-//    if(in_xfer)
-//    {
-//      memcpy(buffer, response, resplen);
-//    }else
-//    {
-//      // SCSI output
-//    }
-//  }
-//
-//  return resplen;
-//}
+  void const* response = NULL;
+  uint16_t resplen = 0;
+
+  // most scsi handled is input
+  bool in_xfer = true;
+
+  switch (scsi_cmd[0])
+  {
+    case SCSI_CMD_PREVENT_ALLOW_MEDIUM_REMOVAL:
+      // Host is about to read/write etc ... better not to disconnect disk
+      resplen = 0;
+    break;
+
+    case SCSI_CMD_START_STOP_UNIT:
+      // Host try to eject/safe remove/poweroff us. We could safely disconnect with disk storage, or go into lower power
+      /* scsi_start_stop_unit_t const * start_stop = (scsi_start_stop_unit_t const *) scsi_cmd;
+        // Start bit = 0 : low power mode, if load_eject = 1 : unmount disk storage as well
+        // Start bit = 1 : Ready mode, if load_eject = 1 : mount disk storage
+        start_stop->start;
+        start_stop->load_eject;
+       */
+       resplen = 0;
+    break;
 
 
+    default:
+      // Set Sense = Invalid Command Operation
+      tud_msc_set_sense(lun, SCSI_SENSE_ILLEGAL_REQUEST, 0x20, 0x00);
+
+      // negative means error -> tinyusb could stall and/or response with failed status
+      resplen = -1;
+    break;
+  }
+
+  // return resplen must not larger than bufsize
+  if ( resplen > bufsize ) resplen = bufsize;
+
+  if ( response && (resplen > 0) )
+  {
+    if(in_xfer)
+    {
+      memcpy(buffer, response, resplen);
+    }else
+    {
+      // SCSI output
+    }
+  }
+
+  return resplen;
+}
+
+#endif
 
 int key_Status(void)
 {
-	if(gpio_get_level(POWER_KEY_PIN) == 0)
+	if(power_KeyDown())
 	{
 		vTaskDelay(10/portTICK_PERIOD_MS);
-		if(gpio_get_level(POWER_KEY_PIN) == 0)
+		if(power_KeyDown())
 		{
 			return 0;
 		}
@@ -444,11 +466,13 @@ void usb_MscTask(void * pvParameters)
       .string_descriptor = NULL,  //Uses default string specified in Menuconfig
       .external_phy = false,
     };
-    
+    msc_cdc_separate_init(!INIT_CDC_ONLY);
 	ESP_ERROR_CHECK(tinyusb_driver_install(&tusb_cfg));
 	tusb_init();
+	mprintf(LOG_TEMP,"creat usb msc task.\r\n");
 	while (1)
 	{
+
 		tud_task(); // tinyusb device task
 		vTaskDelay(1/portTICK_PERIOD_MS);
 	}
@@ -461,11 +485,33 @@ void creat_UsbMscTask( void )
 	power_KeyInit();
 	if(key_Status() == 0)
 	{
-		if(init_disk() == true)
+		if(init_disk(MSC_OTA) == true)
 		{
-		  mprintf(LOG_INFO,"creat usb msc task.\r\n");
+		  mprintf(LOG_TEMP,"creat usb msc task.\r\n");
 		  usb_MscTask(NULL);
 		}
 	}
 }
+
+void usb_msc_spiffs_init(void)
+{
+    tinyusb_config_t tusb_cfg = {
+      .descriptor = NULL,         //Uses default descriptor specified in Menuconfig
+      .string_descriptor = NULL,  //Uses default string specified in Menuconfig
+      .external_phy = false,
+    };
+
+	ESP_ERROR_CHECK(tinyusb_driver_install(&tusb_cfg));
+//	if(init_disk(MSC_SPIFFS) == true)
+//	{
+//		 mprintf(LOG_TEMP,"creat usb msc app task.\r\n");
+//		/*创建一个任务让msc正常跑*/
+//		xTaskCreate( usb_MscTask, "usb_MscTask", 2048, &ucParameter, 2, &usbMscTaskHandle );
+//		configASSERT( usbMscTaskHandle );
+//	}
+}
+
+
+
+
 

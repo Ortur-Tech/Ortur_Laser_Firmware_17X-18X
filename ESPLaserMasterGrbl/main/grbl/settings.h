@@ -175,6 +175,7 @@ typedef enum {
 	Setting_AccelerateThreshold = 262,
 #endif
 	Setting_AutoPowerOffTime = 263,
+	Setting_LaserUsedTime = 264,
 /******************************添加参数END************************************************/
 
     // Normally used for Ethernet or WiFi Station
@@ -521,8 +522,9 @@ typedef struct {
     position_pid_t position;    // Used for synchronized motion
     ioport_signals_t ioport;
     uint8_t fire_log_enable;
-    uint32_t fire_alarm_delta_threshold;   //比较阈值
-    uint32_t fire_alarm_time_threshold;    //次数阈值
+    uint32_t fire_alarm_delta_threshold;   	//比较阈值
+    uint32_t fire_alarm_time_threshold;    	//次数阈值
+    uint32_t laser_used_time;				//激光器使用时长
 #if ENABLE_HOMING_FORCE_SET_ORIGIN_OFFSET
     int16_t origin_offset_x;
     int16_t origin_offset_y;

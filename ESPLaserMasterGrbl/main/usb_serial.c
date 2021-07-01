@@ -13,6 +13,7 @@
 
 #include "grbl/grbl.h"
 #include "esp32-hal-uart.h"
+#include "tusb_msc_disk.h"
 
 static const char *TAG = "usb";
 static uint8_t buf[CONFIG_USB_CDC_RX_BUFSIZE + 1];
@@ -68,12 +69,14 @@ void usb_SerialInit(void)
 {
 	usbInit();
 
-	tinyusb_config_t tusb_cfg = {
-	    .descriptor = NULL,         //Uses default descriptor specified in Menuconfig
-	    .string_descriptor = NULL,  //Uses default string specified in Menuconfig
-	    .external_phy = false,
-	};
-	ESP_ERROR_CHECK(tinyusb_driver_install(&tusb_cfg));
+//	tinyusb_config_t tusb_cfg = {
+//	    .descriptor = NULL,         //Uses default descriptor specified in Menuconfig
+//	    .string_descriptor = NULL,  //Uses default string specified in Menuconfig
+//	    .external_phy = false,
+//	};
+//	ESP_ERROR_CHECK(tinyusb_driver_install(&tusb_cfg));
+
+	usb_msc_spiffs_init();
 
 	tinyusb_config_cdcacm_t amc_cfg = {
 		.usb_dev = TINYUSB_USBDEV_0,
