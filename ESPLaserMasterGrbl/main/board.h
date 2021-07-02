@@ -17,7 +17,7 @@
 #define OLM_ESP_V1X			1
 #define OLM_ESP_PRO_V1X     2
 
-#define BOARD_VERSION 		OLM_ESP_V1X//OLM_ESP_PRO_V1X
+#define BOARD_VERSION 		OLM_ESP_PRO_V1X
 /*******************硬件版本定义 END*******************/
 
 

@@ -46,6 +46,11 @@ void extended_FuncTask( void * pvParameters )
 
 		fire_Check();
 
+#ifdef DELAY_OFF_SPINDLE
+		spindle_calculate_heat();
+		spindle_delay_stop();
+#endif
+
 	}
 }
 

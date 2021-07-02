@@ -831,12 +831,19 @@ IRAM_ATTR inline void spindle_off (void)
     iopins.spindle_on = settings.spindle.invert.on ? On : Off;
     ioexpand_out(iopins);
 #else
+#ifdef DELAY_OFF_SPINDLE
+	spindle_disable_by_grbl_set(1);
+	if(spindle_delay_stop())
+#endif
     gpio_set_level(SPINDLE_ENABLE_PIN, settings.spindle.invert.on ? 1 : 0);
 #endif
 }
 
 IRAM_ATTR inline static void spindle_on (void)
 {
+#ifdef DELAY_OFF_SPINDLE
+	spindle_disable_by_grbl_set(0);
+#endif
 #if IOEXPAND_ENABLE
     iopins.spindle_on = settings.spindle.invert.on ? Off : On;
     ioexpand_out(iopins);
@@ -910,7 +917,10 @@ uint16_t laser_GetPower(void)
 // Sets spindle speed
 IRAM_ATTR void spindle_set_speed (uint_fast16_t pwm_value)
 {
-    if (pwm_value == spindle_pwm.off_value) {
+#ifdef DELAY_OFF_SPINDLE
+  	spindle_disabled_time = HAL_GetTick();
+#endif
+	if (pwm_value == spindle_pwm.off_value) {
         if(settings.spindle.disable_with_zero_speed)
             spindle_off();
 #if PWM_RAMPED
@@ -925,6 +935,12 @@ IRAM_ATTR void spindle_set_speed (uint_fast16_t pwm_value)
 #endif
         pwmEnabled = false;
      } else {
+#ifdef DELAY_OFF_SPINDLE
+    	if(is_spindle_suspend_flag_set())
+    	{
+    		spindle_suspend_flag_set(0);
+    	}
+#endif
 #if PWM_RAMPED
          pwm_ramp.pwm_target = pwm_value;
          ledc_set_fade_step_and_start(ledConfig.speed_mode, ledConfig.channel, pwm_ramp.pwm_target, 1, 4, LEDC_FADE_NO_WAIT);
@@ -1985,7 +2001,7 @@ void power_CtrOff(void)
 
 
 #define SAMPLING_RES 0.02 //欧
-#define AMPLIFICATION_FACTOR 20 //放大系数 = 输出下拉电阻 / 5k
+#define AMPLIFICATION_FACTOR 20 //放大系数 =s 20
 
 void power_CurrCheckInit(void)
 {
@@ -2074,7 +2090,7 @@ uint8_t IsMainPowrIn(void)
 
 	uint32_t votage = (float)value / 8192 * 2.6 * (VOTAGE_SAMPLING_RES + VOTAGE_DIV_RES) / VOTAGE_SAMPLING_RES;
 	/*大于21v认为有电*/
-	if(votage > 21)
+	if(votage > 15)
 	{
 		last_power_flag = 1;
 		use_time_save_flag = 1;
@@ -2721,26 +2737,26 @@ void spindle_off_directly(void)
 }
 
 
-  uint8_t spindle_delay_stop(void)
-  {
-  	if(spindle_disable_by_grbl)
-  	{
-  		if(( HAL_GetTick() - spindle_disabled_time ) > spindle_fan_delay_time)
-  		{
-  			spindle_disable_by_grbl = 0;
-  			spindle_cumulative_heat = 0;
-  			/*关主轴供电*/
-  			gpio_set_level(SPINDLE_ENABLE_PIN, settings.spindle.invert.on ? 1 : 0);
-  		}
-  		else
-  			return 0;
-  	}
+uint8_t spindle_delay_stop(void)
+{
+	if(spindle_disable_by_grbl)
+	{
+		if(( HAL_GetTick() - spindle_disabled_time ) > spindle_fan_delay_time)
+		{
+			spindle_disable_by_grbl = 0;
+			spindle_cumulative_heat = 0;
+			/*关主轴供电*/
+			gpio_set_level(SPINDLE_ENABLE_PIN, settings.spindle.invert.on ? 1 : 0);
+		}
+		else
+			return 0;
+	}
 
-  	return 1;
-  }
+	return 1;
+}
 
-  void spindle_disable_by_grbl_set(uint8_t status)
-  {
+void spindle_disable_by_grbl_set(uint8_t status)
+{
 	spindle_disable_by_grbl = status;
 	spindle_disabled_time = HAL_GetTick();
 	if(status)
@@ -2749,7 +2765,7 @@ void spindle_off_directly(void)
 		spindle_fan_delay_time = _MAX(spindle_fan_delay_time,MIN_SPINDLE_FAN_TIME);
 		spindle_fan_delay_time = _MIN(MAX_SPINDLE_FAN_TIME,spindle_fan_delay_time);
 	}
-  }
+}
 
 void spindle_calculate_heat()
 {
@@ -2859,6 +2875,11 @@ void laser_on_time_count(void)
 /*在外部供电掉电时调用*/
 void laser_use_time_save(void)
 {
+	static uint8_t recursive_flag = 0;//防止此函数被递归调用
+
+	if(recursive_flag) return ;
+	recursive_flag = 1;
+
 	char str[20] = {0};
 	if(laser_on_count_flag == 1)
 	{
@@ -2876,7 +2897,7 @@ void laser_use_time_save(void)
 			mprintf(LOG_TEMP,"used time:%d.total time:%s", laser_used_time, str);
 		}
 	}
-
+	recursive_flag = 0;
 }
 
 #ifdef DEFAULT_LASER_MODE
