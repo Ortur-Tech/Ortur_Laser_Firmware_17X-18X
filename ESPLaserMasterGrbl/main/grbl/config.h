@@ -481,7 +481,7 @@
 
 /*加速度检测使能*/
 #define ENABLE_ACCELERATION_DETECT 	1
-#define DEFAULT_ACCELERATION_LIMIT 	255
+#define DEFAULT_ACCELERATION_LIMIT 	290
 /*电源检测功能与通讯指示灯---与调试冲突*/
 #define ENABLE_POWER_SUPPLY_CHECK 	1
 #define ENABLE_COMM_LED2			1

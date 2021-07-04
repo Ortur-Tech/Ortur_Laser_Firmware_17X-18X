@@ -774,6 +774,15 @@ inline IRAM_ATTR static control_signals_t systemGetState (void)
 #endif
 #ifdef CYCLE_START_PIN
     signals.cycle_start = gpio_get_level(CYCLE_START_PIN);
+    /*电源按键实现cycle start功能*/
+	if(!signals.cycle_start)
+	{
+#if MACHINE_TYPE == OLM_ESP_PRO_V1X
+		signals.cycle_start = !gpio_get_level(POWER_KEY_PIN);
+#else
+		signals.cycle_start = gpio_get_level(KEY_PIN);
+#endif
+	}
 #endif
 #ifdef ENABLE_SAFETY_DOOR_INPUT_PIN
     signals.safety_door_ajar = gpio_get_level(SAFETY_DOOR_PIN);
@@ -2001,7 +2010,7 @@ void power_CtrOff(void)
 
 
 #define SAMPLING_RES 0.02 //欧
-#define AMPLIFICATION_FACTOR 20 //放大系数 =s 20
+#define AMPLIFICATION_FACTOR 20 //放大系数 = 20
 
 void power_CurrCheckInit(void)
 {
@@ -2090,7 +2099,7 @@ uint8_t IsMainPowrIn(void)
 
 	uint32_t votage = (float)value / 8192 * 2.6 * (VOTAGE_SAMPLING_RES + VOTAGE_DIV_RES) / VOTAGE_SAMPLING_RES;
 	/*大于21v认为有电*/
-	if(votage > 15)
+	if(votage > 18)
 	{
 		last_power_flag = 1;
 		use_time_save_flag = 1;
@@ -2897,6 +2906,7 @@ void laser_use_time_save(void)
 			mprintf(LOG_TEMP,"used time:%d.total time:%s", laser_used_time, str);
 		}
 	}
+	//mprintf(LOG_TEMP,"USED TIME:%d.\r\n",laser_used_time);
 	recursive_flag = 0;
 }
 
