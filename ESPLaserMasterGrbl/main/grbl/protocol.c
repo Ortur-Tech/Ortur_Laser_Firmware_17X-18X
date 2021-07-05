@@ -214,7 +214,10 @@ bool protocol_main_loop(bool cold_start)
                     eol = (char)c;
 
                 if(!protocol_execute_realtime()) // Runtime command check point.
+                {
+                	char_counter = 0;
                     return !sys.flags.exit;      // Bail to calling function upon system abort
+                }
 
                 line[char_counter] = '\0'; // Set string termination character.
 #if ENABLE_COMM_LED2
