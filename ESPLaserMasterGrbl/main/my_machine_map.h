@@ -172,7 +172,7 @@
 #define STEPPERS_DISABLE_MASK   (1ULL << STEPPERS_DISABLE_PIN)
 
 
-#define ENABLE_JTAG 1
+#define ENABLE_JTAG 0
 
 // Define homing/hard limit switch input pins and limit interrupt vectors.
 
