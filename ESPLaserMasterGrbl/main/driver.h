@@ -395,6 +395,10 @@ void spindle_reset(void);
 uint32_t power_GetVotage(void);
 uint32_t power_GetCurrent(void);
 
+void power_CtrlInit(void);
+void power_CtrOff(void);
+void power_CtrOn(void);
+
 void system_UpdateAutoPoweroffTime(void);
 void system_AutoPowerOff(void);
 void movement_laseron_check(void);

@@ -919,7 +919,7 @@ uint16_t laser_GetPower(void)
 	uint32_t duty = 0;
 	duty = ledc_get_duty(ledConfig.speed_mode, ledConfig.channel);
 	duty = settings.spindle.invert.pwm ? pwm_max_value - duty : duty;
-	return duty * 1000 / spindle_pwm.period ;
+	return spindle_pwm.period > 0 ? (duty * 1000 / spindle_pwm.period) : 0;
 }
 // Variable spindle control functions
 
@@ -1882,6 +1882,8 @@ void led_Init(void)
 	    };
 
 	gpio_config(&gpioConfig);
+	gpio_set_level(POWER_LED_PIN,0);
+	gpio_set_level(COMM_LED_PIN,0);
 }
 
 void power_LedAlarm(void)
@@ -1973,6 +1975,9 @@ void system_AutoPowerOff(void)
 void power_CtrlInit(void)
 {
 #if BOARD_VERSION == OLM_ESP_PRO_V1X
+	static uint8_t power_ctrl_init_flag = 0;
+	if(power_ctrl_init_flag == 1)return;
+	power_ctrl_init_flag = 1;
 	gpio_config_t gpioConfig = {
 			.pin_bit_mask = ((uint64_t)1 << PWR_CTR_PIN),
 			.mode = GPIO_MODE_OUTPUT,
@@ -1982,13 +1987,13 @@ void power_CtrlInit(void)
 		};
 
 	gpio_config(&gpioConfig);
-	if(IsMainPowrIn())
-	{
-		gpio_set_level(PWR_CTR_PIN,1);
-	}
-	else
+	//if(IsMainPowrIn())
 	{
 		gpio_set_level(PWR_CTR_PIN,0);
+	}
+	//else
+	{
+		//gpio_set_level(PWR_CTR_PIN,0);
 	}
 #endif
 
@@ -2161,7 +2166,7 @@ void Main_PowerCheck(void)
 	{
 		if(IsMainPowrIn())
 		{
-			power_CtrOn();
+			//power_CtrOn();
 			report_feedback_message(Message_PowerSupplied);
 		}
 	}
@@ -2171,7 +2176,7 @@ void Main_PowerCheck(void)
 		if(!IsMainPowrIn())
 		{
 			last_power_flag=0;
-			power_CtrOff();
+			//power_CtrOff();
 			report_feedback_message(Message_NoPowerSupply);
 		}
 	}
