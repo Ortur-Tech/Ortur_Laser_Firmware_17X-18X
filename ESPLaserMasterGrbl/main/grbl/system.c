@@ -29,6 +29,8 @@
 #include "tool_change.h"
 #include "state_machine.h"
 #include "driver.h"
+
+#include "serial_iap.h"
 #ifdef KINEMATICS_API
 #include "kinematics.h"
 #endif
@@ -402,7 +404,16 @@ status_code_t system_execute_line (char *line)
                 }
             }
             break;
-
+        case 'U': // Restore defaults [IDLE/ALARM]
+			{
+				if ((line[2] == 'P') && (line[3] == 'M'))
+				{
+					serial_set(1);
+					if(!hal.control.get_state().e_stop)
+						mc_reset();
+				}
+				break;
+			}
         case 'N': // Startup lines. [IDLE/ALARM]
             if (!(sys.state == STATE_IDLE || (sys.state & (STATE_ALARM|STATE_ESTOP|STATE_CHECK_MODE))))
                 retval = Status_IdleError;
