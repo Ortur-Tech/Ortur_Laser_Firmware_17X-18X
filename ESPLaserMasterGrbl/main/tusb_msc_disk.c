@@ -20,7 +20,11 @@
 #include "driver.h"
 
 #if MACHINE_TYPE == OLM_2_PRO
-#define OTA_FILE_NAME "OLM_2_PRO_"
+#if BOARD_VERSION == OLM_ESP_PRO_V1X
+#define OTA_FILE_NAME "ESP_OLM2_PRO_"
+#elif BOARD_VERSION == OLM_ESP_V1X
+#define OTA_FILE_NAME "OLM2_PRO_"
+#endif
 #endif
 
 //#include "msc_device.h"
@@ -466,7 +470,8 @@ int32_t tud_msc_write10_cb(uint8_t lun, uint32_t lba, uint32_t offset,
 		}
 		mprintf(LOG_TEMP, "write offset:%d,len:%d.to flash.\r\n", _offset,
 				bufsize);
-
+		power_LedToggle();
+		comm_LedToggle();
 		err = esp_partition_write(target_partition, _offset, buffer, bufsize);
 		_offset += bufsize;
 	}
@@ -544,6 +549,22 @@ int key_Status(void) {
 	}
 	return 1;
 }
+
+#define LED_FLASH_TIME 350 //MS
+
+void led_flash(void *pvParameters)
+{
+	while(1)
+	{
+		power_LedToggle();
+		comm_LedToggle();
+		vTaskDelay(LED_FLASH_TIME / portTICK_PERIOD_MS);
+	}
+}
+
+static uint8_t led_ucParameter;
+TaskHandle_t ledflash_TaskHandle = NULL;
+
 void usb_MscTask(void *pvParameters) {
 	tinyusb_config_t tusb_cfg = { .descriptor = NULL, //Uses default descriptor specified in Menuconfig
 			.string_descriptor = NULL, //Uses default string specified in Menuconfig
@@ -551,9 +572,10 @@ void usb_MscTask(void *pvParameters) {
 	msc_cdc_separate_init(!INIT_CDC_ONLY);
 	ESP_ERROR_CHECK(tinyusb_driver_install(&tusb_cfg));
 	tusb_init();
+	xTaskCreate( led_flash, "led_flash", 512, &led_ucParameter, 1, &ledflash_TaskHandle );
 	mprintf(LOG_TEMP, "creat usb msc task.\r\n");
-	while (1) {
-
+	while (1)
+	{
 		tud_task(); // tinyusb device task
 		vTaskDelay(1 / portTICK_PERIOD_MS);
 	}
@@ -561,11 +583,13 @@ void usb_MscTask(void *pvParameters) {
 static uint8_t ucParameter;
 TaskHandle_t usbMscTaskHandle = NULL;
 
-void creat_UsbMscTask(void) {
+void app_iap(void)
+{
 	power_KeyInit();
-	if (key_Status() == 0) {
-		if (init_disk(MSC_OTA) == true) {
-			mprintf(LOG_TEMP, "creat usb msc task.\r\n");
+	if (key_Status() == 0)
+	{
+		if (init_disk(MSC_OTA) == true)
+		{
 			usb_MscTask(NULL);
 		}
 	}
