@@ -152,7 +152,7 @@
 // NOTE: Only use this for debugging purposes!! When echoing, this takes up valuable resources and can effect
 // performance. If absolutely needed for normal operation, the serial write buffer should be greatly increased
 // to help minimize transmission waiting within the serial write protocol.
-//#define REPORT_ECHO_LINE_RECEIVED // Default disabled. Uncomment to enable.
+#define REPORT_ECHO_LINE_RECEIVED // Default disabled. Uncomment to enable.
 
 // Sets which axis the tool length offset is applied. Assumes the spindle is always parallel with
 // the selected axis with the tool oriented toward the negative direction. In other words, a positive
@@ -465,10 +465,10 @@
 /********************************自定义功能 BEGIN****************************************/
 
 /*火焰报警触发阈值*/
-#define DEFAULT_FIRE_ALARM_TRIGGER_THRESHOLD 		50
-#define DEFAULT_FIRE_ALARM_TRIGGER_TIME_THRESHOLD 	100
+#define DEFAULT_FIRE_ALARM_TRIGGER_THRESHOLD 		70
+#define DEFAULT_FIRE_ALARM_TRIGGER_TIME_THRESHOLD 	70
 #define USE_ADC_FIRE_CHECK 1
-#define DEFAULT_AUTO_POWEROFF_TIME 					30//分钟
+#define DEFAULT_AUTO_POWEROFF_TIME 					30//分钟 自动关机
 /*回零偏移*/
 #if MACHINE_TYPE == OLM_2_PRO || (MACHINE_TYPE == OLM_PRO)
 #define ENABLE_HOMING_FORCE_SET_ORIGIN_OFFSET 0
