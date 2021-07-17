@@ -59,6 +59,7 @@ void usb_cdc_line_state_changed_callback(int itf, cdcacm_event_t *event)
     int dtr = event->line_state_changed_data.dtr;
     int rst = event->line_state_changed_data.rts;
     ESP_LOGI(TAG, "Line state changed! dtr:%d, rst:%d", dtr, rst);
+    //printf("Line state changed! dtr:%d, rst:%d", dtr, rst);
 }
 void usb_cdc_line_coding_changed_callback(int itf, cdcacm_event_t *event)
 {
@@ -112,7 +113,8 @@ void usbInit (void)
 
 uint8_t isUsbPlugIn(void)
 {
-	return usbPlugIn;
+	//return usbCDCConnected;
+	return tud_connected()&&!tud_suspended();
 }
 
 // Is usb cable plug in
