@@ -36,7 +36,7 @@
 #include "nvs_buffer.h"
 #include "driver.h"
 #include "motion_control.h"
-
+#include "serial_iap.h"
 
 
 #ifdef KINEMATICS_API
@@ -209,7 +209,8 @@ int grbl_enter (void)
 #ifdef WALL_PLOTTER
     wall_plotter_init();
 #endif
-
+    /*在这里开电源避免干扰*/
+    power_CtrOn();
     // Grbl initialization loop upon power-up or a system abort. For the latter, all processes
     // will return to this loop to be cleanly re-initialized.
     while(looping) {
@@ -258,6 +259,8 @@ int grbl_enter (void)
             tc_init();
         /*grbl复位强制关激光pwm和供电*/
         spindle_reset();
+        /*串口升级*/
+        serial_Iap();
 
         // Print welcome message. Indicates an initialization has occured at power-up or with a reset.
         report_init_message();
