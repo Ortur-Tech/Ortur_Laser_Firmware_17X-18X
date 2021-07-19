@@ -1,7 +1,7 @@
 /*
  * accelDetection.h
  *
- *  Created on: 2021Äê5ÔÂ20ÈÕ
+ *  Created on: 2021ï¿½ï¿½5ï¿½ï¿½20ï¿½ï¿½
  *      Author: c
  */
 
@@ -9,8 +9,11 @@
 #define MAIN_ACCELDETECTION_H_
 
 #define SC7A20_ADDR	  0X18 //0x30
+
 #define SC7A20_DEVICE 0X11
 #define OTHER_DEVICE  0X03
+#define BMA250_DEVICE 0X03
+#define BMA253_DEVICE 0XFA
 
 void Gsensor_Init();
 void accel_detection();

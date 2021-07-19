@@ -12,9 +12,6 @@
 #include "grbl/state_machine.h"
 #include "my_machine_map.h"
 
-#define BMA250_DEVICE 0X03
-#define BMA253_DEVICE 0XFA
-
 #ifndef ABS
   #define ABS(x) ((x)<0?-(x):(x))
 #endif
@@ -116,7 +113,7 @@ uint8_t Read_One_Byte(uint8_t addr, uint8_t reg)
 	i2c_master_write_byte(cmd, (addr << 1) | I2C_MASTER_READ, 1);
 	i2c_master_read_byte(cmd, &data, 1);
 	i2c_master_stop(cmd);
-	esp_err_t ret = i2c_master_cmd_begin(I2C_NUM_0, cmd, 1000 / portTICK_RATE_MS);
+	esp_err_t ret = i2c_master_cmd_begin(I2C_NUM_0, cmd, 300 / portTICK_RATE_MS);
 	i2c_cmd_link_delete(cmd);
 	if (ret != ESP_OK) {
 			mprintf(LOG_ERROR,"IIC read error:%d.\r\n",ret);
@@ -262,22 +259,31 @@ void Gsensor_Init(void)
 {
 	i2c_master_init();
 
-	if(GsensorDeviceType==0)
+	if(GsensorDeviceType == 0)
 	{
-		GsensorDeviceType=Get_GsensorType();
+		GsensorDeviceType = Get_GsensorType();
 	}
-	if(GsensorDeviceType==SC7A20_DEVICE)
+	if(GsensorDeviceType == SC7A20_DEVICE)
 	{
 		Sc7a20_Init();
 		gsensor_extern_scale = 5;
 	}
 	else
 	{
-		GsensorDeviceType=Check_BMA250_ID();
-		BMA250_Init();
+		GsensorDeviceType = Check_BMA250_ID();
+		if((GsensorDeviceType != 0xff) && (GsensorDeviceType != 0x00))
+		{
+			BMA250_Init();
+		}
 		gsensor_extern_scale = 1;
 	}
 
+	if((GsensorDeviceType != SC7A20_DEVICE) &&
+			(GsensorDeviceType != BMA250_DEVICE) &&
+			(GsensorDeviceType != BMA253_DEVICE))
+	{
+		GsensorDeviceType = 0;
+	}
 	iic_init_flag = 1;
 }
 
@@ -429,6 +435,8 @@ void accel_detection()
 void accel_detection_limit()
 {
   static uint8_t recursion = 0;
+
+  if(GsensorDeviceType == 0) return;
 
   if(!iic_init_flag) return;
 
