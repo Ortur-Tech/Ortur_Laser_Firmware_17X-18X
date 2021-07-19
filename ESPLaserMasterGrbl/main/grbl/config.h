@@ -152,7 +152,7 @@
 // NOTE: Only use this for debugging purposes!! When echoing, this takes up valuable resources and can effect
 // performance. If absolutely needed for normal operation, the serial write buffer should be greatly increased
 // to help minimize transmission waiting within the serial write protocol.
-#define REPORT_ECHO_LINE_RECEIVED // Default disabled. Uncomment to enable.
+//#define REPORT_ECHO_LINE_RECEIVED // Default disabled. Uncomment to enable.
 
 // Sets which axis the tool length offset is applied. Assumes the spindle is always parallel with
 // the selected axis with the tool oriented toward the negative direction. In other words, a positive
