@@ -160,6 +160,13 @@ status_code_t system_execute_line (char *line)
             break;
 
         case 'G': // Prints gcode parser state
+        	if ((line[2] == 'F') && (line[3] == 'U'))
+			{
+				serial_iap_set(1);
+				//if(!hal.control.get_state().e_stop)
+				mc_reset();
+				break;
+			}
             if (line[2] != '\0' )
                 retval = Status_InvalidStatement;
             else {
@@ -408,7 +415,7 @@ status_code_t system_execute_line (char *line)
 			{
 				if ((line[2] == 'P') && (line[3] == 'M'))
 				{
-					serial_set(1);
+					serial_iap_set(1);
 					if(!hal.control.get_state().e_stop)
 						mc_reset();
 				}
