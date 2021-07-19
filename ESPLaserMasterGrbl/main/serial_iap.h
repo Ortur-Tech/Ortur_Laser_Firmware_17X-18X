@@ -47,9 +47,9 @@ void rec_SerialData(uint8_t data);
 
 void serial_DataInit(void);
 void serial_Iap(void);
-void serial_set(uint8_t flag);
+void serial_iap_set(uint8_t flag);
 
-
+uint8_t serial_iap_get(void);
 
 
 #endif /* SERIAL_IAP_H_ */

@@ -3,11 +3,12 @@
 #include "driver\uart.h"
 #include "tusb_msc_disk.h"
 #include "driver.h"
+#include "esp32-hal-uart.h"
 
 #define FLASH_START_ADDR 0
 uint32_t UART_UPDATE_WAIT_TIME = 500;
 
-#define REC_TIMEOUT 5
+#define REC_TIMEOUT 10
 
 
 typedef struct {
@@ -20,11 +21,14 @@ typedef struct {
 
 SerialData sd;
 
+portMUX_TYPE mux1 = portMUX_INITIALIZER_UNLOCKED;
+
 void init_target_partition(void)
 {
-	esp_partition_t *current_partition;
+	const esp_partition_t *current_partition;
 
 	current_partition = esp_ota_get_running_partition();
+
 	if (memcmp(current_partition->label, "ota_0", 5) == 0)
 	{
 		target_partition = esp_partition_find_first(ESP_PARTITION_TYPE_APP,
@@ -35,6 +39,11 @@ void init_target_partition(void)
 		target_partition = esp_partition_find_first(ESP_PARTITION_TYPE_APP,
 				ESP_PARTITION_SUBTYPE_ANY, "ota_0");
 	}
+	printf("ota target partition %s.\r\n",target_partition->label);
+	portENTER_CRITICAL(&mux1);
+	/*擦除*/
+	esp_partition_erase_range(target_partition, 0x0, target_partition->size);
+	portEXIT_CRITICAL(&mux1);
 }
 
 /*串口数据初始化*/
@@ -117,7 +126,7 @@ void reply(uint8_t comm_num,uint8_t cmd,uint8_t* data,uint16_t len)
 	buf[i++]=(crc>>8);
 	buf[i++]=(crc);
 	/*发送数据*/
-	uart_write_bytes(UART_NUM_0, buf,i);
+	serialWriteData(buf,i);
 
 }
 
@@ -195,7 +204,9 @@ uint8_t serial_DataHandle(void)
 				{
 					mprintf(LOG_INFO,"Communication command received.\r\n");
 					serial_DataInit();
-					reply(comm_num,0x03,(uint8_t)GFU_CMD_IDENT,8);
+					/*初始化目标升级区*/
+					init_target_partition();
+					reply(comm_num,0x03,(uint8_t*)GFU_CMD_IDENT,8);
 					res=1;
 					break;
 				}
@@ -214,6 +225,8 @@ uint8_t serial_DataHandle(void)
 					mprintf(LOG_INFO,"Setup upgrade command received.\r\n");
 					data[0]=0;
 					serial_DataInit();
+
+
 					reply(comm_num,0x04,data,1);
 					write_cnt=0;
 					res=1;
@@ -238,8 +251,10 @@ uint8_t serial_DataHandle(void)
 						while(res == 0)
 						{
 							programCnt++;
+							portENTER_CRITICAL(&mux1);
 							esp_partition_write(target_partition, App.fileAddr+write_cnt,&sd.DataBuf[9],Mg(sd.DataBuf[5],sd.DataBuf[6])-2);//更新FLASH代码
 							esp_partition_read(target_partition,App.fileAddr+write_cnt,tempBuf,Mg(sd.DataBuf[5],sd.DataBuf[6])-2);
+							portEXIT_CRITICAL(&mux1);
 							if(0 == mymemcmp(&sd.DataBuf[9],tempBuf,Mg(sd.DataBuf[5],sd.DataBuf[6])-2))
 							{
 								res = 1;
@@ -278,6 +293,15 @@ uint8_t serial_DataHandle(void)
 						data[2]=packge_num;
 						serial_DataInit();
 						reply(comm_num,0x05,data,3);
+						if(data[0] == 3)
+						{
+							esp_err_t err = esp_ota_set_boot_partition(target_partition);
+							if (err)
+							{
+								mprintf(LOG_ERROR, "BOOT ERR => %x.\r\n", err);
+							}
+							esp_restart();
+						}
 					}
 					break;
 				}
@@ -326,9 +350,14 @@ uint8_t serial_DataHandle(void)
 
 static uint8_t serial_iap_flag = 0;
 /**/
-void serial_set(uint8_t flag)
+void serial_iap_set(uint8_t flag)
 {
 	serial_iap_flag = flag;
+}
+
+uint8_t serial_iap_get(void)
+{
+	return serial_iap_flag ;
 }
 
 void serial_Iap(void)
