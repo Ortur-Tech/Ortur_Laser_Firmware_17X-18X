@@ -261,7 +261,8 @@ int grbl_enter (void)
         spindle_reset();
         /*串口升级*/
         serial_Iap();
-
+        /*重置串口升级标志位*/
+        serial_iap_set(0);
         // Print welcome message. Indicates an initialization has occured at power-up or with a reset.
         report_init_message();
 
