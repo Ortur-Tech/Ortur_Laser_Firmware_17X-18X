@@ -204,6 +204,7 @@ uint8_t serial_DataHandle(void)
 				{
 					mprintf(LOG_INFO,"Communication command received.\r\n");
 					serial_DataInit();
+					pre_packge_num=0;
 					/*初始化目标升级区*/
 					init_target_partition();
 					reply(comm_num,0x03,(uint8_t*)GFU_CMD_IDENT,8);
