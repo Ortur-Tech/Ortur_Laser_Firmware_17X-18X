@@ -580,19 +580,57 @@ void usb_MscTask(void *pvParameters) {
 		vTaskDelay(1 / portTICK_PERIOD_MS);
 	}
 }
+
+#define ENABLE_OTA_KEY_COMPATIBLE_MODE 1
+
+void ota_key_init(void)
+{
+#if ENABLE_OTA_KEY_COMPATIBLE_MODE
+	gpio_config_t gpioConfig = {
+			.pin_bit_mask = ((uint64_t)1 << GPIO_NUM_46) | ((uint64_t)1 << GPIO_NUM_41),
+			.mode = GPIO_MODE_INPUT,
+			.pull_up_en = GPIO_PULLUP_ENABLE,
+			.pull_down_en = GPIO_PULLDOWN_DISABLE,
+			.intr_type = GPIO_INTR_DISABLE
+		};
+	gpio_config(&gpioConfig);
+#else
+	power_KeyInit();
+#endif
+}
+/*0:按下 1：没按下*/
+uint8_t ota_key_status(void)
+{
+#if ENABLE_OTA_KEY_COMPATIBLE_MODE
+	if ((gpio_get_level(GPIO_NUM_46) == 1) || (gpio_get_level(GPIO_NUM_41) == 0))
+	{
+		vTaskDelay(10 / portTICK_PERIOD_MS);
+		if ((gpio_get_level(GPIO_NUM_46) == 1) || (gpio_get_level(GPIO_NUM_41) == 0))
+		{
+			return 0;
+		}
+	}
+	return 1;
+#else
+	return key_Status();
+#endif
+}
+
 static uint8_t ucParameter;
 TaskHandle_t usbMscTaskHandle = NULL;
 
 void app_iap(void)
 {
-	power_KeyInit();
-	if (key_Status() == 0)
+	ota_key_init();
+	if (ota_key_status() == 0)
 	{
 		if (init_disk(MSC_OTA) == true)
 		{
+			led_Init();
 			usb_MscTask(NULL);
 		}
 	}
+	led_Init();
 }
 
 void usb_msc_spiffs_init(void) {
