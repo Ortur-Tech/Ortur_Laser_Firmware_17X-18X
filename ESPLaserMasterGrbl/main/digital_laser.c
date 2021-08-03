@@ -12,6 +12,7 @@
 #include "grbl/report.h"
 #include "driver.h"
 #include "unistd.h"
+#include "software_i2c.h"
 
 #define LASER_IIC_ADDR 0X21
 
@@ -51,12 +52,18 @@ uint8_t laser_write(uint8_t* data, uint16_t len)
 {
 	if(laser_init_flag == 1)
 	{
+#if USE_SOFTWARE_IIC
+		sw_i2c_master_start();
+		sw_i2c_master_write_byte((LASER_IIC_ADDR << 1) | I2C_MASTER_WRITE);
+		sw_i2c_master_write(data, len);
+		sw_i2c_master_stop();
+#else
 		i2c_cmd_handle_t cmd = i2c_cmd_link_create();
 		i2c_master_start(cmd);
 		i2c_master_write_byte(cmd, (LASER_IIC_ADDR << 1) | I2C_MASTER_WRITE, 1);
 		i2c_master_write(cmd, data, len, 1);
 		i2c_master_stop(cmd);
-		esp_err_t ret = i2c_master_cmd_begin(I2C_NUM_0, cmd, 1000 / portTICK_RATE_MS);
+		esp_err_t ret = i2c_master_cmd_begin(I2C_NUM_0, cmd, 300 / portTICK_RATE_MS);
 		i2c_cmd_link_delete(cmd);
 		if (ret != ESP_OK)
 		{
@@ -64,6 +71,7 @@ uint8_t laser_write(uint8_t* data, uint16_t len)
 			return ret;
 		}
 		return ret;
+#endif
 	}
 	return 0;
 }
@@ -92,6 +100,29 @@ uint8_t laser_protocol_write(regNum reg_num, uint8_t* data, uint16_t len)
  */
 uint8_t laser_protocol_read(regNum reg_num, uint8_t* buf)
 {
+#if USE_SOFTWARE_IIC
+	sw_i2c_master_start();
+	sw_i2c_master_write_byte((LASER_IIC_ADDR << 1) | I2C_MASTER_WRITE);
+	sw_i2c_master_write_byte(regs[reg_num].reg);
+	sw_i2c_master_write_byte(0);
+	sw_i2c_master_write_byte(~regs[reg_num].reg);
+	sw_i2c_master_stop();
+
+	sw_i2c_master_start();
+	sw_i2c_master_write_byte((LASER_IIC_ADDR << 1) | I2C_MASTER_READ);
+	for(int i = 0; i < regs[reg_num].len + 3; i++)
+	{
+		if(i == (regs[reg_num].len + 2))
+		{
+			sw_i2c_master_read_byte(&buf[i], I2C_MASTER_NACK);
+		}
+		else
+		{
+			sw_i2c_master_read_byte(&buf[i], I2C_MASTER_ACK);
+		}
+	}
+	sw_i2c_master_stop();
+#else
 	//laser_protocol_write(reg_num, buf, 0);
 	//laser_read(buf,regs[reg_num].len);
 	i2c_cmd_handle_t cmd = i2c_cmd_link_create();
@@ -125,9 +156,10 @@ uint8_t laser_protocol_read(regNum reg_num, uint8_t* buf)
 			mprintf(LOG_ERROR,"IIC read error:%d.\r\n",ret);
 			return ret;
 		}
+#endif
 	return 0;
 }
-portMUX_TYPE mux2 = portMUX_INITIALIZER_UNLOCKED;
+
 /*
  * 用来设置一些整形数据类型的寄存器
  */
@@ -135,13 +167,13 @@ uint8_t laser_set_value(regNum reg_num, uint32_t value)
 {
 	uint8_t buf[10] = {0};
 	uint8_t i = 0, j = 0;
-	portENTER_CRITICAL(&mux2);
+	//portENTER_CRITICAL(&mux2);
 	for(i = regs[reg_num].len; i > 0;i--)
 	{
 		buf[j++] = value >> (8 * (i -1));
 	}
 	laser_protocol_write(reg_num, buf, regs[reg_num].len);
-	portEXIT_CRITICAL(&mux2);
+	//portEXIT_CRITICAL(&mux2);
 	return 0;
 }
 /*
@@ -152,7 +184,7 @@ uint32_t laser_get_value(regNum reg_num)
 	uint8_t buf[200] = {0};
 	uint32_t value = 0;
 
-	portENTER_CRITICAL(&mux2);
+	//portENTER_CRITICAL(&mux2);
 
 	laser_protocol_read(reg_num,buf);
 	for(int i = 0; i < regs[reg_num].len; i++)
@@ -161,11 +193,17 @@ uint32_t laser_get_value(regNum reg_num)
 		value = (value << 8) + buf[i + 2];
 	}
 
-	portEXIT_CRITICAL(&mux2);
+	//portEXIT_CRITICAL(&mux2);
 	//printf("current distance:%d.\r\n", (buf[2]<< 8) | buf[3]);
 	return value;
 }
-
+/*
+ * 返回对焦状态
+ */
+uint8_t laser_probe_state(void)
+{
+	return laser_get_value(COMM_FOCUS_DISTANCE) > settings.laser_focal_length ? 0 : 1;
+}
 
 #define LASER_FOCUS_TIMES 10    	//循环对焦次数
 #define LASER_FOCUS_LIMIT 1			//对焦运行最大误差mm

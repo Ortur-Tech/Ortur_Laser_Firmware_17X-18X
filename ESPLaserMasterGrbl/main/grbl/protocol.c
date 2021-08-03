@@ -36,6 +36,7 @@
 #include "driver.h"
 #include "accelDetection.h"
 #include "usb_serial.h"
+#include "digital_laser.h"
 
 #ifndef RT_QUEUE_SIZE
 #define RT_QUEUE_SIZE 8 // must be a power of 2
@@ -165,6 +166,8 @@ bool protocol_main_loop(bool cold_start)
 	#if MACHINE_TYPE == OLM_2_PRO ||  MACHINE_TYPE == OLM_PRO
 		  memcpy(line,"$H\0",3);
 		  report_status_message(system_execute_line(line));
+
+		  //laser_auto_focus_task_create();
 	#endif
 	}
 

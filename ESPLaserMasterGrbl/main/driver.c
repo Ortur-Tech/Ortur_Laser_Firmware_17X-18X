@@ -42,7 +42,7 @@
 #include "accelDetection.h"
 #include "esp_adc_cal.h"
 #include "driver/adc.h"
-
+#include "digital_laser.h"
 
 #ifdef USE_I2S_OUT
 #include "i2s_out.h"
@@ -916,10 +916,14 @@ uint8_t is_SpindleOpen(void)
 /*获取激光pwm功率，*/
 uint16_t laser_GetPower(void)
 {
+#if ENABLE_DIGITAL_LASER
+	return laser_get_value(COMM_LASER_PWM_DUTY);
+#else
 	uint32_t duty = 0;
 	duty = ledc_get_duty(ledConfig.speed_mode, ledConfig.channel);
 	duty = settings.spindle.invert.pwm ? pwm_max_value - duty : duty;
 	return spindle_pwm.period > 0 ? (duty * 1000 / spindle_pwm.period) : 0;
+#endif
 }
 // Variable spindle control functions
 
@@ -936,11 +940,22 @@ IRAM_ATTR void spindle_set_speed (uint_fast16_t pwm_value)
         pwm_ramp.pwm_target = pwm_value;
         ledc_set_fade_step_and_start(ledConfig.speed_mode, ledConfig.channel, pwm_ramp.pwm_target, 1, 4, LEDC_FADE_NO_WAIT);
 #else
+#if	ENABLE_DIGITAL_LASER
+        if(spindle_pwm.always_on)
+        {
+        	laser_set_value(COMM_LASER_PWM_DUTY,spindle_pwm.off_value);
+        }
+        else
+        {
+        	laser_set_value(COMM_LASER_PWM_DUTY,settings.spindle.invert.pwm ? 1 : 0);
+        }
+#else
         if(spindle_pwm.always_on) {
             ledc_set_duty(ledConfig.speed_mode, ledConfig.channel, spindle_pwm.off_value);
             ledc_update_duty(ledConfig.speed_mode, ledConfig.channel);
         } else
             ledc_stop(ledConfig.speed_mode, ledConfig.channel, settings.spindle.invert.pwm ? 1 : 0);
+#endif
 #endif
         pwmEnabled = false;
      } else {
@@ -954,8 +969,12 @@ IRAM_ATTR void spindle_set_speed (uint_fast16_t pwm_value)
          pwm_ramp.pwm_target = pwm_value;
          ledc_set_fade_step_and_start(ledConfig.speed_mode, ledConfig.channel, pwm_ramp.pwm_target, 1, 4, LEDC_FADE_NO_WAIT);
 #else
+#if	ENABLE_DIGITAL_LASER
+         laser_set_value(COMM_LASER_PWM_DUTY,settings.spindle.invert.pwm ? pwm_max_value - pwm_value : pwm_value);
+#else
          ledc_set_duty(ledConfig.speed_mode, ledConfig.channel, settings.spindle.invert.pwm ? pwm_max_value - pwm_value : pwm_value);
          ledc_update_duty(ledConfig.speed_mode, ledConfig.channel);
+#endif
 #endif
         if(!pwmEnabled) {
             spindle_on();
@@ -968,7 +987,11 @@ IRAM_ATTR void spindle_set_speed (uint_fast16_t pwm_value)
 
 static uint_fast16_t spindleGetPWM (float rpm)
 {
+#if	ENABLE_DIGITAL_LASER
+	return laser_get_value(COMM_LASER_PWM_DUTY);
+#else
     return spindle_compute_pwm_value(&spindle_pwm, rpm, false);
+#endif
 }
 
 #else // Only enable if (when?) ESP IDF supports FPU access in ISR !!

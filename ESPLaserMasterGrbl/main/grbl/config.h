@@ -207,7 +207,7 @@
 // available RAM, like when re-compiling for MCU with ample amounts of RAM. Or decrease if the MCU begins to
 // crash due to the lack of available RAM or if the CPU is having trouble keeping up with planning
 // new incoming motions as they are executed.
-#define BLOCK_BUFFER_SIZE 16 // Uncomment to override default in planner.h.
+//#define BLOCK_BUFFER_SIZE 16 // Uncomment to override default in planner.h.
 
 // Governs the size of the intermediary step segment buffer between the step execution algorithm
 // and the planner blocks. Each segment is set of steps executed at a constant velocity over a
@@ -215,7 +215,7 @@
 // block velocity profile is traced exactly. The size of this buffer governs how much step
 // execution lead time there is for other Grbl processes have to compute and do their thing
 // before having to come back and refill this buffer, currently at ~50msec of step moves.
-#define SEGMENT_BUFFER_SIZE 16 // Uncomment to override default in stepper.h.
+//#define SEGMENT_BUFFER_SIZE 16 // Uncomment to override default in stepper.h.
 
 // Configures the position after a probing cycle during Grbl's check mode. Disabled sets
 // the position to the probe target, when enabled sets the position to the start position.
@@ -469,6 +469,8 @@
 #define DEFAULT_FIRE_ALARM_TRIGGER_TIME_THRESHOLD 	70
 #define USE_ADC_FIRE_CHECK 1
 #define DEFAULT_AUTO_POWEROFF_TIME 					30//分钟 自动关机
+#define DEFAULT_LASER_FOCAL_LENGTH 					100 //mm 焦距
+#define ENABLE_AUTO_FOCUS	1
 /*回零偏移*/
 #if MACHINE_TYPE == OLM_2_PRO || (MACHINE_TYPE == OLM_PRO)
 #define ENABLE_HOMING_FORCE_SET_ORIGIN_OFFSET 0
@@ -479,6 +481,11 @@
 #define ORIGIN_OFFSET_Z 0
 #endif
 
+/*使用软件IIC*/
+#define USE_SOFTWARE_IIC			0
+
+/*使能数字激光头*/
+#define ENABLE_DIGITAL_LASER 		0
 /*加速度检测使能*/
 #define ENABLE_ACCELERATION_DETECT 	1
 #define DEFAULT_ACCELERATION_LIMIT 	290
@@ -491,7 +498,7 @@
 #if MACHINE_TYPE == OLM_2_PRO
 #define DEFAULT_X_STEPS_PER_MM (5.0f*16)
 #define DEFAULT_Y_STEPS_PER_MM (5.0f*16)
-#define DEFAULT_Z_STEPS_PER_MM (5.0f*16)
+#define DEFAULT_Z_STEPS_PER_MM (400)
 #define DEFAULT_X_MAX_RATE (170.0f*60) // mm/min
 #define DEFAULT_Y_MAX_RATE (170.0f*60) // mm/min
 #define DEFAULT_Z_MAX_RATE (20.0f*60) // mm/min

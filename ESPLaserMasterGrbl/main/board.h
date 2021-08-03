@@ -34,7 +34,7 @@
 
 
 
-#define DEBUG_LEVEL 0x00//LOG_INFO//LOG_ERROR
+#define DEBUG_LEVEL LOG_ERROR
 /*调试等级*/
 typedef enum{
     LOG_DEBUG = 1,
