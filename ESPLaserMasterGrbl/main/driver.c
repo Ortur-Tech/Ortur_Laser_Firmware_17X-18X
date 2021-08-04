@@ -1450,6 +1450,22 @@ uint8_t light_GetBrightness(void)
 {
 	return light_brightness;
 }
+#define POWER_ON_ALARM_TIME 2000
+
+void alarm_for_estop_init(void)
+{
+	uint32_t tick = 0;
+	if(gpio_get_level(RESET_PIN))
+	{
+		tick = HAL_GetTick();
+		beep_PwmSet(100);
+		while(( HAL_GetTick() - tick) < POWER_ON_ALARM_TIME)
+		{
+			//watchdog_feed();
+		}
+		beep_PwmSet(0);
+	}
+}
 
 void beep_Init(void)
 {
@@ -1482,35 +1498,38 @@ void beep_PwmSet(uint8_t duty)
 
 static void check_efuse(void)
 {
-    if (esp_adc_cal_check_efuse(ESP_ADC_CAL_VAL_EFUSE_TP) == ESP_OK) {
-        printf("eFuse Two Point: Supported\n");
-    } else {
-        printf("Cannot retrieve eFuse Two Point calibration values. Default calibration values will be used.\n");
+    if (esp_adc_cal_check_efuse(ESP_ADC_CAL_VAL_EFUSE_TP) == ESP_OK)
+    {
+    	mprintf(LOG_INFO,"eFuse Two Point: Supported\n");
+    }
+    else
+    {
+    	mprintf(LOG_INFO,"Cannot retrieve eFuse Two Point calibration values. Default calibration values will be used.\n");
     }
 
 }
 static void print_char_val_type(esp_adc_cal_value_t val_type)
 {
     if (val_type == ESP_ADC_CAL_VAL_EFUSE_TP) {
-        printf("Characterized using Two Point Value\n");
+        mprintf(LOG_INFO,"Characterized using Two Point Value\n");
     } else if (val_type == ESP_ADC_CAL_VAL_EFUSE_VREF) {
-        printf("Characterized using eFuse Vref\n");
+    	mprintf(LOG_INFO,"Characterized using eFuse Vref\n");
     } else {
-        printf("Characterized using Default Vref\n");
+    	mprintf(LOG_INFO,"Characterized using Default Vref\n");
     }
 }
 #define DEFAULT_VREF    1100        //Use adc2_vref_to_gpio() to obtain a better estimate
 static esp_adc_cal_characteristics_t *adc_chars;
 void fire_CheckInit(void)
 {
-	//check_efuse();
+	check_efuse();
     //Configure ADC
     adc1_config_width(ADC_WIDTH_BIT_13);
     adc1_config_channel_atten(FIRE_ADC_CHANNEL, ADC_ATTEN_DB_11);
     //Characterize ADC
-    //adc_chars = calloc(1, sizeof(esp_adc_cal_characteristics_t));
-    //esp_adc_cal_value_t val_type = esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_0, ADC_WIDTH_BIT_13, 1100, adc_chars);
-    //print_char_val_type(val_type);
+    adc_chars = calloc(1, sizeof(esp_adc_cal_characteristics_t));
+    esp_adc_cal_value_t val_type = esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_0, ADC_WIDTH_BIT_13, 2600, adc_chars);
+    print_char_val_type(val_type);
 
 }
 
@@ -1544,7 +1563,7 @@ uint16_t sensor_data_tail = 0;
 
 #if FIRE_SAMPLE_MODE_LOW_ENABLE
 #define EVN_MAX_RATE_OF_CHANGE 	50    //最大认为是环境波动的变化值
-#define EVN_MAX_VALUE 			1000 //当大于100时不能进行火焰检测
+#define EVN_MAX_VALUE 			100  //当大于100时不能进行火焰检测
 #else
 #define EVN_MAX_RATE_OF_CHANGE 	20   //最大认为是环境波动的变化值
 #define EVN_MAX_VALUE 			4000 //当低于4000时不能进行火焰检测
@@ -1660,9 +1679,15 @@ void fire_GetAverageValue(void)
 			next = 0;
 		sensor_data[sensor_data_tail] = fire_GetCurrentValue();
 
-		if(settings.fire_log_enable)
+		if(settings.fire_log_enable == 1)
 		{
 			sprintf((char*)str,"[MSG:Fire Sensor,ENV:%d,CURRENT:%d,COUNT:%d.]\r\n",fire_evn_value,sensor_data[sensor_data_tail],fire_catch_cnt);
+			hal.stream.write_all((char*)str);
+		}
+		else if(settings.fire_log_enable == 2)
+		{
+			/*图表输出格式*/
+			sprintf((char*)str,"/*FireSensor,%d,%d,%d*/\r\n",fire_evn_value,sensor_data[sensor_data_tail],fire_catch_cnt);
 			hal.stream.write_all((char*)str);
 		}
 
@@ -1701,34 +1726,41 @@ float curve_GetSmoothness(uint16_t* data,uint32_t len)
 void fire_InfoReport(void)
 {
 	char str[100] = {0};
-	if(fire_temp_enable_flag == 0)
+	if(settings.fire_alarm_time_threshold == 0)
 	{
-		hal.stream.write_all("[MSG:Flame detector Inactive temporarily]" ASCII_EOL);
+		hal.stream.write_all("[MSG: Warning: Flame Sensor Disabled by User OverRide]" ASCII_EOL);
 	}
-	else
 	{
-		if(fire_evn_flag == 0)
+		if(fire_temp_enable_flag == 0)
 		{
-			hal.stream.write_all("[MSG:Detecting ambient infrared]" ASCII_EOL);
+			hal.stream.write_all("[MSG:Flame detector Inactive temporarily]" ASCII_EOL);
 		}
 		else
 		{
-#if FIRE_SAMPLE_MODE_LOW_ENABLE
-			if(fire_evn_value > EVN_MAX_VALUE)
-#else
-			if(fire_evn_value < EVN_MAX_VALUE)
-#endif
+			if(fire_evn_flag == 0)
 			{
-				hal.stream.write_all("[MSG: Flame detector Inactive. Luminosity too high]" ASCII_EOL);
+				hal.stream.write_all("[MSG:Detecting ambient infrared]" ASCII_EOL);
 			}
 			else
 			{
-				sprintf(str,"[MSG: Flame detector active,Ambient infrared value:%d]\r\n",fire_evn_value);
-				hal.stream.write_all(str);
-			}
+	#if FIRE_SAMPLE_MODE_LOW_ENABLE
+				if(fire_evn_value > EVN_MAX_VALUE)
+	#else
+				if(fire_evn_value < EVN_MAX_VALUE)
+	#endif
+				{
+					hal.stream.write_all("[MSG: Flame detector Inactive. Luminosity too high]" ASCII_EOL);
+				}
+				else
+				{
+					sprintf(str,"[MSG: Flame detector active,Ambient infrared value:%d]\r\n",fire_evn_value);
+					hal.stream.write_all(str);
+				}
 
+			}
 		}
 	}
+
 }
 
 uint32_t fire_GetEvnValue(void)
@@ -1815,7 +1847,7 @@ void fire_Check(void)
 	if(fire_catch_cnt > settings.fire_alarm_time_threshold)
 	{
 		beep_PwmSet(100);
-
+		fire_catch_cnt = 0;
 		/*利用hold功能实现暂停打印功能*/
 		if(sys.state == STATE_CYCLE)
 		{
@@ -2391,6 +2423,9 @@ static bool driver_setup (settings_t *settings)
     settings_changed(settings);
 
     hal.stepper.go_idle(true);
+
+    /*开机蜂鸣器提示紧急按钮被错误按下去了*/
+	alarm_for_estop_init();
 
     return IOInitDone;
 }
