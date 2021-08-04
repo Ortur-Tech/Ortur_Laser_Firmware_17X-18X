@@ -395,12 +395,16 @@ portMUX_TYPE mux2 = portMUX_INITIALIZER_UNLOCKED;
 void accel_detection()
 {
 	// 3.91mg
+#if USE_SOFTWARE_IIC
 	portENTER_CRITICAL(&mux2);
+#endif
 	if(GsensorDeviceType == SC7A20_DEVICE)
 		Get_Acceleration(SC7A20_ADDR, 0X28,&accel_x,&accel_y,&accel_z);
 	else
 		Get_Acceleration(BMA250_Addr, BMP_ACC_X_LSB,&accel_x,&accel_y,&accel_z);
+#if USE_SOFTWARE_IIC
 	portEXIT_CRITICAL(&mux2);
+#endif
 	mprintf(LOG_INFO,"xValue:%d. yValue:%d. zValue:%d.\r\n",accel_x,accel_y,accel_z);
 
 	//计算加速度斜率(加加速度)突变
