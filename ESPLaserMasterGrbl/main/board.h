@@ -26,10 +26,11 @@
 #define CNC_AUFERO			1
 #define OLM_2_PRO			2
 #define OLM_PRO				3
+#define AUFERO_2			4
 
 
 
-#define MACHINE_TYPE 		OLM_2_PRO
+#define MACHINE_TYPE 		AUFERO_2
 /*******************机型定义 END*******************/
 
 

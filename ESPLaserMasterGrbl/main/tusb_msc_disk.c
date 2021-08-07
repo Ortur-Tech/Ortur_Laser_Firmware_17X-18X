@@ -25,6 +25,10 @@
 #elif BOARD_VERSION == OLM_ESP_V1X
 #define OTA_FILE_NAME "OLM2_PRO_"
 #endif
+#elif (MACHINE_TYPE == AUFERO_2)
+
+#define OTA_FILE_NAME "ESP_AUFERO2_"
+
 #endif
 
 //#include "msc_device.h"

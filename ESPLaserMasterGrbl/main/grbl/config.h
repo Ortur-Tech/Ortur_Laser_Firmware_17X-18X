@@ -75,8 +75,9 @@
 // immediately forces a feed hold and then safely de-energizes the machine. Resuming is blocked until
 // the safety door is re-engaged. When it is, Grbl will re-energize the machine and then resume on the
 // previous tool path, as if nothing happened.
-#if MACHINE_TYPE == OLM_2_PRO || (MACHINE_TYPE == OLM_PRO)
-#elif
+#if MACHINE_TYPE == OLM_2_PRO || (MACHINE_TYPE == OLM_PRO) ||(MACHINE_TYPE == AUFERO_2)
+
+#else
 #define ENABLE_SAFETY_DOOR_INPUT_PIN // Default disabled. Uncomment to enable.
 #endif
 
@@ -472,7 +473,7 @@
 #define DEFAULT_LASER_FOCAL_LENGTH 					100 //mm 焦距
 #define ENABLE_AUTO_FOCUS	1
 /*回零偏移*/
-#if MACHINE_TYPE == OLM_2_PRO || (MACHINE_TYPE == OLM_PRO)
+#if MACHINE_TYPE == OLM_2_PRO || (MACHINE_TYPE == OLM_PRO) || (MACHINE_TYPE == AUFERO_2)
 #define ENABLE_HOMING_FORCE_SET_ORIGIN_OFFSET 0
 #else
 #define ENABLE_HOMING_FORCE_SET_ORIGIN_OFFSET 1
@@ -483,7 +484,6 @@
 
 /*使用软件IIC*/
 #define USE_SOFTWARE_IIC			0
-
 /*使能数字激光头*/
 #define ENABLE_DIGITAL_LASER 		0
 /*加速度检测使能*/
@@ -508,7 +508,19 @@
 #define DEFAULT_X_MAX_TRAVEL 400.0f // mm NOTE: Must be a positive value.
 #define DEFAULT_Y_MAX_TRAVEL 400.0f // mm NOTE: Must be a positive value.
 #define DEFAULT_Z_MAX_TRAVEL  50.0f // mm NOTE: Must be a positive value.
-
+#elif (MACHINE_TYPE == AUFERO_2)
+#define DEFAULT_X_STEPS_PER_MM (5.0f*16)
+#define DEFAULT_Y_STEPS_PER_MM (5.0f*16)
+#define DEFAULT_Z_STEPS_PER_MM (400)
+#define DEFAULT_X_MAX_RATE (170.0f*60) // mm/min
+#define DEFAULT_Y_MAX_RATE (170.0f*60) // mm/min
+#define DEFAULT_Z_MAX_RATE (20.0f*60) // mm/min
+#define DEFAULT_X_ACCELERATION (2200.0f*60*60) // 10*60*60 mm/min^2 = 10 mm/sec^2
+#define DEFAULT_Y_ACCELERATION (1800.0f*60*60) // 10*60*60 mm/min^2 = 10 mm/sec^2
+#define DEFAULT_Z_ACCELERATION (2200.0f*60*60) // 10*60*60 mm/min^2 = 10 mm/sec^2
+#define DEFAULT_X_MAX_TRAVEL 370.0f // mm NOTE: Must be a positive value.
+#define DEFAULT_Y_MAX_TRAVEL 400.0f // mm NOTE: Must be a positive value.
+#define DEFAULT_Z_MAX_TRAVEL  50.0f // mm NOTE: Must be a positive value.
 #elif (MACHINE_TYPE == OLM_PRO)
 #define DEFAULT_X_STEPS_PER_MM (5.0f*16)
 #define DEFAULT_Y_STEPS_PER_MM (5.0f*16)
@@ -660,9 +672,9 @@
 // NOTE: Still a work-in-progress. Machine coordinates must be in all negative space and
 // does not work with HOMING_FORCE_SET_ORIGIN enabled. Parking motion also moves only in
 // positive direction.
-#if (MACHINE_TYPE == OLM_2_PRO) || (MACHINE_TYPE == OLM_PRO)
+#if (MACHINE_TYPE == OLM_2_PRO) || (MACHINE_TYPE == OLM_PRO) ||(MACHINE_TYPE == AUFERO_2)
 
-#elif
+#else
 #define DEFAULT_PARKING_ENABLE // Default disabled. Uncomment to enable.
 #endif
 

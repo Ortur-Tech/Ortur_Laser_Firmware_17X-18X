@@ -44,6 +44,10 @@
 #include "driver/adc.h"
 #include "digital_laser.h"
 
+#if TRINAMIC_ENABLE
+#include "motors/trinamic.h"
+#endif
+
 #ifdef USE_I2S_OUT
 #include "i2s_out.h"
 #endif
@@ -777,7 +781,7 @@ inline IRAM_ATTR static control_signals_t systemGetState (void)
     /*电源按键实现cycle start功能*/
 	if(!signals.cycle_start)
 	{
-#if MACHINE_TYPE == OLM_ESP_PRO_V1X
+#if (BOARD_VERSION == OLM_ESP_PRO_V1X)
 		signals.cycle_start = !gpio_get_level(POWER_KEY_PIN);
 #else
 		signals.cycle_start = gpio_get_level(KEY_PIN);
@@ -1226,7 +1230,7 @@ static void settings_changed (settings_t *settings)
     if(IOInitDone) {
 
       #if TRINAMIC_ENABLE
-        trinamic_configure();
+        //trinamic_configure();
       #endif
 
       #ifndef VFD_SPINDLE
@@ -2387,9 +2391,9 @@ static bool driver_setup (settings_t *settings)
 
 #if TRINAMIC_ENABLE
   #if CNC_BOOSTERPACK // Trinamic BoosterPack does not support mixed drivers
-    trinamic_start(false);
+    trinamic_init(false);
   #else
-    trinamic_start(true);
+    trinamic_init();
   #endif
 #endif
 

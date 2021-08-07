@@ -89,8 +89,8 @@
 
 #ifdef TRINAMIC_ENABLE
 #undef TRINAMIC_ENABLE
-#define TRINAMIC_ENABLE 1
-#define TRINAMIC_I2C    1
+#define TRINAMIC_ENABLE 0
+#define TRINAMIC_I2C    0
 #endif
 
 #ifdef NETWORKING_ENABLE
@@ -222,7 +222,7 @@ static const DRAM_ATTR float FZERO = 0.0f;
 // End configuration
 
 #if TRINAMIC_ENABLE
-#include "tmc2130/trinamic.h"
+#include "motors/trinamic.h"
 #endif
 
 #ifdef SPINDLE_HUANYANG

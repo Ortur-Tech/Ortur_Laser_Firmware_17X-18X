@@ -20,6 +20,7 @@
   You should have received a copy of the GNU General Public License
   along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
 */
+#include "board.h"
 
 #define PLACE_ORIGIN "China"
 
@@ -34,6 +35,8 @@
 
 #if (MACHINE_TYPE == OLM_2_PRO)
 #define ORTUR_MODEL_NAME "Ortur Laser Master 2 Pro"
+#elif (MACHINE_TYPE == AUFERO_2)
+#define ORTUR_MODEL_NAME "Ortur Aufero 2"
 #elif (MACHINE_TYPE == OLM_PRO)
 #define ORTUR_MODEL_NAME "Ortur Laser Master Pro"
 #elif
