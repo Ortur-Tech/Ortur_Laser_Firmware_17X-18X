@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include "esp32-hal-uart.h"
 #include "accelDetection.h"
+#include "serial_iap.h"
 
 #define TIMER_DIVIDER         (80)  //  Hardware timer clock divider
 #define TIMER_SCALE           (TIMER_BASE_CLK / TIMER_DIVIDER)  // convert counter value to seconds
@@ -23,6 +24,8 @@ void Usb_ForceReset(void)
 	gpio_config(&gpioConfig);
 
 	gpio_set_level(GPIO_NUM_20, 0);
+
+	HAL_Delay(20);
 }
 
 /*扩展功能任务1.加速度检测 2.火焰ad值获取*/
@@ -96,7 +99,7 @@ static bool IRAM_ATTR HAL_TickInc(void *args)
 	spindle_calculate_heat();
 	spindle_delay_stop();
 #endif
-
+	rec_TimeCheck();
 #if USB_SERIAL_CDC
     //if(usbPlugIn)
     {
@@ -303,6 +306,8 @@ void key_func(uint8_t m)
 					/*TODO:需要喂狗*/
 				}
 				power_LedOff();
+				/*关屏幕电源*/
+				power_CtrOff();
 				HAL_Delay(5);
 				/*软件复位*/
 				esp_restart();

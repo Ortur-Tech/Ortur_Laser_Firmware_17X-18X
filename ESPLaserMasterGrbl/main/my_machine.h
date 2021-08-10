@@ -20,6 +20,7 @@
   You should have received a copy of the GNU General Public License
   along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
 */
+#include "board.h"
 
 #define PLACE_ORIGIN "China"
 
@@ -27,13 +28,20 @@
 
 #define FW_AUTHOR "ORTUR"
 
-#define ORTUR_FW_NAME "OLF " ORTUR_FW_VERSION
+#if BOARD_VERSION == OLM_ESP_V1X
+#define ORTUR_FW_VERSION_NUM 171
+#define ORTUR_FW_VERSION "171"
+#else
+#define ORTUR_FW_VERSION_NUM 180
+#define ORTUR_FW_VERSION "180"
+#endif
 
-#define ORTUR_FW_VERSION_NUM 153
-#define ORTUR_FW_VERSION "153"
+#define ORTUR_FW_NAME "OLF " ORTUR_FW_VERSION
 
 #if (MACHINE_TYPE == OLM_2_PRO)
 #define ORTUR_MODEL_NAME "Ortur Laser Master 2 Pro"
+#elif (MACHINE_TYPE == AUFERO_2)
+#define ORTUR_MODEL_NAME "Ortur Aufero 2"
 #elif (MACHINE_TYPE == OLM_PRO)
 #define ORTUR_MODEL_NAME "Ortur Laser Master Pro"
 #elif

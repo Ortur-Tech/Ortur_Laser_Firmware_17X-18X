@@ -75,8 +75,9 @@
 // immediately forces a feed hold and then safely de-energizes the machine. Resuming is blocked until
 // the safety door is re-engaged. When it is, Grbl will re-energize the machine and then resume on the
 // previous tool path, as if nothing happened.
-#if MACHINE_TYPE == OLM_2_PRO || (MACHINE_TYPE == OLM_PRO)
-#elif
+#if MACHINE_TYPE == OLM_2_PRO || (MACHINE_TYPE == OLM_PRO) ||(MACHINE_TYPE == AUFERO_2)
+
+#else
 #define ENABLE_SAFETY_DOOR_INPUT_PIN // Default disabled. Uncomment to enable.
 #endif
 
@@ -207,7 +208,7 @@
 // available RAM, like when re-compiling for MCU with ample amounts of RAM. Or decrease if the MCU begins to
 // crash due to the lack of available RAM or if the CPU is having trouble keeping up with planning
 // new incoming motions as they are executed.
-#define BLOCK_BUFFER_SIZE 16 // Uncomment to override default in planner.h.
+//#define BLOCK_BUFFER_SIZE 16 // Uncomment to override default in planner.h.
 
 // Governs the size of the intermediary step segment buffer between the step execution algorithm
 // and the planner blocks. Each segment is set of steps executed at a constant velocity over a
@@ -215,7 +216,7 @@
 // block velocity profile is traced exactly. The size of this buffer governs how much step
 // execution lead time there is for other Grbl processes have to compute and do their thing
 // before having to come back and refill this buffer, currently at ~50msec of step moves.
-#define SEGMENT_BUFFER_SIZE 16 // Uncomment to override default in stepper.h.
+//#define SEGMENT_BUFFER_SIZE 16 // Uncomment to override default in stepper.h.
 
 // Configures the position after a probing cycle during Grbl's check mode. Disabled sets
 // the position to the probe target, when enabled sets the position to the start position.
@@ -365,7 +366,9 @@
 // #define DISABLE_LIMIT_PINS_PULL_UP_MASK AXES_BITMASK
 // #define DISABLE_LIMIT_PINS_PULL_UP_MASK (X_AXIS_BIT|Y_AXIS_BIT)
 // #define DISABLE_CONTROL_PINS_PULL_UP_MASK SIGNALS_BITMASK
-// #define DISABLE_CONTROL_PINS_PULL_UP_MASK (SIGNALS_SAFETYDOOR_BIT|SIGNALS_RESET_BIT)
+#if BOARD_VERSION == OLM_ESP_PRO_V1X
+#define DISABLE_CONTROL_PINS_PULL_UP_MASK (SIGNALS_CYCLESTART_BIT)
+#endif
 // #define DISABLE_PROBE_PIN_PULL_UP
 
 // If your machine has two limits switches wired in parallel to one axis, you will need to enable
@@ -401,7 +404,11 @@
 // NOTE: The first option will invert all control pins. The second option is an example of
 // inverting only a few pins. See the start of this file for other signal definitions.
 // #define INVERT_CONTROL_PIN_MASK SIGNALS_BITMASK // Default disabled. Uncomment to enable.
+#if BOARD_VERSION == OLM_ESP_PRO_V1X
+ #define INVERT_CONTROL_PIN_MASK (SIGNALS_FEEDHOLD_BIT | SIGNALS_CYCLESTART_BIT) //(SIGNALS_SAFETYDOOR_BIT) // Default disabled. Uncomment to enable.
+#else
  #define INVERT_CONTROL_PIN_MASK (SIGNALS_FEEDHOLD_BIT) //(SIGNALS_SAFETYDOOR_BIT) // Default disabled. Uncomment to enable.
+#endif
 // #define INVERT_LIMIT_PIN_MASK AXES_BITMASK // Default disabled. Uncomment to enable. Uncomment to enable.
  #define INVERT_LIMIT_PIN_MASK (Z_AXIS_BIT|Y_AXIS_BIT|X_AXIS_BIT) // Default disabled. Uncomment to enable.
 // For inverting the probe pin use DEFAULT_INVERT_PROBE_PIN in defaults.h
@@ -465,12 +472,14 @@
 /********************************自定义功能 BEGIN****************************************/
 
 /*火焰报警触发阈值*/
-#define DEFAULT_FIRE_ALARM_TRIGGER_THRESHOLD 		50
-#define DEFAULT_FIRE_ALARM_TRIGGER_TIME_THRESHOLD 	100
+#define DEFAULT_FIRE_ALARM_TRIGGER_THRESHOLD 		70
+#define DEFAULT_FIRE_ALARM_TRIGGER_TIME_THRESHOLD 	70
 #define USE_ADC_FIRE_CHECK 1
-#define DEFAULT_AUTO_POWEROFF_TIME 					30//分钟
+#define DEFAULT_AUTO_POWEROFF_TIME 					30//分钟 自动关机
+#define DEFAULT_LASER_FOCAL_LENGTH 					100 //mm 焦距
+#define ENABLE_AUTO_FOCUS	1
 /*回零偏移*/
-#if MACHINE_TYPE == OLM_2_PRO || (MACHINE_TYPE == OLM_PRO)
+#if MACHINE_TYPE == OLM_2_PRO || (MACHINE_TYPE == OLM_PRO) || (MACHINE_TYPE == AUFERO_2)
 #define ENABLE_HOMING_FORCE_SET_ORIGIN_OFFSET 0
 #else
 #define ENABLE_HOMING_FORCE_SET_ORIGIN_OFFSET 1
@@ -479,6 +488,10 @@
 #define ORIGIN_OFFSET_Z 0
 #endif
 
+/*使用软件IIC*/
+#define USE_SOFTWARE_IIC			1
+/*使能数字激光头*/
+#define ENABLE_DIGITAL_LASER 		1
 /*加速度检测使能*/
 #define ENABLE_ACCELERATION_DETECT 	1
 #define DEFAULT_ACCELERATION_LIMIT 	290
@@ -491,7 +504,7 @@
 #if MACHINE_TYPE == OLM_2_PRO
 #define DEFAULT_X_STEPS_PER_MM (5.0f*16)
 #define DEFAULT_Y_STEPS_PER_MM (5.0f*16)
-#define DEFAULT_Z_STEPS_PER_MM (5.0f*16)
+#define DEFAULT_Z_STEPS_PER_MM (400)
 #define DEFAULT_X_MAX_RATE (170.0f*60) // mm/min
 #define DEFAULT_Y_MAX_RATE (170.0f*60) // mm/min
 #define DEFAULT_Z_MAX_RATE (20.0f*60) // mm/min
@@ -501,7 +514,19 @@
 #define DEFAULT_X_MAX_TRAVEL 400.0f // mm NOTE: Must be a positive value.
 #define DEFAULT_Y_MAX_TRAVEL 400.0f // mm NOTE: Must be a positive value.
 #define DEFAULT_Z_MAX_TRAVEL  50.0f // mm NOTE: Must be a positive value.
-
+#elif (MACHINE_TYPE == AUFERO_2)
+#define DEFAULT_X_STEPS_PER_MM (5.0f*16)
+#define DEFAULT_Y_STEPS_PER_MM (5.0f*16)
+#define DEFAULT_Z_STEPS_PER_MM (400)
+#define DEFAULT_X_MAX_RATE (170.0f*60) // mm/min
+#define DEFAULT_Y_MAX_RATE (170.0f*60) // mm/min
+#define DEFAULT_Z_MAX_RATE (20.0f*60) // mm/min
+#define DEFAULT_X_ACCELERATION (2200.0f*60*60) // 10*60*60 mm/min^2 = 10 mm/sec^2
+#define DEFAULT_Y_ACCELERATION (1800.0f*60*60) // 10*60*60 mm/min^2 = 10 mm/sec^2
+#define DEFAULT_Z_ACCELERATION (2200.0f*60*60) // 10*60*60 mm/min^2 = 10 mm/sec^2
+#define DEFAULT_X_MAX_TRAVEL 370.0f // mm NOTE: Must be a positive value.
+#define DEFAULT_Y_MAX_TRAVEL 400.0f // mm NOTE: Must be a positive value.
+#define DEFAULT_Z_MAX_TRAVEL  50.0f // mm NOTE: Must be a positive value.
 #elif (MACHINE_TYPE == OLM_PRO)
 #define DEFAULT_X_STEPS_PER_MM (5.0f*16)
 #define DEFAULT_Y_STEPS_PER_MM (5.0f*16)
@@ -653,9 +678,9 @@
 // NOTE: Still a work-in-progress. Machine coordinates must be in all negative space and
 // does not work with HOMING_FORCE_SET_ORIGIN enabled. Parking motion also moves only in
 // positive direction.
-#if (MACHINE_TYPE == OLM_2_PRO) || (MACHINE_TYPE == OLM_PRO)
+#if (MACHINE_TYPE == OLM_2_PRO) || (MACHINE_TYPE == OLM_PRO) ||(MACHINE_TYPE == AUFERO_2)
 
-#elif
+#else
 #define DEFAULT_PARKING_ENABLE // Default disabled. Uncomment to enable.
 #endif
 

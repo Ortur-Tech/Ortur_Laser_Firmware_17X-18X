@@ -11,9 +11,9 @@
 #include "grbl/grbl.h"
 #include "grbl/state_machine.h"
 #include "my_machine_map.h"
+#include "digital_laser.h"
+#include "software_i2c.h"
 
-#define BMA250_DEVICE 0X03
-#define BMA253_DEVICE 0XFA
 
 #ifndef ABS
   #define ABS(x) ((x)<0?-(x):(x))
@@ -65,6 +65,9 @@ uint8_t GsensorDeviceType=0;    //!<gsensor芯片类型
  */
 static esp_err_t i2c_master_init(void)
 {
+#if USE_SOFTWARE_IIC
+	return sw_i2c_init(IIC_SDA_PIN, IIC_SCL_PIN);
+#else
     int i2c_master_port = I2C_NUM_0;
     i2c_config_t conf = {
         .mode = I2C_MODE_MASTER,
@@ -87,10 +90,20 @@ static esp_err_t i2c_master_init(void)
 		return err;
 	}
     return err;
+#endif
 }
 
 esp_err_t Write_One_Byte_iicaddr(uint8_t addr, uint8_t reg, uint8_t data)
 {
+#if USE_SOFTWARE_IIC
+	esp_err_t err;
+	err = sw_i2c_master_start();
+	err = sw_i2c_master_write_byte((addr << 1) | I2C_MASTER_WRITE);
+	err = sw_i2c_master_write_byte(reg);
+	err = sw_i2c_master_write_byte(data);
+	err = sw_i2c_master_stop();
+	return err;
+#else
 	i2c_cmd_handle_t cmd = i2c_cmd_link_create();
 	i2c_master_start(cmd);
 	i2c_master_write_byte(cmd, (addr << 1) | I2C_MASTER_WRITE, 1);
@@ -104,9 +117,22 @@ esp_err_t Write_One_Byte_iicaddr(uint8_t addr, uint8_t reg, uint8_t data)
 		return ret;
 	}
 	return ret;
+#endif
 }
 uint8_t Read_One_Byte(uint8_t addr, uint8_t reg)
 {
+#if USE_SOFTWARE_IIC
+	esp_err_t err;
+	uint8_t data = 0;
+	err = sw_i2c_master_start();
+	err = sw_i2c_master_write_byte((addr << 1) | I2C_MASTER_WRITE);
+	err = sw_i2c_master_write_byte(reg);
+	err = sw_i2c_master_start();
+	err = sw_i2c_master_write_byte((addr << 1) | I2C_MASTER_READ);
+	err = sw_i2c_master_read_byte(&data, 1);
+	err = sw_i2c_master_stop();
+	return data;
+#else
 	uint8_t data = 0;
 	i2c_cmd_handle_t cmd = i2c_cmd_link_create();
 	i2c_master_start(cmd);
@@ -116,13 +142,14 @@ uint8_t Read_One_Byte(uint8_t addr, uint8_t reg)
 	i2c_master_write_byte(cmd, (addr << 1) | I2C_MASTER_READ, 1);
 	i2c_master_read_byte(cmd, &data, 1);
 	i2c_master_stop(cmd);
-	esp_err_t ret = i2c_master_cmd_begin(I2C_NUM_0, cmd, 1000 / portTICK_RATE_MS);
+	esp_err_t ret = i2c_master_cmd_begin(I2C_NUM_0, cmd, 300 / portTICK_RATE_MS);
 	i2c_cmd_link_delete(cmd);
 	if (ret != ESP_OK) {
 			mprintf(LOG_ERROR,"IIC read error:%d.\r\n",ret);
 			return ret;
 		}
 	return data;
+#endif
 }
 /**
  * @brief BMA250_Init
@@ -261,23 +288,34 @@ uint8_t iic_init_flag = 0 ;
 void Gsensor_Init(void)
 {
 	i2c_master_init();
-
-	if(GsensorDeviceType==0)
+	laser_init();
+	//digital_laser_test();
+	//laser_auto_focus();
+	if(GsensorDeviceType == 0)
 	{
-		GsensorDeviceType=Get_GsensorType();
+		GsensorDeviceType = Get_GsensorType();
 	}
-	if(GsensorDeviceType==SC7A20_DEVICE)
+	if(GsensorDeviceType == SC7A20_DEVICE)
 	{
 		Sc7a20_Init();
 		gsensor_extern_scale = 5;
 	}
 	else
 	{
-		GsensorDeviceType=Check_BMA250_ID();
-		BMA250_Init();
+		GsensorDeviceType = Check_BMA250_ID();
+		if((GsensorDeviceType != 0xff) && (GsensorDeviceType != 0x00))
+		{
+			BMA250_Init();
+		}
 		gsensor_extern_scale = 1;
 	}
 
+	if((GsensorDeviceType != SC7A20_DEVICE) &&
+			(GsensorDeviceType != BMA250_DEVICE) &&
+			(GsensorDeviceType != BMA253_DEVICE))
+	{
+		GsensorDeviceType = 0;
+	}
 	iic_init_flag = 1;
 }
 
@@ -347,6 +385,8 @@ void Get_Acceleration(uint8_t devAddr ,uint8_t firstAddr,short *gx, short *gy, s
 	*gz=(*gz)>>6;
 }
 
+portMUX_TYPE mux2 = portMUX_INITIALIZER_UNLOCKED;
+
 #if ENABLE_ACCELERATION_DETECT
 //初始化并读取加速度计数据
 /**
@@ -355,11 +395,16 @@ void Get_Acceleration(uint8_t devAddr ,uint8_t firstAddr,short *gx, short *gy, s
 void accel_detection()
 {
 	// 3.91mg
-	if(GsensorDeviceType==SC7A20_DEVICE)
+#if USE_SOFTWARE_IIC
+	portENTER_CRITICAL(&mux2);
+#endif
+	if(GsensorDeviceType == SC7A20_DEVICE)
 		Get_Acceleration(SC7A20_ADDR, 0X28,&accel_x,&accel_y,&accel_z);
 	else
 		Get_Acceleration(BMA250_Addr, BMP_ACC_X_LSB,&accel_x,&accel_y,&accel_z);
-
+#if USE_SOFTWARE_IIC
+	portEXIT_CRITICAL(&mux2);
+#endif
 	mprintf(LOG_INFO,"xValue:%d. yValue:%d. zValue:%d.\r\n",accel_x,accel_y,accel_z);
 
 	//计算加速度斜率(加加速度)突变
@@ -429,6 +474,8 @@ void accel_detection()
 void accel_detection_limit()
 {
   static uint8_t recursion = 0;
+
+  if(GsensorDeviceType == 0) return;
 
   if(!iic_init_flag) return;
 

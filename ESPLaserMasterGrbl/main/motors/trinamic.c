@@ -40,7 +40,7 @@
 #include "../grbl/protocol.h"
 #include "../grbl/state_machine.h"
 #include "../grbl/report.h"
-#include "../grbl/platform.h"
+//#include "../grbl/platform.h"
 
 static bool warning = false, is_homing = false;
 static volatile uint_fast16_t diag1_poll = 0;

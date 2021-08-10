@@ -81,7 +81,7 @@
 #else
 #define RESET_PIN       GPIO_NUM_40
 #define FEED_HOLD_PIN   GPIO_NUM_0
-#define CYCLE_START_PIN GPIO_NUM_39
+#define CYCLE_START_PIN GPIO_NUM_41 //GPIO_NUM_39
 #endif
 
 #ifdef ENABLE_SAFETY_DOOR_INPUT_PIN
@@ -172,7 +172,7 @@
 #define STEPPERS_DISABLE_MASK   (1ULL << STEPPERS_DISABLE_PIN)
 
 
-#define ENABLE_JTAG 1
+#define ENABLE_JTAG 0
 
 // Define homing/hard limit switch input pins and limit interrupt vectors.
 
@@ -202,7 +202,7 @@
 
 #define RESET_PIN       GPIO_NUM_35
 #define FEED_HOLD_PIN   GPIO_NUM_34
-#define CYCLE_START_PIN GPIO_NUM_33
+#define CYCLE_START_PIN GPIO_NUM_46 //GPIO_NUM_33
 
 
 #ifdef ENABLE_SAFETY_DOOR_INPUT_PIN

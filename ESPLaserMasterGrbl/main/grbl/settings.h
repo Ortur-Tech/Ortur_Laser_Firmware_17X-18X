@@ -176,6 +176,7 @@ typedef enum {
 #endif
 	Setting_AutoPowerOffTime = 263,
 	Setting_LaserUsedTime = 264,
+	Setting_LaserFocalLength = 265,//焦距
 /******************************添加参数END************************************************/
 
     // Normally used for Ethernet or WiFi Station
@@ -534,6 +535,7 @@ typedef struct {
     uint16_t accel_sensitivity;
 #endif
     uint16_t sys_auto_poweroff_time;
+    uint16_t laser_focal_length;  			//焦距
 } settings_t;
 
 extern settings_t settings;

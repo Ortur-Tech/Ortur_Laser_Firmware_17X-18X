@@ -35,6 +35,9 @@
 #include "esp32-hal-uart.h"
 #include "grbl/grbl.h"
 
+#include "serial_iap.h"
+
+
 #define TWO_STOP_BITS_CONF 0x3
 #define ONE_STOP_BITS_CONF 0x1
 #define CONFIG_DISABLE_HAL_LOCKS 1
@@ -108,8 +111,17 @@ IRAM_ATTR static void _uart1_isr (void *arg)
     	  }
     	  return;
     }
+    /*存放到串口IAP数据缓存里面*/
+    if(serial_iap_get() == 1)
+    {
+    	while(uart1->dev->status.rxfifo_cnt || (uart1->dev->mem_rx_status.rx_waddr != uart1->dev->mem_rx_status.apb_rx_raddr))
+		{
+			 c = READ_PERI_REG(UART_FIFO_AHB_REG(0));
+			 rec_SerialData(c);
+		}
+    	return;
 
-
+    }
 
     while(uart1->dev->status.rxfifo_cnt || (uart1->dev->mem_rx_status.rx_waddr != uart1->dev->mem_rx_status.apb_rx_raddr)) {
 
@@ -308,6 +320,21 @@ bool serialPutC (const char c)
     return true;
 }
 
+void serialWriteData(uint8_t* data, uint16_t len)
+{
+	int i = 0;
+	UART_MUTEX_LOCK(uart1);
+	for(i = 0; i < len; i++)
+	{
+		while(uart1->dev->status.txfifo_cnt == 0x7F)
+		{
+		        if(!hal.stream_blocking_callback())
+		            return false;
+		}
+		uart1->dev->ahb_fifo.rw_byte = data[i];
+	}
+	UART_MUTEX_UNLOCK(uart1);
+}
 void serialWriteS (const char *data)
 {
     char c, *ptr = (char *)data;

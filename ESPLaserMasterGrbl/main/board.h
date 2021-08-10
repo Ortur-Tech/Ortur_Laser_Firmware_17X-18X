@@ -14,8 +14,8 @@
 
 /*******************硬件版本定义 BEGIN*******************/
 #define BOARD_UNKOWN 		0
-#define OLM_ESP_V1X			1
-#define OLM_ESP_PRO_V1X     2
+#define OLM_ESP_V1X			1	//曾老板的主板
+#define OLM_ESP_PRO_V1X     2   //我们自己的主板
 
 #define BOARD_VERSION 		OLM_ESP_PRO_V1X
 /*******************硬件版本定义 END*******************/
@@ -26,6 +26,7 @@
 #define CNC_AUFERO			1
 #define OLM_2_PRO			2
 #define OLM_PRO				3
+#define AUFERO_2			4
 
 
 
@@ -34,7 +35,7 @@
 
 
 
-#define DEBUG_LEVEL LOG_TEMP//LOG_INFO//LOG_ERROR
+#define DEBUG_LEVEL LOG_ERROR
 /*调试等级*/
 typedef enum{
     LOG_DEBUG = 1,

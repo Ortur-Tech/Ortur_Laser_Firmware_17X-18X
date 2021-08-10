@@ -48,14 +48,19 @@
 
 #include "tusb_msc_disk.h"
 #include "esp_ota_ops.h"
+#include "driver.h"
+
 static void vGrblTask (void *pvParameters)
 {
 	const esp_partition_t* _part_ota0 = esp_ota_get_running_partition();
 	HAL_TickInit();
 	Usb_ForceReset();
-	creat_UsbMscTask();
+	/*一些复位不会复位IO，这里强制初始化*/
+	led_Init();
+	power_CtrlInit();
+	app_iap();
 	key_func(1);
-	printf("hello world,this is partition %s.\r\n",_part_ota0->label);
+	printf("this is partition %s.\r\n",_part_ota0->label);
 	creat_ExtFuncTask();
     grbl_enter();
 }

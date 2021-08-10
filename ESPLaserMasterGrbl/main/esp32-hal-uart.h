@@ -64,6 +64,7 @@ bool serialSuspendInput (bool suspend);
 
 bool serialPutC (const char c);
 void serialWriteS (const char *data);
+void serialWriteData(uint8_t* data, uint16_t len);
 
 void serialFlush (void);
 void serialCancel (void);

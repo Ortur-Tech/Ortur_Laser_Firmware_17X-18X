@@ -11,13 +11,15 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-
+#include "../../../../app_update/include/esp_ota_ops.h"
+#include "../../../../spi_flash/include/esp_partition.h"
 
 
 #define CFG_EXAMPLE_MSC_READONLY
 
+extern const esp_partition_t *target_partition;;
 
-void creat_UsbMscTask( void );
+void app_iap( void );
 
 void usb_msc_spiffs_init(void);
 

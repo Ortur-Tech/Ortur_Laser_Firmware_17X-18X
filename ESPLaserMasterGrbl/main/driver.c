@@ -42,7 +42,11 @@
 #include "accelDetection.h"
 #include "esp_adc_cal.h"
 #include "driver/adc.h"
+#include "digital_laser.h"
 
+#if TRINAMIC_ENABLE
+#include "motors/trinamic.h"
+#endif
 
 #ifdef USE_I2S_OUT
 #include "i2s_out.h"
@@ -774,15 +778,15 @@ inline IRAM_ATTR static control_signals_t systemGetState (void)
 #endif
 #ifdef CYCLE_START_PIN
     signals.cycle_start = gpio_get_level(CYCLE_START_PIN);
-    /*电源按键实现cycle start功能*/
-	if(!signals.cycle_start)
-	{
-#if MACHINE_TYPE == OLM_ESP_PRO_V1X
-		signals.cycle_start = !gpio_get_level(POWER_KEY_PIN);
-#else
-		signals.cycle_start = gpio_get_level(KEY_PIN);
-#endif
-	}
+//    /*电源按键实现cycle start功能*/
+//	if(signals.cycle_start)
+//	{
+//#if (BOARD_VERSION == OLM_ESP_PRO_V1X)
+//		signals.cycle_start = !gpio_get_level(POWER_KEY_PIN);
+//#else
+//		signals.cycle_start = gpio_get_level(POWER_KEY_PIN);
+//#endif
+//	}
 #endif
 #ifdef ENABLE_SAFETY_DOOR_INPUT_PIN
     signals.safety_door_ajar = gpio_get_level(SAFETY_DOOR_PIN);
@@ -916,10 +920,14 @@ uint8_t is_SpindleOpen(void)
 /*获取激光pwm功率，*/
 uint16_t laser_GetPower(void)
 {
+#if ENABLE_DIGITAL_LASER
+	return laser_get_value(COMM_LASER_PWM_DUTY);
+#else
 	uint32_t duty = 0;
 	duty = ledc_get_duty(ledConfig.speed_mode, ledConfig.channel);
 	duty = settings.spindle.invert.pwm ? pwm_max_value - duty : duty;
-	return duty * 1000 / spindle_pwm.period ;
+	return spindle_pwm.period > 0 ? (duty * 1000 / spindle_pwm.period) : 0;
+#endif
 }
 // Variable spindle control functions
 
@@ -936,11 +944,22 @@ IRAM_ATTR void spindle_set_speed (uint_fast16_t pwm_value)
         pwm_ramp.pwm_target = pwm_value;
         ledc_set_fade_step_and_start(ledConfig.speed_mode, ledConfig.channel, pwm_ramp.pwm_target, 1, 4, LEDC_FADE_NO_WAIT);
 #else
+#if	ENABLE_DIGITAL_LASER
+        if(spindle_pwm.always_on)
+        {
+        	laser_set_value(COMM_LASER_PWM_DUTY,spindle_pwm.off_value);
+        }
+        else
+        {
+        	laser_set_value(COMM_LASER_PWM_DUTY,settings.spindle.invert.pwm ? 1 : 0);
+        }
+#else
         if(spindle_pwm.always_on) {
             ledc_set_duty(ledConfig.speed_mode, ledConfig.channel, spindle_pwm.off_value);
             ledc_update_duty(ledConfig.speed_mode, ledConfig.channel);
         } else
             ledc_stop(ledConfig.speed_mode, ledConfig.channel, settings.spindle.invert.pwm ? 1 : 0);
+#endif
 #endif
         pwmEnabled = false;
      } else {
@@ -954,8 +973,12 @@ IRAM_ATTR void spindle_set_speed (uint_fast16_t pwm_value)
          pwm_ramp.pwm_target = pwm_value;
          ledc_set_fade_step_and_start(ledConfig.speed_mode, ledConfig.channel, pwm_ramp.pwm_target, 1, 4, LEDC_FADE_NO_WAIT);
 #else
+#if	ENABLE_DIGITAL_LASER
+         laser_set_value(COMM_LASER_PWM_DUTY,settings.spindle.invert.pwm ? pwm_max_value - pwm_value : pwm_value);
+#else
          ledc_set_duty(ledConfig.speed_mode, ledConfig.channel, settings.spindle.invert.pwm ? pwm_max_value - pwm_value : pwm_value);
          ledc_update_duty(ledConfig.speed_mode, ledConfig.channel);
+#endif
 #endif
         if(!pwmEnabled) {
             spindle_on();
@@ -968,7 +991,11 @@ IRAM_ATTR void spindle_set_speed (uint_fast16_t pwm_value)
 
 static uint_fast16_t spindleGetPWM (float rpm)
 {
+#if	ENABLE_DIGITAL_LASER
+	return laser_get_value(COMM_LASER_PWM_DUTY);
+#else
     return spindle_compute_pwm_value(&spindle_pwm, rpm, false);
+#endif
 }
 
 #else // Only enable if (when?) ESP IDF supports FPU access in ISR !!
@@ -1203,7 +1230,7 @@ static void settings_changed (settings_t *settings)
     if(IOInitDone) {
 
       #if TRINAMIC_ENABLE
-        trinamic_configure();
+        //trinamic_configure();
       #endif
 
       #ifndef VFD_SPINDLE
@@ -1427,6 +1454,22 @@ uint8_t light_GetBrightness(void)
 {
 	return light_brightness;
 }
+#define POWER_ON_ALARM_TIME 2000
+
+void alarm_for_estop_init(void)
+{
+	uint32_t tick = 0;
+	if(gpio_get_level(RESET_PIN))
+	{
+		tick = HAL_GetTick();
+		beep_PwmSet(100);
+		while(( HAL_GetTick() - tick) < POWER_ON_ALARM_TIME)
+		{
+			//watchdog_feed();
+		}
+		beep_PwmSet(0);
+	}
+}
 
 void beep_Init(void)
 {
@@ -1459,35 +1502,38 @@ void beep_PwmSet(uint8_t duty)
 
 static void check_efuse(void)
 {
-    if (esp_adc_cal_check_efuse(ESP_ADC_CAL_VAL_EFUSE_TP) == ESP_OK) {
-        printf("eFuse Two Point: Supported\n");
-    } else {
-        printf("Cannot retrieve eFuse Two Point calibration values. Default calibration values will be used.\n");
+    if (esp_adc_cal_check_efuse(ESP_ADC_CAL_VAL_EFUSE_TP) == ESP_OK)
+    {
+    	mprintf(LOG_INFO,"eFuse Two Point: Supported\n");
+    }
+    else
+    {
+    	mprintf(LOG_INFO,"Cannot retrieve eFuse Two Point calibration values. Default calibration values will be used.\n");
     }
 
 }
 static void print_char_val_type(esp_adc_cal_value_t val_type)
 {
     if (val_type == ESP_ADC_CAL_VAL_EFUSE_TP) {
-        printf("Characterized using Two Point Value\n");
+        mprintf(LOG_INFO,"Characterized using Two Point Value\n");
     } else if (val_type == ESP_ADC_CAL_VAL_EFUSE_VREF) {
-        printf("Characterized using eFuse Vref\n");
+    	mprintf(LOG_INFO,"Characterized using eFuse Vref\n");
     } else {
-        printf("Characterized using Default Vref\n");
+    	mprintf(LOG_INFO,"Characterized using Default Vref\n");
     }
 }
 #define DEFAULT_VREF    1100        //Use adc2_vref_to_gpio() to obtain a better estimate
 static esp_adc_cal_characteristics_t *adc_chars;
 void fire_CheckInit(void)
 {
-	//check_efuse();
+	check_efuse();
     //Configure ADC
     adc1_config_width(ADC_WIDTH_BIT_13);
     adc1_config_channel_atten(FIRE_ADC_CHANNEL, ADC_ATTEN_DB_11);
     //Characterize ADC
-    //adc_chars = calloc(1, sizeof(esp_adc_cal_characteristics_t));
-    //esp_adc_cal_value_t val_type = esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_0, ADC_WIDTH_BIT_13, 1100, adc_chars);
-    //print_char_val_type(val_type);
+    adc_chars = calloc(1, sizeof(esp_adc_cal_characteristics_t));
+    esp_adc_cal_value_t val_type = esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_0, ADC_WIDTH_BIT_13, 2600, adc_chars);
+    print_char_val_type(val_type);
 
 }
 
@@ -1521,7 +1567,7 @@ uint16_t sensor_data_tail = 0;
 
 #if FIRE_SAMPLE_MODE_LOW_ENABLE
 #define EVN_MAX_RATE_OF_CHANGE 	50    //最大认为是环境波动的变化值
-#define EVN_MAX_VALUE 			1000 //当大于100时不能进行火焰检测
+#define EVN_MAX_VALUE 			100  //当大于100时不能进行火焰检测
 #else
 #define EVN_MAX_RATE_OF_CHANGE 	20   //最大认为是环境波动的变化值
 #define EVN_MAX_VALUE 			4000 //当低于4000时不能进行火焰检测
@@ -1637,9 +1683,15 @@ void fire_GetAverageValue(void)
 			next = 0;
 		sensor_data[sensor_data_tail] = fire_GetCurrentValue();
 
-		if(settings.fire_log_enable)
+		if(settings.fire_log_enable == 1)
 		{
 			sprintf((char*)str,"[MSG:Fire Sensor,ENV:%d,CURRENT:%d,COUNT:%d.]\r\n",fire_evn_value,sensor_data[sensor_data_tail],fire_catch_cnt);
+			hal.stream.write_all((char*)str);
+		}
+		else if(settings.fire_log_enable == 2)
+		{
+			/*图表输出格式*/
+			sprintf((char*)str,"/*FireSensor,%d,%d,%d*/\r\n",fire_evn_value,sensor_data[sensor_data_tail],fire_catch_cnt);
 			hal.stream.write_all((char*)str);
 		}
 
@@ -1678,34 +1730,41 @@ float curve_GetSmoothness(uint16_t* data,uint32_t len)
 void fire_InfoReport(void)
 {
 	char str[100] = {0};
-	if(fire_temp_enable_flag == 0)
+	if(settings.fire_alarm_time_threshold == 0)
 	{
-		hal.stream.write_all("[MSG:Flame detector Inactive temporarily]" ASCII_EOL);
+		hal.stream.write_all("[MSG: Warning: Flame Sensor Disabled by User OverRide]" ASCII_EOL);
 	}
-	else
 	{
-		if(fire_evn_flag == 0)
+		if(fire_temp_enable_flag == 0)
 		{
-			hal.stream.write_all("[MSG:Detecting ambient infrared]" ASCII_EOL);
+			hal.stream.write_all("[MSG:Flame detector Inactive temporarily]" ASCII_EOL);
 		}
 		else
 		{
-#if FIRE_SAMPLE_MODE_LOW_ENABLE
-			if(fire_evn_value > EVN_MAX_VALUE)
-#else
-			if(fire_evn_value < EVN_MAX_VALUE)
-#endif
+			if(fire_evn_flag == 0)
 			{
-				hal.stream.write_all("[MSG: Flame detector Inactive. Luminosity too high]" ASCII_EOL);
+				hal.stream.write_all("[MSG:Detecting ambient infrared]" ASCII_EOL);
 			}
 			else
 			{
-				sprintf(str,"[MSG: Flame detector active,Ambient infrared value:%d]\r\n",fire_evn_value);
-				hal.stream.write_all(str);
-			}
+	#if FIRE_SAMPLE_MODE_LOW_ENABLE
+				if(fire_evn_value > EVN_MAX_VALUE)
+	#else
+				if(fire_evn_value < EVN_MAX_VALUE)
+	#endif
+				{
+					hal.stream.write_all("[MSG: Flame detector Inactive. Luminosity too high]" ASCII_EOL);
+				}
+				else
+				{
+					sprintf(str,"[MSG: Flame detector active,Ambient infrared value:%d]\r\n",fire_evn_value);
+					hal.stream.write_all(str);
+				}
 
+			}
 		}
 	}
+
 }
 
 uint32_t fire_GetEvnValue(void)
@@ -1792,7 +1851,7 @@ void fire_Check(void)
 	if(fire_catch_cnt > settings.fire_alarm_time_threshold)
 	{
 		beep_PwmSet(100);
-
+		fire_catch_cnt = 0;
 		/*利用hold功能实现暂停打印功能*/
 		if(sys.state == STATE_CYCLE)
 		{
@@ -1882,6 +1941,8 @@ void led_Init(void)
 	    };
 
 	gpio_config(&gpioConfig);
+	gpio_set_level(POWER_LED_PIN,0);
+	gpio_set_level(COMM_LED_PIN,0);
 }
 
 void power_LedAlarm(void)
@@ -1936,7 +1997,8 @@ void power_KeyInit(void)
 			.mode = GPIO_MODE_INPUT,
 			.pull_up_en = GPIO_PULLUP_ENABLE,
 			.pull_down_en = GPIO_PULLDOWN_DISABLE,
-			.intr_type = GPIO_INTR_DISABLE
+			.intr_type = GPIO_INTR_DISABLE,
+
 		};
 
 	gpio_config(&gpioConfig);
@@ -1973,6 +2035,9 @@ void system_AutoPowerOff(void)
 void power_CtrlInit(void)
 {
 #if BOARD_VERSION == OLM_ESP_PRO_V1X
+	static uint8_t power_ctrl_init_flag = 0;
+	if(power_ctrl_init_flag == 1)return;
+	power_ctrl_init_flag = 1;
 	gpio_config_t gpioConfig = {
 			.pin_bit_mask = ((uint64_t)1 << PWR_CTR_PIN),
 			.mode = GPIO_MODE_OUTPUT,
@@ -1982,13 +2047,13 @@ void power_CtrlInit(void)
 		};
 
 	gpio_config(&gpioConfig);
-	if(IsMainPowrIn())
-	{
-		gpio_set_level(PWR_CTR_PIN,1);
-	}
-	else
+	//if(IsMainPowrIn())
 	{
 		gpio_set_level(PWR_CTR_PIN,0);
+	}
+	//else
+	{
+		//gpio_set_level(PWR_CTR_PIN,0);
 	}
 #endif
 
@@ -2161,7 +2226,7 @@ void Main_PowerCheck(void)
 	{
 		if(IsMainPowrIn())
 		{
-			power_CtrOn();
+			//power_CtrOn();
 			report_feedback_message(Message_PowerSupplied);
 		}
 	}
@@ -2171,7 +2236,7 @@ void Main_PowerCheck(void)
 		if(!IsMainPowrIn())
 		{
 			last_power_flag=0;
-			power_CtrOff();
+			//power_CtrOff();
 			report_feedback_message(Message_NoPowerSupply);
 		}
 	}
@@ -2327,9 +2392,9 @@ static bool driver_setup (settings_t *settings)
 
 #if TRINAMIC_ENABLE
   #if CNC_BOOSTERPACK // Trinamic BoosterPack does not support mixed drivers
-    trinamic_start(false);
+    trinamic_init(false);
   #else
-    trinamic_start(true);
+    trinamic_init();
   #endif
 #endif
 
@@ -2363,6 +2428,9 @@ static bool driver_setup (settings_t *settings)
     settings_changed(settings);
 
     hal.stepper.go_idle(true);
+
+    /*开机蜂鸣器提示紧急按钮被错误按下去了*/
+	alarm_for_estop_init();
 
     return IOInitDone;
 }
