@@ -366,7 +366,9 @@
 // #define DISABLE_LIMIT_PINS_PULL_UP_MASK AXES_BITMASK
 // #define DISABLE_LIMIT_PINS_PULL_UP_MASK (X_AXIS_BIT|Y_AXIS_BIT)
 // #define DISABLE_CONTROL_PINS_PULL_UP_MASK SIGNALS_BITMASK
-// #define DISABLE_CONTROL_PINS_PULL_UP_MASK (SIGNALS_SAFETYDOOR_BIT|SIGNALS_RESET_BIT)
+#if BOARD_VERSION == OLM_ESP_PRO_V1X
+#define DISABLE_CONTROL_PINS_PULL_UP_MASK (SIGNALS_CYCLESTART_BIT)
+#endif
 // #define DISABLE_PROBE_PIN_PULL_UP
 
 // If your machine has two limits switches wired in parallel to one axis, you will need to enable
@@ -402,7 +404,11 @@
 // NOTE: The first option will invert all control pins. The second option is an example of
 // inverting only a few pins. See the start of this file for other signal definitions.
 // #define INVERT_CONTROL_PIN_MASK SIGNALS_BITMASK // Default disabled. Uncomment to enable.
+#if BOARD_VERSION == OLM_ESP_PRO_V1X
+ #define INVERT_CONTROL_PIN_MASK (SIGNALS_FEEDHOLD_BIT | SIGNALS_CYCLESTART_BIT) //(SIGNALS_SAFETYDOOR_BIT) // Default disabled. Uncomment to enable.
+#else
  #define INVERT_CONTROL_PIN_MASK (SIGNALS_FEEDHOLD_BIT) //(SIGNALS_SAFETYDOOR_BIT) // Default disabled. Uncomment to enable.
+#endif
 // #define INVERT_LIMIT_PIN_MASK AXES_BITMASK // Default disabled. Uncomment to enable. Uncomment to enable.
  #define INVERT_LIMIT_PIN_MASK (Z_AXIS_BIT|Y_AXIS_BIT|X_AXIS_BIT) // Default disabled. Uncomment to enable.
 // For inverting the probe pin use DEFAULT_INVERT_PROBE_PIN in defaults.h
@@ -483,9 +489,9 @@
 #endif
 
 /*使用软件IIC*/
-#define USE_SOFTWARE_IIC			0
+#define USE_SOFTWARE_IIC			1
 /*使能数字激光头*/
-#define ENABLE_DIGITAL_LASER 		0
+#define ENABLE_DIGITAL_LASER 		1
 /*加速度检测使能*/
 #define ENABLE_ACCELERATION_DETECT 	1
 #define DEFAULT_ACCELERATION_LIMIT 	290

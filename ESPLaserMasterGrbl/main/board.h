@@ -30,7 +30,7 @@
 
 
 
-#define MACHINE_TYPE 		AUFERO_2
+#define MACHINE_TYPE 		OLM_2_PRO
 /*******************机型定义 END*******************/
 
 

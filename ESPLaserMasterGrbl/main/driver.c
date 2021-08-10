@@ -778,15 +778,15 @@ inline IRAM_ATTR static control_signals_t systemGetState (void)
 #endif
 #ifdef CYCLE_START_PIN
     signals.cycle_start = gpio_get_level(CYCLE_START_PIN);
-    /*电源按键实现cycle start功能*/
-	if(!signals.cycle_start)
-	{
-#if (BOARD_VERSION == OLM_ESP_PRO_V1X)
-		signals.cycle_start = !gpio_get_level(POWER_KEY_PIN);
-#else
-		signals.cycle_start = gpio_get_level(KEY_PIN);
-#endif
-	}
+//    /*电源按键实现cycle start功能*/
+//	if(signals.cycle_start)
+//	{
+//#if (BOARD_VERSION == OLM_ESP_PRO_V1X)
+//		signals.cycle_start = !gpio_get_level(POWER_KEY_PIN);
+//#else
+//		signals.cycle_start = gpio_get_level(POWER_KEY_PIN);
+//#endif
+//	}
 #endif
 #ifdef ENABLE_SAFETY_DOOR_INPUT_PIN
     signals.safety_door_ajar = gpio_get_level(SAFETY_DOOR_PIN);
@@ -1997,7 +1997,8 @@ void power_KeyInit(void)
 			.mode = GPIO_MODE_INPUT,
 			.pull_up_en = GPIO_PULLUP_ENABLE,
 			.pull_down_en = GPIO_PULLDOWN_DISABLE,
-			.intr_type = GPIO_INTR_DISABLE
+			.intr_type = GPIO_INTR_DISABLE,
+
 		};
 
 	gpio_config(&gpioConfig);
