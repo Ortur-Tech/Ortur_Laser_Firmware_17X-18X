@@ -385,7 +385,7 @@ void report_init_message (void)
     hal.stream.write_all(ASCII_EOL);
     hal.stream.write_all(ORTUR_MODEL_NAME " Ready!" ASCII_EOL);
     hal.stream.write_all(ORTUR_FW_NAME "." ASCII_EOL);
-#if USE_ADC_FIRE_CHECK
+#if (USE_ADC_FIRE_CHECK && ENABLE_FIRE_CHECK)
     fire_InfoReport();
     fire_AlarmStateSet(0);
 #endif
@@ -1315,9 +1315,11 @@ void report_realtime_status (void)
 			/*按键状态，电源*/
 			hal.stream.write_all(appendbuf(2, "|PS:", uitoa((uint32_t)get_PowerKeyStatus())));
 			hal.stream.write_all(appendbuf(2, ",", uitoa((uint32_t)get_SystemPowerStatus())));
+#if ENABLE_FIRE_CHECK
 			/*火焰检测环境值和时时值*/
 			hal.stream.write_all(appendbuf(2, "|ER:", uitoa((uint32_t)fire_GetEvnValue())));
 			hal.stream.write_all(appendbuf(2, ",", uitoa((uint32_t)fire_GetCurrentValue())));
+#endif
 			/*输出电压电流*/
 			hal.stream.write_all(appendbuf(2, "|VA:", uitoa((uint32_t)power_GetVotage())));
 		    hal.stream.write_all(appendbuf(2, ",", uitoa((uint32_t)power_GetCurrent())));

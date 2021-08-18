@@ -58,13 +58,14 @@ void BMA250_Get_Acceleration(short *gx, short *gy, short *gz);
 
 uint8_t GsensorDeviceType=0;    //!<gsensor芯片类型
 
-
+uint8_t iic_init_flag = 0 ;
 
 /**
  * @brief i2c master initialization
  */
-static esp_err_t i2c_master_init(void)
+esp_err_t i2c_master_init(void)
 {
+	iic_init_flag = 1;
 #if USE_SOFTWARE_IIC
 	return sw_i2c_init(IIC_SDA_PIN, IIC_SCL_PIN);
 #else
@@ -280,15 +281,14 @@ void Sc7a20_Get_Acceleration(short *gx, short *gy, short *gz)
 	return ;
 }
 
-uint8_t iic_init_flag = 0 ;
+
 /**
  * @brief Gsensor_Init
  * @author Cc
  */
 void Gsensor_Init(void)
 {
-	i2c_master_init();
-	laser_init();
+
 	//digital_laser_test();
 	//laser_auto_focus();
 	if(GsensorDeviceType == 0)
@@ -316,7 +316,7 @@ void Gsensor_Init(void)
 	{
 		GsensorDeviceType = 0;
 	}
-	iic_init_flag = 1;
+
 }
 
 /**

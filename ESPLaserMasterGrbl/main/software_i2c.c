@@ -38,6 +38,8 @@ static uint8_t g_i2c_scl;
 #define ACK   0x00
 #define NAK   0x01
 
+#define IIC_DELAY_TIME 2
+
 #define CLOCK_STRETCH_TIMEOUT   1000
 
 static const char* TAG = "software_i2c";
@@ -70,12 +72,12 @@ esp_err_t sw_i2c_master_start()
      /* If already started, do a restart condition. */
     if (g_i2c_started) {
         gpio_set_level(g_i2c_sda, HIGH);
-        ets_delay_us(10);
+        ets_delay_us(IIC_DELAY_TIME);
         gpio_set_level(g_i2c_scl, HIGH);
         while (gpio_get_level(g_i2c_scl) == LOW && stretch--) {
             ets_delay_us(1);
         };
-        ets_delay_us(10);
+        ets_delay_us(IIC_DELAY_TIME);
     }
 
     if (LOW == gpio_get_level(g_i2c_sda)) {
@@ -99,16 +101,16 @@ esp_err_t sw_i2c_master_stop()
 
     /* The stop bit is indicated by a low-to-high transition of SDA with SCL high. */
     gpio_set_level(g_i2c_sda, LOW);
-    ets_delay_us(10);
+    ets_delay_us(IIC_DELAY_TIME);
     gpio_set_level(g_i2c_scl, HIGH);
 
     while (gpio_get_level(g_i2c_scl) == LOW && stretch--) {
         ets_delay_us(1);
     };
 
-    ets_delay_us(10);
+    ets_delay_us(IIC_DELAY_TIME);
     gpio_set_level(g_i2c_sda, HIGH);
-    ets_delay_us(10);
+    ets_delay_us(IIC_DELAY_TIME);
 
     if (gpio_get_level(g_i2c_sda) == LOW) {
         ESP_LOGD(TAG, "Arbitration lost in sw_i2c_master_stop()");
@@ -131,7 +133,7 @@ static void sw_i2c_write_bit(bool bit)
         ets_delay_us(1);
     };
 
-    ets_delay_us(10); /* Wait for SDA value to be read by slave. */
+    ets_delay_us(IIC_DELAY_TIME); /* Wait for SDA value to be read by slave. */
 
     if (bit && (LOW == gpio_get_level(g_i2c_sda))) {
         ESP_LOGD(TAG, "Arbitration lost in sw_i2c_write_bit()");
@@ -146,14 +148,14 @@ static bool sw_i2c_read_bit()
     bool bit;
 
     gpio_set_level(g_i2c_sda, HIGH); /* Let the slave drive data. */
-    ets_delay_us(10); /* Wait for slave to write. */
+    ets_delay_us(IIC_DELAY_TIME); /* Wait for slave to write. */
     gpio_set_level(g_i2c_scl, HIGH); /* New valid SDA value is available. */
 
     while (gpio_get_level(g_i2c_scl) == LOW && stretch--) {
         ets_delay_us(1);
     };
 
-    ets_delay_us(10); /* Wait for slave to write. */
+    ets_delay_us(IIC_DELAY_TIME); /* Wait for slave to write. */
     bit = gpio_get_level(g_i2c_sda); /* SCL is high, read a bit. */
     gpio_set_level(g_i2c_scl, LOW); /* Prepare for next bit. */
 

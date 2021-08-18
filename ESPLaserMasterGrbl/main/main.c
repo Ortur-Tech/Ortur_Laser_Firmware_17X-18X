@@ -60,6 +60,7 @@ static void vGrblTask (void *pvParameters)
 	power_CtrlInit();
 	app_iap();
 	key_func(1);
+	//single_uart_init(X_AXIS);
 	printf("this is partition %s.\r\n",_part_ota0->label);
 	creat_ExtFuncTask();
     grbl_enter();

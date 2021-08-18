@@ -46,7 +46,8 @@ void laser_init(void)
 	regs[COMM_GET_SOFTWARE_VERSION ].reg = 0XCE; regs[COMM_GET_SOFTWARE_VERSION ].len = 2;
 
 	laser_init_flag = 1;
-
+	/*创建激光功率设置传输任务*/
+	laser_task_create();
 }
 uint8_t laser_write(uint8_t* data, uint16_t len)
 {
@@ -160,6 +161,7 @@ uint8_t laser_protocol_read(regNum reg_num, uint8_t* buf)
 	return 0;
 }
 
+uint32_t laser_power = 0;
 /*
  * 用来设置一些整形数据类型的寄存器
  */
@@ -167,6 +169,14 @@ uint8_t laser_set_value(regNum reg_num, uint32_t value)
 {
 	uint8_t buf[10] = {0};
 	uint8_t i = 0, j = 0;
+	if(reg_num == COMM_LASER_PWM_DUTY)
+	{
+		if(laser_power == value)
+		{
+			return 0;
+		}
+		laser_power = value;
+	}
 	//portENTER_CRITICAL(&mux2);
 	for(i = regs[reg_num].len; i > 0;i--)
 	{
@@ -184,6 +194,10 @@ uint32_t laser_get_value(regNum reg_num)
 	uint8_t buf[200] = {0};
 	uint32_t value = 0;
 
+	if(reg_num == COMM_LASER_PWM_DUTY)
+	{
+		return laser_power;
+	}
 	//portENTER_CRITICAL(&mux2);
 
 	laser_protocol_read(reg_num,buf);
@@ -306,10 +320,62 @@ void digital_laser_test(void)
 		j = j + 100;
 		if(j > 1000) j = 0;
 		laser_set_value(COMM_LASER_PWM_DUTY,j);
-		HAL_Delay(1000);
+		HAL_Delay(10);
 
-		int distance = laser_get_value(COMM_FOCUS_DISTANCE);
-		printf("current distance:%d.\r\n", distance);
-		HAL_Delay(1000);
+		//int distance = laser_get_value(COMM_FOCUS_DISTANCE);
+		//printf("current distance:%d.\r\n", distance);
+		//HAL_Delay(1000);
+	}
+}
+
+#define PWM_DUTY_QUEUE_LENGTH 50
+#define LASER_TASK_PRIORITY  2
+
+/*在中断标志*/
+uint8_t isr_flag = 0;
+/*pwm占空比队列*/
+QueueHandle_t pwmDutyQueue;
+
+void laser_enter_isr(void)
+{
+	isr_flag++;
+}
+void laser_exit_isr(void)
+{
+	if(isr_flag > 0)
+		isr_flag--;
+}
+
+void laser_task(void* arg)
+{
+	int pwmDuty = 0;
+	BaseType_t xStatus;
+	pwmDutyQueue = xQueueCreate( PWM_DUTY_QUEUE_LENGTH, sizeof( int));  //创建一个消息队列
+	for(;;)
+	{
+		xStatus = xQueueReceive(pwmDutyQueue,&pwmDuty,0xffffff);
+		if(xStatus == pdPASS)
+		{
+			laser_set_value(COMM_LASER_PWM_DUTY,pwmDuty);
+		}
+	}
+}
+
+void laser_task_create(void)
+{
+	//xTaskCreate(laser_task, "laser_task", 2048, NULL, LASER_TASK_PRIORITY, NULL );
+}
+
+void laser_pwm_duty_enqueue(int value)
+{
+	const TickType_t xTicksToWait = pdMS_TO_TICKS(0);
+
+	if(isr_flag)
+	{
+		//xQueueSendToBackFromISR(pwmDutyQueue, &value, xTicksToWait);
+	}
+	else
+	{
+		//xQueueSendToBack(pwmDutyQueue, &value, xTicksToWait);
 	}
 }

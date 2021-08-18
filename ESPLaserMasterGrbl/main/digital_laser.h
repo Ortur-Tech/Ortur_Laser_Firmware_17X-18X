@@ -8,6 +8,7 @@
 #ifndef MAIN_DIGITAL_LASER_H_
 #define MAIN_DIGITAL_LASER_H_
 
+#include <ctype.h>
 #include "board.h"
 
 typedef enum{
@@ -37,4 +38,8 @@ uint8_t laser_set_value(regNum reg_num, uint32_t value);
 uint32_t laser_get_value(regNum reg_num);
 //void laser_auto_focus(void* arg);
 void laser_auto_focus_task_create(void);
+void laser_pwm_duty_enqueue(int value);
+void laser_enter_isr(void);
+void laser_exit_isr(void);
+void laser_task_create(void);
 #endif /* MAIN_DIGITAL_LASER_H_ */

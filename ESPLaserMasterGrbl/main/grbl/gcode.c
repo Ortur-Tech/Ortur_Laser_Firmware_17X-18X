@@ -675,13 +675,17 @@ status_code_t gc_execute_block(char *block, char *message)
 					case 14:
 						fan_PwmSet(0);
 					case 15:
+#if ENABLE_FIRE_CHECK
 						/*开火焰检测功能 带参Sxx --永久值*/
 						fire_CheckTempEnable();
+#endif
 						word_bit.group = ModalGroup_M15;
 						break;
 					case 16:
+#if ENABLE_FIRE_CHECK
 						/*关火焰检测功能*/
 						fire_CheckTempDisable();
+#endif
 						break;
                     case 56:
                         if(!settings.parking.flags.enable_override_control) // TODO: check if enabled?

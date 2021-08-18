@@ -363,6 +363,8 @@ uint8_t fan_GetSpeed(void);
 void fan_PwmSet(uint8_t duty);
 void beep_PwmSet(uint8_t duty);
 
+#if ENABLE_FIRE_CHECK
+
 void fire_Alarm(void);
 void fire_Check(void);
 void fire_AlarmStateSet(uint8_t state);
@@ -372,6 +374,8 @@ uint32_t fire_GetEvnValue(void);
 uint32_t fire_GetCurrentValue(void);
 void fire_CheckTempEnable(void);
 void fire_CheckTempDisable(void);
+
+#endif
 
 uint8_t light_GetBrightness(void);
 uint8_t fan_GetSpeed(void);

@@ -5,7 +5,8 @@
 #include "esp32-hal-uart.h"
 #include "accelDetection.h"
 #include "serial_iap.h"
-
+#include "driver/uart.h"
+#include "digital_laser.h"
 #define TIMER_DIVIDER         (80)  //  Hardware timer clock divider
 #define TIMER_SCALE           (TIMER_BASE_CLK / TIMER_DIVIDER)  // convert counter value to seconds
 
@@ -44,10 +45,12 @@ void extended_FuncTask( void * pvParameters )
 		laser_on_time_count();
 		/*不移动激光检查*/
 		movement_laseron_check();
+#if ENABLE_FIRE_CHECK
 		/*都平均值*/
 		fire_GetAverageValue();
 
 		fire_Check();
+#endif
 
 #ifdef DELAY_OFF_SPINDLE
 		spindle_calculate_heat();
@@ -86,13 +89,14 @@ uint32_t hal_tick_timer = 0;
 
 static bool IRAM_ATTR HAL_TickInc(void *args)
 {
+	laser_enter_isr();
+
 	hal_tick_timer++;
-#if ENABLE_ACCELERATION_DETECT
-	/*加速度检测*/
-	//accel_detection_limit();
-#endif
+
+#if ENABLE_FIRE_CHECK
 	/*报警状态处理*/
 	fire_Alarm();
+#endif
 
 #ifdef DELAY_OFF_SPINDLE
 	/*延迟关激光散热风扇*/
@@ -109,6 +113,7 @@ static bool IRAM_ATTR HAL_TickInc(void *args)
     }
 #endif
 
+    laser_exit_isr();
 	return 1;
 }
 /*1ms定时器*/
@@ -331,5 +336,73 @@ void key_func(uint8_t m)
 	}
 }
 
+#if BOARD_VERSION == OLM_ESP_PRO_V1X
 
+#define BUF_SIZE (254)
+
+void single_uart_init(uint8_t driver)
+{
+    /* Configure parameters of an UART driver,
+     * communication pins and install the driver */
+    uart_config_t uart_config = {
+        .baud_rate = 9600,
+        .data_bits = UART_DATA_8_BITS,
+        .parity    = UART_PARITY_DISABLE,
+        .stop_bits = UART_STOP_BITS_1,
+        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
+        .source_clk = UART_SCLK_APB,
+    };
+    int intr_alloc_flags = 0;
+
+    ESP_ERROR_CHECK(uart_driver_install(UART_NUM_1, BUF_SIZE * 2, 0, 0, NULL, intr_alloc_flags));
+    ESP_ERROR_CHECK(uart_param_config(UART_NUM_1, &uart_config));
+    switch(driver)
+    {
+		case X_AXIS:
+		{
+			ESP_ERROR_CHECK(uart_set_pin(UART_NUM_1, X_DRIVER_UART_PIN, X_DRIVER_UART_PIN, -1, -1));
+			//gpio_set_direction(X_DRIVER_UART_PIN, GPIO_MODE_INPUT_OUTPUT_OD);
+			//gpio_set_pull_mode(X_DRIVER_UART_PIN, GPIO_FLOATING);
+			break;
+		}
+		case Y_AXIS:
+		{
+			ESP_ERROR_CHECK(uart_set_pin(UART_NUM_1, Y_DRIVER_UART_PIN, Y_DRIVER_UART_PIN, -1, -1));
+			break;
+		}
+		case Z_AXIS:
+		{
+			ESP_ERROR_CHECK(uart_set_pin(UART_NUM_1, Z_DRIVER_UART_PIN, Z_DRIVER_UART_PIN, -1, -1));
+			break;
+		}
+		default:
+			break;
+    }
+
+
+    // Configure a temporary buffer for the incoming data
+    uint8_t *data = (uint8_t *) malloc(BUF_SIZE);
+    uint32_t time = 0;
+
+    while (1)
+    {
+    	//if((HAL_GetTick() - time) > 1000)
+
+    		time = HAL_GetTick();
+    		uart_write_bytes(UART_NUM_1,"hello world.\r\n", 14);
+
+
+        // Read data from the UART
+        int len = uart_read_bytes(UART_NUM_1, data, BUF_SIZE, 20 / portTICK_RATE_MS);
+        if(len > 0)
+        {
+			// Write data back to the UART
+        	serialWriteData(data, len);
+        }
+        HAL_Delay(1000);
+    }
+}
+
+
+#endif
 

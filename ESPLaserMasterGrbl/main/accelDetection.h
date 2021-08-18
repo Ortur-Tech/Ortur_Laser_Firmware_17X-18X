@@ -4,6 +4,8 @@
  *  Created on: 2021��5��20��
  *      Author: c
  */
+#include "board.h"
+#include "driver.h"
 
 #ifndef MAIN_ACCELDETECTION_H_
 #define MAIN_ACCELDETECTION_H_
@@ -18,5 +20,7 @@
 void Gsensor_Init();
 void accel_detection();
 void accel_detection_limit();
+
+esp_err_t i2c_master_init(void);
 
 #endif /* MAIN_ACCELDETECTION_H_ */

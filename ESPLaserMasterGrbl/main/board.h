@@ -16,6 +16,8 @@
 #define BOARD_UNKOWN 		0
 #define OLM_ESP_V1X			1	//曾老板的主板
 #define OLM_ESP_PRO_V1X     2   //我们自己的主板
+#define OCM_ESP_PRO_V1X     3   //我们自己的主板
+
 
 #define BOARD_VERSION 		OLM_ESP_PRO_V1X
 /*******************硬件版本定义 END*******************/
@@ -26,7 +28,9 @@
 #define CNC_AUFERO			1
 #define OLM_2_PRO			2
 #define OLM_PRO				3
-#define AUFERO_2			4
+#define AUFERO_2			4	//方框机器
+#define AUFERO_1			5	//悬臂机
+
 
 
 
@@ -77,5 +81,5 @@ uint32_t HAL_GetTick(void);
 void creat_ExtFuncTask(void );
 
 void Usb_ForceReset(void);
-
+void single_uart_init(uint8_t driver);
 #endif /* MAIN_BOARD_H_ */

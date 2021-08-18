@@ -29,6 +29,12 @@
 
 #define OTA_FILE_NAME "ESP_AUFERO2_"
 
+#elif (MACHINE_TYPE == AUFERO_1)
+#define OTA_FILE_NAME "ESP_AUFERO1_"
+#elif (MACHINE_TYPE == CNC_AUFERO)
+#define OTA_FILE_NAME "ESP_AUFERO_CNC_"
+#else
+#error "没有定义bootloader升级匹配字符串"
 #endif
 
 //#include "msc_device.h"
