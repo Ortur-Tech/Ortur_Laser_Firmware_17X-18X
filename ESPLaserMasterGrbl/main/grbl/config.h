@@ -500,11 +500,11 @@
 #endif
 
 /*使用软件IIC*/
-#define USE_SOFTWARE_IIC			1
+#define USE_SOFTWARE_IIC			0
 /*使能数字激光头*/
 #define ENABLE_DIGITAL_LASER 		1
 /*加速度检测使能*/
-#define ENABLE_ACCELERATION_DETECT 	1
+#define ENABLE_ACCELERATION_DETECT 	0
 
 
 #define DEFAULT_ACCELERATION_LIMIT 	290

@@ -44,6 +44,10 @@ void laser_init(void)
 	regs[COMM_GET_PRODUCT_DATE     ].reg = 0XCC; regs[COMM_GET_PRODUCT_DATE     ].len = 3;
 	regs[COMM_GET_HARDWARE_VERSION ].reg = 0XCD; regs[COMM_GET_HARDWARE_VERSION ].len = 2;
 	regs[COMM_GET_SOFTWARE_VERSION ].reg = 0XCE; regs[COMM_GET_SOFTWARE_VERSION ].len = 2;
+//	regs[COMM_LASER_PWM_DUTY       ].reg = 0xE0; regs[COMM_GET_SOFTWARE_VERSION ].len = 1;
+//	regs[COMM_LASER_PWM_DUTY       ].reg = 0xE1; regs[COMM_GET_SOFTWARE_VERSION ].len = 1;
+//	regs[COMM_LASER_PWM_DUTY       ].reg = 0xE2; regs[COMM_GET_SOFTWARE_VERSION ].len = 1;
+//	regs[COMM_LASER_PWM_DUTY       ].reg = 0xE2; regs[COMM_GET_SOFTWARE_VERSION ].len = 1;
 
 	laser_init_flag = 1;
 	/*创建激光功率设置传输任务*/
@@ -171,11 +175,17 @@ uint8_t laser_set_value(regNum reg_num, uint32_t value)
 	uint8_t i = 0, j = 0;
 	if(reg_num == COMM_LASER_PWM_DUTY)
 	{
-		if(laser_power == value)
-		{
-			return 0;
-		}
+//		if(laser_power == value)
+//		{
+//			return 0;
+//		}
 		laser_power = value;
+
+		/*简化协议只传3个字节，地址，寄存器，值*/
+		buf[0] = 0xE0 + (value / 0x100);
+		buf[1] = value % 0x100;
+		laser_write(buf, 2);
+		return 0;
 	}
 	//portENTER_CRITICAL(&mux2);
 	for(i = regs[reg_num].len; i > 0;i--)
@@ -329,7 +339,7 @@ void digital_laser_test(void)
 }
 
 #define PWM_DUTY_QUEUE_LENGTH 50
-#define LASER_TASK_PRIORITY  2
+#define LASER_TASK_PRIORITY  10
 
 /*在中断标志*/
 uint8_t isr_flag = 0;
@@ -363,7 +373,7 @@ void laser_task(void* arg)
 
 void laser_task_create(void)
 {
-	//xTaskCreate(laser_task, "laser_task", 2048, NULL, LASER_TASK_PRIORITY, NULL );
+	xTaskCreate(laser_task, "laser_task", 2048, NULL, LASER_TASK_PRIORITY, NULL );
 }
 
 void laser_pwm_duty_enqueue(int value)
@@ -372,10 +382,10 @@ void laser_pwm_duty_enqueue(int value)
 
 	if(isr_flag)
 	{
-		//xQueueSendToBackFromISR(pwmDutyQueue, &value, xTicksToWait);
+		xQueueSendToBackFromISR(pwmDutyQueue, &value, xTicksToWait);
 	}
 	else
 	{
-		//xQueueSendToBack(pwmDutyQueue, &value, xTicksToWait);
+		xQueueSendToBack(pwmDutyQueue, &value, xTicksToWait);
 	}
 }
