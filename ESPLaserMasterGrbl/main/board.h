@@ -19,13 +19,13 @@
 #define OCM_ESP_PRO_V1X     3   //我们自己的主板
 
 
-#define BOARD_VERSION 		OLM_ESP_PRO_V1X
+#define BOARD_VERSION 		OCM_ESP_PRO_V1X
 /*******************硬件版本定义 END*******************/
 
 
 /*******************机型定义 BEGIN*******************/
 #define BOARD_UNKOWN 		0
-#define CNC_AUFERO			1
+#define AUFERO_CNC			1
 #define OLM_2_PRO			2
 #define OLM_PRO				3
 #define AUFERO_2			4	//方框机器
@@ -34,7 +34,7 @@
 
 
 
-#define MACHINE_TYPE 		OLM_2_PRO
+#define MACHINE_TYPE 		AUFERO_CNC
 /*******************机型定义 END*******************/
 
 

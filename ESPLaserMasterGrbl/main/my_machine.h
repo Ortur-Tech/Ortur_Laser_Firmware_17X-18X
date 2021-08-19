@@ -81,7 +81,7 @@
 #define ORTUR_MODEL_NAME "Ortur Aufero 1 S2"
 #elif (MACHINE_TYPE == OLM_PRO)
 #define ORTUR_MODEL_NAME "Ortur Laser Master Pro S2"
-#elif (MACHINE_TYPE == CNC_AUFERO)
+#elif (MACHINE_TYPE == AUFERO_CNC)
 #define ORTUR_MODEL_NAME "Ortur Aufero CNC S2"
 #else
 #error "错误的机型！！！"
