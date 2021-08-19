@@ -76,7 +76,7 @@ esp_err_t i2c_master_init(void)
         .sda_pullup_en = GPIO_PULLUP_ENABLE,
         .scl_io_num = IIC_SCL_PIN,
         .scl_pullup_en = GPIO_PULLUP_ENABLE,
-        .master.clk_speed = 300000,
+        .master.clk_speed = 100000,
         // .clk_flags = 0,          /*!< Optional, you can use I2C_SCLK_SRC_FLAG_* flags to choose i2c source clock here. */
     };
     esp_err_t err = i2c_param_config(i2c_master_port, &conf);
@@ -143,7 +143,7 @@ uint8_t Read_One_Byte(uint8_t addr, uint8_t reg)
 	i2c_master_write_byte(cmd, (addr << 1) | I2C_MASTER_READ, 1);
 	i2c_master_read_byte(cmd, &data, 1);
 	i2c_master_stop(cmd);
-	esp_err_t ret = i2c_master_cmd_begin(I2C_NUM_0, cmd, 300 / portTICK_RATE_MS);
+	esp_err_t ret = i2c_master_cmd_begin(I2C_NUM_0, cmd, 1000 / portTICK_RATE_MS);
 	i2c_cmd_link_delete(cmd);
 	if (ret != ESP_OK) {
 			mprintf(LOG_ERROR,"IIC read error:%d.\r\n",ret);
@@ -314,7 +314,12 @@ void Gsensor_Init(void)
 			(GsensorDeviceType != BMA250_DEVICE) &&
 			(GsensorDeviceType != BMA253_DEVICE))
 	{
+		mprintf(LOG_ERROR,"NO GSensor:%d.\r\n",GsensorDeviceType);
 		GsensorDeviceType = 0;
+	}
+	else
+	{
+		mprintf(LOG_ERROR,"GSensor ok.\r\n");
 	}
 
 }

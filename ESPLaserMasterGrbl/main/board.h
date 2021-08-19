@@ -19,7 +19,7 @@
 #define OCM_ESP_PRO_V1X     3   //我们自己的主板
 
 
-#define BOARD_VERSION 		OCM_ESP_PRO_V1X
+#define BOARD_VERSION 		OLM_ESP_PRO_V1X
 /*******************硬件版本定义 END*******************/
 
 
@@ -34,7 +34,7 @@
 
 
 
-#define MACHINE_TYPE 		AUFERO_CNC
+#define MACHINE_TYPE 		OLM_2_PRO
 /*******************机型定义 END*******************/
 
 

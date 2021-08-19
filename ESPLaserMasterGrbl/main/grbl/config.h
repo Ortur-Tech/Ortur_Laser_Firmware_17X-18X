@@ -208,7 +208,7 @@
 // available RAM, like when re-compiling for MCU with ample amounts of RAM. Or decrease if the MCU begins to
 // crash due to the lack of available RAM or if the CPU is having trouble keeping up with planning
 // new incoming motions as they are executed.
-//#define BLOCK_BUFFER_SIZE 16 // Uncomment to override default in planner.h.
+#define BLOCK_BUFFER_SIZE 100 // Uncomment to override default in planner.h.
 
 // Governs the size of the intermediary step segment buffer between the step execution algorithm
 // and the planner blocks. Each segment is set of steps executed at a constant velocity over a
@@ -216,7 +216,7 @@
 // block velocity profile is traced exactly. The size of this buffer governs how much step
 // execution lead time there is for other Grbl processes have to compute and do their thing
 // before having to come back and refill this buffer, currently at ~50msec of step moves.
-//#define SEGMENT_BUFFER_SIZE 16 // Uncomment to override default in stepper.h.
+#define SEGMENT_BUFFER_SIZE 100 // Uncomment to override default in stepper.h.
 
 // Configures the position after a probing cycle during Grbl's check mode. Disabled sets
 // the position to the probe target, when enabled sets the position to the start position.
@@ -502,13 +502,11 @@
 /*使用软件IIC*/
 #define USE_SOFTWARE_IIC			0
 /*使能数字激光头*/
-#define ENABLE_DIGITAL_LASER 		0
+#define ENABLE_DIGITAL_LASER 		1
 /*加速度检测使能*/
-#define ENABLE_ACCELERATION_DETECT 	1
-
+#define ENABLE_ACCELERATION_DETECT 	0
 
 #define DEFAULT_ACCELERATION_LIMIT 	290
-/*电源检测功能与通讯指示灯---与调试冲突*/
 #define ENABLE_POWER_SUPPLY_CHECK 	1
 #define ENABLE_COMM_LED2			1
 
