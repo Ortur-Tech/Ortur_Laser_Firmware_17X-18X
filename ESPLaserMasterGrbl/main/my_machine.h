@@ -32,8 +32,8 @@
 #define ORTUR_FW_VERSION_NUM 171
 #define ORTUR_FW_VERSION "171"
 #elif BOARD_VERSION == OLM_ESP_PRO_V1X
-#define ORTUR_FW_VERSION_NUM 200
-#define ORTUR_FW_VERSION "200"
+#define ORTUR_FW_VERSION_NUM 181
+#define ORTUR_FW_VERSION "181"
 #elif BOARD_VERSION == OCM_ESP_PRO_V1X
 #define ORTUR_FW_VERSION_NUM 300
 #define ORTUR_FW_VERSION "300"
@@ -48,8 +48,8 @@
 
 #if (MACHINE_TYPE == OLM_2_PRO)
 #define ORTUR_MODEL_NAME "Ortur Laser Master 2 Pro S1"
-#elif (MACHINE_TYPE == AUFERO_2)
-#define ORTUR_MODEL_NAME "Ortur Aufero 2 S1"
+#elif (MACHINE_TYPE == AUFERO_4)
+#define ORTUR_MODEL_NAME "Ortur Aufero 4 S1"
 #elif (MACHINE_TYPE == AUFERO_1)
 #define ORTUR_MODEL_NAME "Ortur Aufero 1 S1"
 #elif (MACHINE_TYPE == OLM_PRO)
@@ -62,8 +62,8 @@
 
 #if (MACHINE_TYPE == OLM_2_PRO)
 #define ORTUR_MODEL_NAME "Ortur Laser Master 2 Pro S2"
-#elif (MACHINE_TYPE == AUFERO_2)
-#define ORTUR_MODEL_NAME "Ortur Aufero 2 S2"
+#elif (MACHINE_TYPE == AUFERO_4)
+#define ORTUR_MODEL_NAME "Ortur Aufero 4 S2"
 #elif (MACHINE_TYPE == AUFERO_1)
 #define ORTUR_MODEL_NAME "Ortur Aufero 1 S2"
 #elif (MACHINE_TYPE == OLM_PRO)
@@ -73,15 +73,7 @@
 #endif
 
 #elif BOARD_VERSION == OCM_ESP_PRO_V1X
-#if (MACHINE_TYPE == OLM_2_PRO)
-#define ORTUR_MODEL_NAME "Ortur Laser Master 2 Pro S2"
-#elif (MACHINE_TYPE == AUFERO_2)
-#define ORTUR_MODEL_NAME "Ortur Aufero 2 S2"
-#elif (MACHINE_TYPE == AUFERO_1)
-#define ORTUR_MODEL_NAME "Ortur Aufero 1 S2"
-#elif (MACHINE_TYPE == OLM_PRO)
-#define ORTUR_MODEL_NAME "Ortur Laser Master Pro S2"
-#elif (MACHINE_TYPE == AUFERO_CNC)
+#if (MACHINE_TYPE == AUFERO_CNC)
 #define ORTUR_MODEL_NAME "Ortur Aufero CNC S2"
 #else
 #error "错误的机型！！！"
