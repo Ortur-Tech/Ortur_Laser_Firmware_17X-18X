@@ -35,6 +35,10 @@ void extended_FuncTask( void * pvParameters )
 	for( ;; )
 	{
 
+#if ENABLE_DIGITAL_LASER
+		laser_keep_active();
+#endif
+
 		vTaskDelay(10/portTICK_PERIOD_MS);
 
 #if ENABLE_ACCELERATION_DETECT
