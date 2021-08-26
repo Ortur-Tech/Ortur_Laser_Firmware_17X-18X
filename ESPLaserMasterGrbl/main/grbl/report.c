@@ -1324,6 +1324,14 @@ void report_realtime_status (void)
 			hal.stream.write_all(appendbuf(2, "|VA:", uitoa((uint32_t)power_GetVotage())));
 		    hal.stream.write_all(appendbuf(2, ",", uitoa((uint32_t)power_GetCurrent())));
 
+#if ENABLE_DIGITAL_LASER
+		    hal.stream.write_all(appendbuf(2, "|FTFFLK:", uitoa(laser_info.distance)));
+		    hal.stream.write_all(appendbuf(2, ",", uitoa(laser_info.temperture)));
+		    hal.stream.write_all(appendbuf(2, ",", uitoa(laser_info.fire)));
+		    hal.stream.write_all(appendbuf(2, ",", uitoa(laser_info.fan_duty)));
+		    hal.stream.write_all(appendbuf(2, ",", uitoa(laser_info.laser_duty)));
+		    hal.stream.write_all(appendbuf(2, ",", uitoa(laser_info.key)));
+#endif
 
 		}
     }
