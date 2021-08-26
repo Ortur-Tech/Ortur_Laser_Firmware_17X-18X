@@ -189,6 +189,7 @@ bool protocol_main_loop(bool cold_start)
 #if ENABLE_POWER_SUPPLY_CHECK
     	Main_PowerCheck();
 #endif
+
         // Process one line of incoming stream data, as the data becomes available. Performs an
         // initial filtering by removing spaces and comments and capitalizing all letters.
         while((c = hal.stream.read()) != SERIAL_NO_DATA) {
@@ -359,6 +360,10 @@ bool protocol_main_loop(bool cold_start)
 
             xcommand[0] = '\0';
         }
+#if ENABLE_DIGITAL_LASER
+        /*自动对焦*/
+        laser_auto_focus_cycle();
+#endif
 #if ENABLE_COMM_LED2
 		//指示USB连接状态
 		if(isUsbPlugIn())
