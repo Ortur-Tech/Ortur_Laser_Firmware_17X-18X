@@ -687,6 +687,11 @@ status_code_t gc_execute_block(char *block, char *message)
 						fire_CheckTempDisable();
 #endif
 						break;
+					case 17:
+#if ENABLE_DIGITAL_LASER
+						laser_auto_focus_set(1);
+#endif
+						break;
                     case 56:
                         if(!settings.parking.flags.enable_override_control) // TODO: check if enabled?
                             FAIL(Status_GcodeUnsupportedCommand); // [Unsupported M command]
