@@ -44,10 +44,16 @@ void laser_init(void)
 	regs[COMM_GET_PRODUCT_DATE     ].reg = 0XCC; regs[COMM_GET_PRODUCT_DATE     ].len = 3;
 	regs[COMM_GET_HARDWARE_VERSION ].reg = 0XCD; regs[COMM_GET_HARDWARE_VERSION ].len = 2;
 	regs[COMM_GET_SOFTWARE_VERSION ].reg = 0XCE; regs[COMM_GET_SOFTWARE_VERSION ].len = 2;
-//	regs[COMM_LASER_PWM_DUTY       ].reg = 0xE0; regs[COMM_GET_SOFTWARE_VERSION ].len = 1;
-//	regs[COMM_LASER_PWM_DUTY       ].reg = 0xE1; regs[COMM_GET_SOFTWARE_VERSION ].len = 1;
-//	regs[COMM_LASER_PWM_DUTY       ].reg = 0xE2; regs[COMM_GET_SOFTWARE_VERSION ].len = 1;
-//	regs[COMM_LASER_PWM_DUTY       ].reg = 0xE2; regs[COMM_GET_SOFTWARE_VERSION ].len = 1;
+
+	regs[COMM_GET_BTN_STATE        ].reg = 0XCF; regs[COMM_GET_BTN_STATE        ].len = 1;
+	regs[COMM_GET_VL6180_CONNECTED ].reg = 0XD0; regs[COMM_GET_VL6180_CONNECTED ].len = 1;
+	regs[COMM_GET_NTC_CONNECTED    ].reg = 0XD1; regs[COMM_GET_NTC_CONNECTED    ].len = 1;
+	regs[COMM_GET_LASER_STATE      ].reg = 0XD2; regs[COMM_GET_LASER_STATE      ].len = 1;
+
+	regs[COMM_LASER_PWM_DUTY_255   ].reg = 0xE0; regs[COMM_LASER_PWM_DUTY_255	].len = 1;
+	regs[COMM_LASER_PWM_DUTY_511   ].reg = 0xE1; regs[COMM_LASER_PWM_DUTY_511	].len = 1;
+	regs[COMM_LASER_PWM_DUTY_767   ].reg = 0xE2; regs[COMM_LASER_PWM_DUTY_767	].len = 1;
+	regs[COMM_LASER_PWM_DUTY_1000  ].reg = 0xE3; regs[COMM_LASER_PWM_DUTY_1000  ].len = 1;
 
 	laser_init_flag = 1;
 	/*创建激光功率设置传输任务*/
@@ -346,6 +352,9 @@ uint8_t isr_flag = 0;
 /*pwm占空比队列*/
 QueueHandle_t pwmDutyQueue;
 
+/*
+ * breif:进入中断标志位，用于判断激光pwm值入队时需要调用的函数
+ */
 void laser_enter_isr(void)
 {
 	isr_flag++;
@@ -355,7 +364,9 @@ void laser_exit_isr(void)
 	if(isr_flag > 0)
 		isr_flag--;
 }
-
+/*
+ * breif:占空比发送任务
+ * */
 void laser_task(void* arg)
 {
 	int pwmDuty = 0;
@@ -370,12 +381,16 @@ void laser_task(void* arg)
 		}
 	}
 }
-
+/*
+ * breif:创建占空比发送任务
+ */
 void laser_task_create(void)
 {
 	xTaskCreate(laser_task, "laser_task", 2048, NULL, LASER_TASK_PRIORITY, NULL );
 }
-
+/*
+ * breif:激光占空比入队
+ */
 void laser_pwm_duty_enqueue(int value)
 {
 	const TickType_t xTicksToWait = pdMS_TO_TICKS(0);
@@ -388,4 +403,84 @@ void laser_pwm_duty_enqueue(int value)
 	{
 		xQueueSendToBack(pwmDutyQueue, &value, xTicksToWait);
 	}
+}
+
+LaserInfo laser_info = {0};
+/*
+ * breif:数字激光心跳
+ */
+void laser_keep_active(void)
+{
+	static uint32_t time = 0;
+	if((HAL_GetTick() - time) > 3000)
+	{
+		time = HAL_GetTick();
+		if(sys.state == STATE_CYCLE)
+		{
+			laser_set_value(COMM_TICK_ALIVE, 0);
+		}
+		else
+		{
+			laser_info.distance = laser_get_value(COMM_FOCUS_DISTANCE);
+			laser_info.temperture = laser_get_value(COMM_GET_TEMPRATURE);
+			laser_info.fire = laser_get_value(COMM_FIRE_DETECT);
+			laser_info.fan_duty = laser_get_value(COMM_FAN_DUTY_CONTROL);
+			laser_info.laser_duty = laser_get_value(COMM_LASER_PWM_DUTY);
+			laser_info.key = laser_get_value(COMM_GET_BTN_STATE);
+			laser_info.is_vl6180_connected = laser_get_value(COMM_GET_VL6180_CONNECTED);
+		}
+
+	}
+}
+
+#define FORWARD_DISTANCE 10
+uint8_t auto_focus_flag = 0;
+
+void laser_auto_focus_set(uint8_t flag)
+{
+	auto_focus_flag = flag;
+}
+
+void laser_auto_focus_cycle(void)
+{
+//	"$HZ\r\n"
+//	"G21\r\n"
+//	"G91\r\n"
+//	/*读到达焦距的大致长度*/
+//	"G38.2Z-50F100\r\n"
+//	"G0Z-5\r\n"
+//	"G38.2Z10F100\r\n"
+//	"G0Z+5\r\n"
+//	"G38.2Z-10F100\r\n"
+//	 "G90\r\n"
+//	 "G10 L20 P1 Z0\r\n"
+	if(auto_focus_flag == 0) return;
+
+	char line[257] = {0};
+	uint32_t dis = 0;
+
+	memcpy(line,"$HZ\0",3);
+    report_status_message(system_execute_line(line));
+
+	grbl.report.status_message(gc_execute_block("$G21\0",NULL));
+	grbl.report.status_message(gc_execute_block("$G91\0",NULL));
+	/*获取当前距离*/
+	laser_info.distance = laser_get_value(COMM_FOCUS_DISTANCE);
+	if(laser_info.distance < settings.laser_focal_length)
+	{
+		/*当前距离比焦距还小*/
+		hal.stream.write_all("[auto focus fail. The carving is too close to the lens.]");
+		return ;
+	}
+	dis = laser_info.distance - settings.laser_focal_length ;
+	sprintf(line, "G38.2Z-%dF100", dis);
+	grbl.report.status_message(gc_execute_block(line,NULL));
+	grbl.report.status_message(gc_execute_block("G0Z-5\0",NULL));
+	grbl.report.status_message(gc_execute_block("G38.2Z10F100\0",NULL));
+	grbl.report.status_message(gc_execute_block("G0Z+5\0",NULL));
+	grbl.report.status_message(gc_execute_block("G38.2Z-10F100\0",NULL));
+	grbl.report.status_message(gc_execute_block("G90\0",NULL));
+	grbl.report.status_message(gc_execute_block("G10 L20 P1 Z0\0",NULL));
+
+
 }
