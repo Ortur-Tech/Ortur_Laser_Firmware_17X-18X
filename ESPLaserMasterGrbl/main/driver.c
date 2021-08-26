@@ -829,7 +829,11 @@ probe_state_t probeGetState (void)
     inputpin[INPUT_PROBE].active = inputpin[INPUT_PROBE].active || ((uint8_t)gpio_get_level(PROBE_PIN) ^ probe_invert);
     state.triggered = inputpin[INPUT_PROBE].active;
 #else
+#if ENABLE_DIGITAL_LASER
+    state.triggered = laser_probe_state() ^ probe_invert;
+#else
     state.triggered = (uint8_t)gpio_get_level(PROBE_PIN) ^ probe_invert;
+#endif
 #endif
 
     return state;
