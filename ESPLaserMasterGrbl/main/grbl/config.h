@@ -216,7 +216,7 @@
 // block velocity profile is traced exactly. The size of this buffer governs how much step
 // execution lead time there is for other Grbl processes have to compute and do their thing
 // before having to come back and refill this buffer, currently at ~50msec of step moves.
-#define SEGMENT_BUFFER_SIZE 100 // Uncomment to override default in stepper.h.
+//#define SEGMENT_BUFFER_SIZE 100 // Uncomment to override default in stepper.h.
 
 // Configures the position after a probing cycle during Grbl's check mode. Disabled sets
 // the position to the probe target, when enabled sets the position to the start position.
@@ -508,7 +508,11 @@
 /*加速度检测使能*/
 #define ENABLE_ACCELERATION_DETECT 	1
 
-#define DEFAULT_ACCELERATION_LIMIT 	290
+#if MACHINE_TYPE == AUFERO_1
+#define DEFAULT_ACCELERATION_LIMIT 	230
+#else
+#define DEFAULT_ACCELERATION_LIMIT 	230
+#endif
 #define ENABLE_POWER_SUPPLY_CHECK 	1
 #define ENABLE_COMM_LED2			1
 
@@ -547,8 +551,8 @@
 #define DEFAULT_X_MAX_RATE (170.0f*60) // mm/min
 #define DEFAULT_Y_MAX_RATE (170.0f*60) // mm/min
 #define DEFAULT_Z_MAX_RATE (20.0f*60) // mm/min
-#define DEFAULT_X_ACCELERATION (200.0f*60*60) // 10*60*60 mm/min^2 = 10 mm/sec^2
-#define DEFAULT_Y_ACCELERATION (200.0f*60*60) // 10*60*60 mm/min^2 = 10 mm/sec^2
+#define DEFAULT_X_ACCELERATION (2200.0f*60*60) // 10*60*60 mm/min^2 = 10 mm/sec^2
+#define DEFAULT_Y_ACCELERATION (1800.0f*60*60) // 10*60*60 mm/min^2 = 10 mm/sec^2
 #define DEFAULT_Z_ACCELERATION (2200.0f*60*60) // 10*60*60 mm/min^2 = 10 mm/sec^2
 #define DEFAULT_X_MAX_TRAVEL 180.0f // mm NOTE: Must be a positive value.
 #define DEFAULT_Y_MAX_TRAVEL 180.0f // mm NOTE: Must be a positive value.
@@ -663,7 +667,7 @@
 // NOTE: Defaults are set for a traditional 3-axis CNC machine. Z-axis first to clear, followed by X & Y.
 
 #define HOMING_CYCLE_0 (X_AXIS_BIT|Y_AXIS_BIT) //(Z_AXIS_BIT)             // REQUIRED: First move Z to clear workspace.
-//#define HOMING_CYCLE_1 (X_AXIS_BIT|Y_AXIS_BIT)  // OPTIONAL: Then move X,Y at the same time.
+#define HOMING_CYCLE_1 (Z_AXIS_BIT)  // OPTIONAL: Then move X,Y at the same time.
 //#define HOMING_CYCLE_2 0                        // OPTIONAL: Uncomment and add axes mask to enable
 #if N_AXIS > 3
 //#define HOMING_CYCLE_3 0                        // OPTIONAL: Uncomment and add axes mask to enable
