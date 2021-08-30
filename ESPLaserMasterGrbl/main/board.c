@@ -32,13 +32,9 @@ void Usb_ForceReset(void)
 /*扩展功能任务1.加速度检测 2.火焰ad值获取*/
 void extended_FuncTask( void * pvParameters )
 {
+	vTaskDelay(3000/portTICK_PERIOD_MS);
 	for( ;; )
 	{
-
-#if ENABLE_DIGITAL_LASER
-		laser_keep_active();
-#endif
-
 		vTaskDelay(10/portTICK_PERIOD_MS);
 
 #if ENABLE_ACCELERATION_DETECT
@@ -61,6 +57,9 @@ void extended_FuncTask( void * pvParameters )
 		spindle_delay_stop();
 #endif
 
+#if ENABLE_DIGITAL_LASER
+		laser_keep_active();
+#endif
 	}
 }
 
@@ -344,68 +343,68 @@ void key_func(uint8_t m)
 
 #define BUF_SIZE (254)
 
-void single_uart_init(uint8_t driver)
-{
-    /* Configure parameters of an UART driver,
-     * communication pins and install the driver */
-    uart_config_t uart_config = {
-        .baud_rate = 9600,
-        .data_bits = UART_DATA_8_BITS,
-        .parity    = UART_PARITY_DISABLE,
-        .stop_bits = UART_STOP_BITS_1,
-        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
-        .source_clk = UART_SCLK_APB,
-    };
-    int intr_alloc_flags = 0;
-
-    ESP_ERROR_CHECK(uart_driver_install(UART_NUM_1, BUF_SIZE * 2, 0, 0, NULL, intr_alloc_flags));
-    ESP_ERROR_CHECK(uart_param_config(UART_NUM_1, &uart_config));
-    switch(driver)
-    {
-		case X_AXIS:
-		{
-			ESP_ERROR_CHECK(uart_set_pin(UART_NUM_1, X_DRIVER_UART_PIN, X_DRIVER_UART_PIN, -1, -1));
-			//gpio_set_direction(X_DRIVER_UART_PIN, GPIO_MODE_INPUT_OUTPUT_OD);
-			//gpio_set_pull_mode(X_DRIVER_UART_PIN, GPIO_FLOATING);
-			break;
-		}
-		case Y_AXIS:
-		{
-			ESP_ERROR_CHECK(uart_set_pin(UART_NUM_1, Y_DRIVER_UART_PIN, Y_DRIVER_UART_PIN, -1, -1));
-			break;
-		}
-		case Z_AXIS:
-		{
-			ESP_ERROR_CHECK(uart_set_pin(UART_NUM_1, Z_DRIVER_UART_PIN, Z_DRIVER_UART_PIN, -1, -1));
-			break;
-		}
-		default:
-			break;
-    }
-
-
-    // Configure a temporary buffer for the incoming data
-    uint8_t *data = (uint8_t *) malloc(BUF_SIZE);
-    uint32_t time = 0;
-
-    while (1)
-    {
-    	//if((HAL_GetTick() - time) > 1000)
-
-    		time = HAL_GetTick();
-    		uart_write_bytes(UART_NUM_1,"hello world.\r\n", 14);
-
-
-        // Read data from the UART
-        int len = uart_read_bytes(UART_NUM_1, data, BUF_SIZE, 20 / portTICK_RATE_MS);
-        if(len > 0)
-        {
-			// Write data back to the UART
-        	serialWriteData(data, len);
-        }
-        HAL_Delay(1000);
-    }
-}
+//void single_uart_init(uint8_t driver)
+//{
+//    /* Configure parameters of an UART driver,
+//     * communication pins and install the driver */
+//    uart_config_t uart_config = {
+//        .baud_rate = 9600,
+//        .data_bits = UART_DATA_8_BITS,
+//        .parity    = UART_PARITY_DISABLE,
+//        .stop_bits = UART_STOP_BITS_1,
+//        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
+//        .source_clk = UART_SCLK_APB,
+//    };
+//    int intr_alloc_flags = 0;
+//
+//    ESP_ERROR_CHECK(uart_driver_install(UART_NUM_1, BUF_SIZE * 2, 0, 0, NULL, intr_alloc_flags));
+//    ESP_ERROR_CHECK(uart_param_config(UART_NUM_1, &uart_config));
+//    switch(driver)
+//    {
+//		case X_AXIS:
+//		{
+//			ESP_ERROR_CHECK(uart_set_pin(UART_NUM_1, X_DRIVER_UART_PIN, X_DRIVER_UART_PIN, -1, -1));
+//			//gpio_set_direction(X_DRIVER_UART_PIN, GPIO_MODE_INPUT_OUTPUT_OD);
+//			//gpio_set_pull_mode(X_DRIVER_UART_PIN, GPIO_FLOATING);
+//			break;
+//		}
+//		case Y_AXIS:
+//		{
+//			ESP_ERROR_CHECK(uart_set_pin(UART_NUM_1, Y_DRIVER_UART_PIN, Y_DRIVER_UART_PIN, -1, -1));
+//			break;
+//		}
+//		case Z_AXIS:
+//		{
+//			ESP_ERROR_CHECK(uart_set_pin(UART_NUM_1, Z_DRIVER_UART_PIN, Z_DRIVER_UART_PIN, -1, -1));
+//			break;
+//		}
+//		default:
+//			break;
+//    }
+//
+//
+//    // Configure a temporary buffer for the incoming data
+//    uint8_t *data = (uint8_t *) malloc(BUF_SIZE);
+//    uint32_t time = 0;
+//
+//    while (1)
+//    {
+//    	//if((HAL_GetTick() - time) > 1000)
+//
+//    		time = HAL_GetTick();
+//    		uart_write_bytes(UART_NUM_1,"hello world.\r\n", 14);
+//
+//
+//        // Read data from the UART
+//        int len = uart_read_bytes(UART_NUM_1, data, BUF_SIZE, 20 / portTICK_RATE_MS);
+//        if(len > 0)
+//        {
+//			// Write data back to the UART
+//        	serialWriteData(data, len);
+//        }
+//        HAL_Delay(1000);
+//    }
+//}
 
 
 #endif
