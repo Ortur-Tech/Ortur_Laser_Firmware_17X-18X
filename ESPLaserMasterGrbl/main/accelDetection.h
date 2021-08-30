@@ -20,7 +20,7 @@
 void Gsensor_Init();
 void accel_detection();
 void accel_detection_limit();
-
+void gsensor_info_report(void);
 esp_err_t i2c_master_init(void);
 
 #endif /* MAIN_ACCELDETECTION_H_ */

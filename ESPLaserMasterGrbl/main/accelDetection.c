@@ -281,7 +281,13 @@ void Sc7a20_Get_Acceleration(short *gx, short *gy, short *gz)
 	return ;
 }
 
-
+void gsensor_info_report(void)
+{
+	if(GsensorDeviceType == 0)
+	{
+		hal.stream.write_all("[MSG:Gsensor connect error!]" ASCII_EOL);
+	}
+}
 /**
  * @brief Gsensor_Init
  * @author Cc

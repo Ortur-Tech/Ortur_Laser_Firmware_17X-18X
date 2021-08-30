@@ -36,6 +36,8 @@
 #include "nvs_buffer.h"
 #include "driver.h"
 #include "board.h"
+#include "digital_laser.h"
+#include "accelDetection.h"
 
 #ifdef ENABLE_SPINDLE_LINEARIZATION
 #include <stdio.h>
@@ -385,6 +387,9 @@ void report_init_message (void)
     hal.stream.write_all(ASCII_EOL);
     hal.stream.write_all(ORTUR_MODEL_NAME " Ready!" ASCII_EOL);
     hal.stream.write_all(ORTUR_FW_NAME "." ASCII_EOL);
+#if ENABLE_ACCELERATION_DETECT
+    gsensor_info_report();
+#endif
 #if (USE_ADC_FIRE_CHECK && ENABLE_FIRE_CHECK)
     fire_InfoReport();
     fire_AlarmStateSet(0);
