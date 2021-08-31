@@ -65,7 +65,6 @@ uint32_t laser_get_value(LaserRegNum reg_num);
 //void laser_auto_focus(void* arg);
 void laser_auto_focus_cycle(void);
 void laser_auto_focus_set(uint8_t flag);
-void laser_auto_focus_task_create(void);
 void laser_pwm_duty_enqueue(int value);
 void laser_read_write_enqueue(uint8_t rw_flag, LaserRegNum reg, int value);
 uint8_t laser_probe_state(void);

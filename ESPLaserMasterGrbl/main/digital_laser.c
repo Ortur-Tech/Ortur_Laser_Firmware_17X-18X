@@ -22,11 +22,13 @@ typedef struct {
 	uint8_t len;
 }reg_des;
 
-reg_des regs[20] = {0};
+reg_des regs[30] = {0};
 
 uint8_t laser_init_flag = 0;
 
-
+/*
+ * brief:初始化寄存器地址和长度
+ */
 void laser_init(void)
 {
 	regs[COMM_TICK_ALIVE 		   ].reg = 0XC0; regs[COMM_TICK_ALIVE 			].len = 1;
@@ -59,6 +61,9 @@ void laser_init(void)
 	/*创建激光功率设置传输任务*/
 	laser_task_create();
 }
+/*
+ * brief：写数据到激光器
+ */
 uint8_t laser_write(uint8_t* data, uint16_t len)
 {
 	if(laser_init_flag == 1)
@@ -87,7 +92,9 @@ uint8_t laser_write(uint8_t* data, uint16_t len)
 	return 0;
 }
 
-
+/*
+ * brief:从激光器读数据
+ */
 uint8_t laser_protocol_write(LaserRegNum reg_num, uint8_t* data, uint16_t len)
 {
 	uint8_t buf[256] = {0};
@@ -248,99 +255,6 @@ uint8_t laser_probe_state(void)
 	}
 }
 
-#define LASER_FOCUS_TIMES 10    	//循环对焦次数
-#define LASER_FOCUS_LIMIT 1			//对焦运行最大误差mm
-#define LASER_FOCUS_VALID_TIMES 3	//连续对焦OK次数
-uint8_t laser_focus_status = 0;
-void laser_auto_focus(void* arg)
-{
-	uint32_t distance = 0;
-	uint32_t focus_ok_cnt = 0;
-	uint32_t diff_value = 0;
-	if(settings.laser_focal_length > 0)
-	{
-		if(laser_focus_status == 0)
-		{
-			for(int i = 0; i < LASER_FOCUS_TIMES; i++)
-			{
-				HAL_Delay(500);
-				distance = laser_get_value(COMM_FOCUS_DISTANCE);
-				diff_value = distance > settings.laser_focal_length ? distance - settings.laser_focal_length : settings.laser_focal_length - distance;
-				printf("current distance:%d:%d.\r\n", distance,diff_value);
-				if(diff_value <= LASER_FOCUS_LIMIT)
-				{
-					focus_ok_cnt++;
-					if(focus_ok_cnt > LASER_FOCUS_VALID_TIMES)
-					{
-						//对焦ok
-						//return ;
-					}
-				}
-				else
-				{
-					char cmd[20] ={0};
-					if(distance > settings.laser_focal_length)
-					{
-//						portENTER_CRITICAL(&mux2);
-//						/*电机向下运动*/
-//						gpio_set_level(Z_DIRECTION_PIN,1);
-//						gpio_set_level(STEPPERS_DISABLE_PIN,0);
-//						for(int i = 0; i < diff_value * 200 * 8; i++)
-//						{
-//							usleep(4);
-//							gpio_set_level(Z_STEP_PIN,1);
-//							usleep(4);
-//							gpio_set_level(Z_STEP_PIN,0);
-//
-//						}
-//
-//						gpio_set_level(STEPPERS_DISABLE_PIN,1);
-//						portENTER_CRITICAL(&mux2);
-						sprintf(cmd,"G91Z%d",diff_value);
-						report_status_message(gc_execute_block(cmd, NULL));
-						HAL_Delay(6000);
-					}
-					else
-					{
-						/*电机向上运动*/
-//						gpio_set_level(Z_DIRECTION_PIN,0);
-//						gpio_set_level(STEPPERS_DISABLE_PIN,0);
-//
-//						for(int i = 0; i < diff_value * 200 * 8; i++)
-//						{
-//							gpio_set_level(Z_STEP_PIN,1);
-//							usleep(20);
-//							gpio_set_level(Z_STEP_PIN,0);
-//							usleep(20);
-//						}
-//
-//						gpio_set_level(STEPPERS_DISABLE_PIN,1);
-						sprintf(cmd,"G91Z-%d",diff_value);
-						report_status_message(gc_execute_block(cmd, NULL));
-						HAL_Delay(6000);
-					}
-					printf("%s",cmd);
-				}
-			}
-		}
-	}
-	while(1)
-	{
-		HAL_Delay(1000);
-	}
-	return;
-}
-
-static uint8_t ucParameterFocus;
-TaskHandle_t auto_focus_task_handle = NULL;
-
-
-void laser_auto_focus_task_create(void)
-{
-	xTaskCreate( laser_auto_focus, "extended_FuncTask", 2048, &ucParameterFocus, 6, &auto_focus_task_handle );
-	configASSERT( auto_focus_task_handle );
-}
-
 void digital_laser_test(void)
 {
 	uint32_t j = 0;
@@ -489,7 +403,7 @@ void laser_keep_active(void)
 		if((HAL_GetTick() - time) > 3000)
 		{
 			time = HAL_GetTick();
-			laser_set_value(COMM_TICK_ALIVE, 0);
+			laser_read_write_enqueue(LASER_WRITE,COMM_TICK_ALIVE, 0);
 		}
 	}
 	else
@@ -497,21 +411,21 @@ void laser_keep_active(void)
 		if((HAL_GetTick() - time) > 500)
 		{
 			time = HAL_GetTick();
-			laser_info.distance = laser_get_value(COMM_FOCUS_DISTANCE);
-			laser_info.temperture = laser_get_value(COMM_GET_TEMPRATURE);
-			laser_info.fire = laser_get_value(COMM_FIRE_DETECT);
-			laser_info.fan_duty = laser_get_value(COMM_FAN_DUTY_CONTROL);
-			laser_info.laser_duty = laser_get_value(COMM_LASER_PWM_DUTY);
-			laser_info.laser_fre = laser_get_value(COMM_LASER_PWM_FREQUENT);
-			laser_info.key = laser_get_value(COMM_GET_BTN_STATE);
-			laser_info.is_vl6180_connected = laser_get_value(COMM_GET_VL6180_CONNECTED);
+			laser_read_write_enqueue(LASER_WRITE,COMM_FOCUS_DISTANCE, 0);
+			laser_read_write_enqueue(LASER_WRITE,COMM_GET_TEMPRATURE, 0);
+			laser_read_write_enqueue(LASER_WRITE,COMM_FIRE_DETECT, 0);
+			laser_read_write_enqueue(LASER_WRITE,COMM_FAN_DUTY_CONTROL, 0);
+			laser_read_write_enqueue(LASER_WRITE,COMM_LASER_PWM_DUTY, 0);
+			laser_read_write_enqueue(LASER_WRITE,COMM_LASER_PWM_FREQUENT, 0);
+			laser_read_write_enqueue(LASER_WRITE,COMM_GET_BTN_STATE, 0);
+			laser_read_write_enqueue(LASER_WRITE,COMM_GET_VL6180_CONNECTED, 0);
 
 			/*读取PWM频率*/
 			laser_info.laser_fre = laser_get_value(COMM_LASER_PWM_FREQUENT);
-			/**/
+			/*如果频率不匹配则重新匹配*/
 			if(laser_info.laser_fre != settings.spindle.pwm_freq)
 			{
-				laser_set_value(COMM_TICK_ALIVE, 0);
+				laser_read_write_enqueue(LASER_WRITE, COMM_LASER_PWM_FREQUENT, settings.spindle.pwm_freq);
 			}
 		}
 	}
@@ -562,10 +476,10 @@ void laser_auto_focus_cycle(void)
 	dis = laser_info.distance - settings.laser_focal_length + FORWARD_DISTANCE ;
 	/*先快速移动2/3的距离*/
 
-
 	sprintf(line, "G38.2Z-%dF600", dis);
 	grbl.report.status_message(gc_execute_block(line,NULL));
 	grbl.report.status_message(gc_execute_block("G0Z-5\0",NULL));
+	HAL_Delay(100);
 	grbl.report.status_message(gc_execute_block("G38.2Z15F100\0",NULL));
 	grbl.report.status_message(gc_execute_block("G0Z5\0",NULL));
 	HAL_Delay(100);
