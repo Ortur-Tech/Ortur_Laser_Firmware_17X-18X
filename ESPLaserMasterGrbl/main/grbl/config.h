@@ -208,7 +208,7 @@
 // available RAM, like when re-compiling for MCU with ample amounts of RAM. Or decrease if the MCU begins to
 // crash due to the lack of available RAM or if the CPU is having trouble keeping up with planning
 // new incoming motions as they are executed.
-#define BLOCK_BUFFER_SIZE 100 // Uncomment to override default in planner.h.
+//#define BLOCK_BUFFER_SIZE 100 // Uncomment to override default in planner.h.
 
 // Governs the size of the intermediary step segment buffer between the step execution algorithm
 // and the planner blocks. Each segment is set of steps executed at a constant velocity over a
@@ -588,7 +588,7 @@
 //#define DEFAULT_Y_CURRENT 0.0 // amps
 //#define DEFAULT_Z_CURRENT 0.0 // amps
 //#define DEFAULT_A_CURRENT 0.0 // amps
-#define DEFAULT_SPINDLE_PWM_FREQ 20000 // Hz
+#define DEFAULT_SPINDLE_PWM_FREQ 1000 // Hz
 #define DEFAULT_SPINDLE_PWM_OFF_VALUE 0.0f // Percent
 #define DEFAULT_SPINDLE_PWM_MAX_VALUE 100.0f // Percent
 //#define DEFAULT_SPINDLE_AT_SPEED_TOLERANCE 0.0f // Percent - 0 means not checked
