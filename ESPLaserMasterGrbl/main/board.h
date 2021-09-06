@@ -19,7 +19,7 @@
 #define OCM_ESP_PRO_V1X     3   //我们自己的主板
 
 
-#define BOARD_VERSION 		OLM_ESP_V1X //OLM_ESP_PRO_V1X
+#define BOARD_VERSION 		OLM_ESP_PRO_V1X
 /*******************硬件版本定义 END*******************/
 
 
@@ -81,5 +81,5 @@ uint32_t HAL_GetTick(void);
 void creat_ExtFuncTask(void );
 
 void Usb_ForceReset(void);
-void single_uart_init(uint8_t driver);
+
 #endif /* MAIN_BOARD_H_ */

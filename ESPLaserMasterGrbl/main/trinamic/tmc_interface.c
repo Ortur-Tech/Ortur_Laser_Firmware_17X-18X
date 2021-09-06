@@ -41,58 +41,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "common.h"
 #include "my_machine_map.h"
+#include "single_uart.h"
 
 #define BUF_SIZE (254)
 
-void single_uart_init(trinamic_motor_t driver)
-{
-    /* Configure parameters of an UART driver,
-     * communication pins and install the driver */
-    uart_config_t uart_config = {
-        .baud_rate = ECHO_UART_BAUD_RATE,
-        .data_bits = UART_DATA_8_BITS,
-        .parity    = UART_PARITY_DISABLE,
-        .stop_bits = UART_STOP_BITS_1,
-        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
-        .source_clk = UART_SCLK_APB,
-    };
-    int intr_alloc_flags = 0;
-
-    ESP_ERROR_CHECK(uart_driver_install(UART_NUM_1, BUF_SIZE * 2, 0, 0, NULL, intr_alloc_flags));
-    ESP_ERROR_CHECK(uart_param_config(UART_NUM_1, &uart_config));
-    switch(driver.axis)
-    {
-		case X_AXIS:
-		{
-			ESP_ERROR_CHECK(uart_set_pin(UART_NUM_1, X_DRIVER_UART_PIN, X_DRIVER_UART_PIN, -1, -1));
-			break;
-		}
-		case Y_AXIS:
-		{
-			ESP_ERROR_CHECK(uart_set_pin(UART_NUM_1, Y_DRIVER_UART_PIN, Y_DRIVER_UART_PIN, -1, -1));
-			break;
-		}
-		case Z_AXIS:
-		{
-			ESP_ERROR_CHECK(uart_set_pin(UART_NUM_1, Z_DRIVER_UART_PIN, Z_DRIVER_UART_PIN, -1, -1));
-			break;
-		}
-		default:
-			break;
-    }
-
-
-    // Configure a temporary buffer for the incoming data
-    uint8_t *data = (uint8_t *) malloc(BUF_SIZE);
-
-    while (1)
-    {
-        // Read data from the UART
-        int len = uart_read_bytes(UART_NUM_1, data, BUF_SIZE, 20 / portTICK_RATE_MS);
-        // Write data back to the UART
-        uart_write_bytes(UART_NUM_1, (const char *) data, len);
-    }
-}
 
 __attribute__((weak)) TMC_spi_status_t tmc_spi_write (trinamic_motor_t driver, TMC_spi_datagram_t *datagram)
 {
@@ -106,9 +58,19 @@ __attribute__((weak)) TMC_spi_status_t tmc_spi_read (trinamic_motor_t driver, TM
 
 __attribute__((weak)) void tmc_uart_write (trinamic_motor_t driver, TMC_uart_write_datagram_t *datagram)
 {
+	single_uart_write(driver.axis, datagram->data, 8);
 }
 
 __attribute__((weak)) TMC_uart_write_datagram_t *tmc_uart_read (trinamic_motor_t driver, TMC_uart_read_datagram_t *datagram)
 {
+	uint8_t buf[BUF_SIZE] = {0};
+	const TMC_uart_write_datagram_t read_data = {0};
+	single_uart_write(driver.axis, datagram->data, 4);
+	int len = uart_read_bytes(UART_NUM_1, buf, BUF_SIZE, 20 / portTICK_RATE_MS);
+	if(len == 8)
+	{
+		memcpy(read_data.data, buf, 8);
+		return &read_data;
+	}
     return NULL;
 }
