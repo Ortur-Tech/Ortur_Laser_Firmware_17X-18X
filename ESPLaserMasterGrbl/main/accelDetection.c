@@ -58,13 +58,14 @@ void BMA250_Get_Acceleration(short *gx, short *gy, short *gz);
 
 uint8_t GsensorDeviceType=0;    //!<gsensor芯片类型
 
-
+uint8_t iic_init_flag = 0 ;
 
 /**
  * @brief i2c master initialization
  */
-static esp_err_t i2c_master_init(void)
+esp_err_t i2c_master_init(void)
 {
+	iic_init_flag = 1;
 #if USE_SOFTWARE_IIC
 	return sw_i2c_init(IIC_SDA_PIN, IIC_SCL_PIN);
 #else
@@ -142,7 +143,7 @@ uint8_t Read_One_Byte(uint8_t addr, uint8_t reg)
 	i2c_master_write_byte(cmd, (addr << 1) | I2C_MASTER_READ, 1);
 	i2c_master_read_byte(cmd, &data, 1);
 	i2c_master_stop(cmd);
-	esp_err_t ret = i2c_master_cmd_begin(I2C_NUM_0, cmd, 300 / portTICK_RATE_MS);
+	esp_err_t ret = i2c_master_cmd_begin(I2C_NUM_0, cmd, 1000 / portTICK_RATE_MS);
 	i2c_cmd_link_delete(cmd);
 	if (ret != ESP_OK) {
 			mprintf(LOG_ERROR,"IIC read error:%d.\r\n",ret);
@@ -280,15 +281,20 @@ void Sc7a20_Get_Acceleration(short *gx, short *gy, short *gz)
 	return ;
 }
 
-uint8_t iic_init_flag = 0 ;
+void gsensor_info_report(void)
+{
+	if(GsensorDeviceType == 0)
+	{
+		hal.stream.write_all("[MSG:Gsensor connect error!]" ASCII_EOL);
+	}
+}
 /**
  * @brief Gsensor_Init
  * @author Cc
  */
 void Gsensor_Init(void)
 {
-	i2c_master_init();
-	laser_init();
+
 	//digital_laser_test();
 	//laser_auto_focus();
 	if(GsensorDeviceType == 0)
@@ -314,9 +320,14 @@ void Gsensor_Init(void)
 			(GsensorDeviceType != BMA250_DEVICE) &&
 			(GsensorDeviceType != BMA253_DEVICE))
 	{
+		mprintf(LOG_ERROR,"NO GSensor:%d.\r\n",GsensorDeviceType);
 		GsensorDeviceType = 0;
 	}
-	iic_init_flag = 1;
+	else
+	{
+		mprintf(LOG_ERROR,"GSensor ok.\r\n");
+	}
+
 }
 
 /**

@@ -25,10 +25,16 @@
 #elif BOARD_VERSION == OLM_ESP_V1X
 #define OTA_FILE_NAME "OLM2_PRO_"
 #endif
-#elif (MACHINE_TYPE == AUFERO_2)
+#elif (MACHINE_TYPE == AUFERO_4)
 
-#define OTA_FILE_NAME "ESP_AUFERO2_"
+#define OTA_FILE_NAME "ESP_AUFERO4_"
 
+#elif (MACHINE_TYPE == AUFERO_1)
+#define OTA_FILE_NAME "ESP_AUFERO1_"
+#elif (MACHINE_TYPE == AUFERO_CNC)
+#define OTA_FILE_NAME "ESP_AUFERO_CNC_"
+#else
+#error "没有定义bootloader升级匹配字符串"
 #endif
 
 //#include "msc_device.h"
@@ -591,7 +597,11 @@ void ota_key_init(void)
 {
 #if ENABLE_OTA_KEY_COMPATIBLE_MODE
 	gpio_config_t gpioConfig = {
+#if ENABLE_JTAG
+			.pin_bit_mask = ((uint64_t)1 << GPIO_NUM_46),
+#else
 			.pin_bit_mask = ((uint64_t)1 << GPIO_NUM_46) | ((uint64_t)1 << GPIO_NUM_41),
+#endif
 			.mode = GPIO_MODE_INPUT,
 			.pull_up_en = GPIO_PULLUP_ENABLE,
 			.pull_down_en = GPIO_PULLDOWN_DISABLE,
@@ -606,10 +616,17 @@ void ota_key_init(void)
 uint8_t ota_key_status(void)
 {
 #if ENABLE_OTA_KEY_COMPATIBLE_MODE
+#if ENABLE_JTAG
+	if ((gpio_get_level(GPIO_NUM_46) == 1))
+	{
+		vTaskDelay(10 / portTICK_PERIOD_MS);
+		if ((gpio_get_level(GPIO_NUM_46) == 1))
+#else
 	if ((gpio_get_level(GPIO_NUM_46) == 1) || (gpio_get_level(GPIO_NUM_41) == 0))
 	{
 		vTaskDelay(10 / portTICK_PERIOD_MS);
 		if ((gpio_get_level(GPIO_NUM_46) == 1) || (gpio_get_level(GPIO_NUM_41) == 0))
+#endif
 		{
 			return 0;
 		}

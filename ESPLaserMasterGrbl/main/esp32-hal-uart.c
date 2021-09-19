@@ -36,6 +36,7 @@
 #include "grbl/grbl.h"
 
 #include "serial_iap.h"
+#include "digital_laser.h"
 
 
 #define TWO_STOP_BITS_CONF 0x3
@@ -98,6 +99,8 @@ IRAM_ATTR static void _uart1_isr (void *arg)
 {
     uint8_t c;
 
+    laser_enter_isr();
+
     uart1->dev->int_clr.rxfifo_full = 1;
     uart1->dev->int_clr.frm_err = 1;
     uart1->dev->int_clr.rxfifo_tout = 1;
@@ -109,6 +112,7 @@ IRAM_ATTR static void _uart1_isr (void *arg)
     	    	 c = READ_PERI_REG(UART_FIFO_AHB_REG(0));
     	    	 poweron_CmdSet(c);
     	  }
+    	  laser_exit_isr();
     	  return;
     }
     /*存放到串口IAP数据缓存里面*/
@@ -119,6 +123,7 @@ IRAM_ATTR static void _uart1_isr (void *arg)
 			 c = READ_PERI_REG(UART_FIFO_AHB_REG(0));
 			 rec_SerialData(c);
 		}
+    	laser_exit_isr();
     	return;
 
     }
@@ -146,6 +151,7 @@ IRAM_ATTR static void _uart1_isr (void *arg)
             }
         }
     }
+    laser_exit_isr();
 }
 
 static void uartEnableInterrupt (uart_t *uart, uart_isr_ptr isr, bool enable_rx)

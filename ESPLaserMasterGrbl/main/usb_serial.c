@@ -14,6 +14,7 @@
 #include "grbl/grbl.h"
 #include "esp32-hal-uart.h"
 #include "tusb_msc_disk.h"
+#include "digital_laser.h"
 
 static const char *TAG = "usb";
 static uint8_t buf[CONFIG_USB_CDC_RX_BUFSIZE + 1];
@@ -22,7 +23,7 @@ void usb_cdc_rx_callback(int itf, cdcacm_event_t *event)
 {
     /* initialization */
     size_t rx_size = 0;
-
+    laser_enter_isr();
     /* read */
     esp_err_t ret = tinyusb_cdcacm_read(itf, buf, CONFIG_USB_CDC_RX_BUFSIZE, &rx_size);
     if (ret == ESP_OK)
@@ -35,7 +36,7 @@ void usb_cdc_rx_callback(int itf, cdcacm_event_t *event)
     } else {
         ESP_LOGE(TAG, "Read error");
     }
-
+    laser_exit_isr();
 
 //    /* initialization */
 //    size_t rx_size = 0;

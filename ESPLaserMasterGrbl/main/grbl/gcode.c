@@ -29,6 +29,7 @@
 #include "motion_control.h"
 #include "protocol.h"
 #include "driver.h"
+#include "digital_laser.h"
 
 // NOTE: Max line number is defined by the g-code standard to be 99999. It seems to be an
 // arbitrary value, and some GUIs may require more. So we increased it based on a max safe
@@ -675,13 +676,22 @@ status_code_t gc_execute_block(char *block, char *message)
 					case 14:
 						fan_PwmSet(0);
 					case 15:
+#if ENABLE_FIRE_CHECK
 						/*开火焰检测功能 带参Sxx --永久值*/
 						fire_CheckTempEnable();
+#endif
 						word_bit.group = ModalGroup_M15;
 						break;
 					case 16:
+#if ENABLE_FIRE_CHECK
 						/*关火焰检测功能*/
 						fire_CheckTempDisable();
+#endif
+						break;
+					case 17:
+#if ENABLE_DIGITAL_LASER
+						laser_auto_focus_set(1);
+#endif
 						break;
                     case 56:
                         if(!settings.parking.flags.enable_override_control) // TODO: check if enabled?

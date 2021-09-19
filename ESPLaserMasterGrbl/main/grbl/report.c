@@ -36,6 +36,8 @@
 #include "nvs_buffer.h"
 #include "driver.h"
 #include "board.h"
+#include "digital_laser.h"
+#include "accelDetection.h"
 
 #ifdef ENABLE_SPINDLE_LINEARIZATION
 #include <stdio.h>
@@ -385,7 +387,10 @@ void report_init_message (void)
     hal.stream.write_all(ASCII_EOL);
     hal.stream.write_all(ORTUR_MODEL_NAME " Ready!" ASCII_EOL);
     hal.stream.write_all(ORTUR_FW_NAME "." ASCII_EOL);
-#if USE_ADC_FIRE_CHECK
+#if ENABLE_ACCELERATION_DETECT
+    gsensor_info_report();
+#endif
+#if (USE_ADC_FIRE_CHECK && ENABLE_FIRE_CHECK)
     fire_InfoReport();
     fire_AlarmStateSet(0);
 #endif
@@ -525,7 +530,7 @@ void report_grbl_settings (bool all)
         report_uint_setting(Setting_LaserUsedTime, settings.laser_used_time); //激光使用时间
 
         report_uint_setting(Setting_LaserFocalLength, settings.laser_focal_length);	//焦距
-
+        report_uint_setting(Setting_EnableDigitalLaserMode, settings.laser_control_mode);	//激光器控制模式
 #if ENABLE_HOMING_FORCE_SET_ORIGIN_OFFSET
         report_uint_setting(Setting_OriginOffsetX, settings.origin_offset_x); //x轴原点偏移
         report_uint_setting(Setting_OriginOffsetY, settings.origin_offset_y); //y轴原点偏移
@@ -1315,13 +1320,23 @@ void report_realtime_status (void)
 			/*按键状态，电源*/
 			hal.stream.write_all(appendbuf(2, "|PS:", uitoa((uint32_t)get_PowerKeyStatus())));
 			hal.stream.write_all(appendbuf(2, ",", uitoa((uint32_t)get_SystemPowerStatus())));
+#if ENABLE_FIRE_CHECK
 			/*火焰检测环境值和时时值*/
 			hal.stream.write_all(appendbuf(2, "|ER:", uitoa((uint32_t)fire_GetEvnValue())));
 			hal.stream.write_all(appendbuf(2, ",", uitoa((uint32_t)fire_GetCurrentValue())));
+#endif
 			/*输出电压电流*/
 			hal.stream.write_all(appendbuf(2, "|VA:", uitoa((uint32_t)power_GetVotage())));
 		    hal.stream.write_all(appendbuf(2, ",", uitoa((uint32_t)power_GetCurrent())));
 
+#if ENABLE_DIGITAL_LASER
+		    hal.stream.write_all(appendbuf(2, "|FTFFLK:", uitoa(laser_info.distance)));
+		    hal.stream.write_all(appendbuf(2, ",", uitoa(laser_info.temperture)));
+		    hal.stream.write_all(appendbuf(2, ",", uitoa(laser_info.fire)));
+		    hal.stream.write_all(appendbuf(2, ",", uitoa(laser_info.fan_duty)));
+		    hal.stream.write_all(appendbuf(2, ",", uitoa(laser_info.laser_duty)));
+		    hal.stream.write_all(appendbuf(2, ",", uitoa(laser_info.key)));
+#endif
 
 		}
     }

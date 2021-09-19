@@ -76,8 +76,10 @@ ISR_CODE void control_interrupt_handler (control_signals_t signals)
                 system_set_exec_state_flag(EXEC_FEED_HOLD);
             else if (signals.cycle_start)
             {
+#if ENABLE_FIRE_CHECK
             	/*消除火焰报警状态*/
             	fire_AlarmStateSet(0);
+#endif
                 system_set_exec_state_flag(EXEC_CYCLE_START);
             }
         }

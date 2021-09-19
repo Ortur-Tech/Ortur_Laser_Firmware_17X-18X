@@ -829,7 +829,11 @@ probe_state_t probeGetState (void)
     inputpin[INPUT_PROBE].active = inputpin[INPUT_PROBE].active || ((uint8_t)gpio_get_level(PROBE_PIN) ^ probe_invert);
     state.triggered = inputpin[INPUT_PROBE].active;
 #else
+#if ENABLE_DIGITAL_LASER
+    state.triggered = laser_probe_state() ^ probe_invert;
+#else
     state.triggered = (uint8_t)gpio_get_level(PROBE_PIN) ^ probe_invert;
+#endif
 #endif
 
     return state;
@@ -921,7 +925,7 @@ uint8_t is_SpindleOpen(void)
 uint16_t laser_GetPower(void)
 {
 #if ENABLE_DIGITAL_LASER
-	return laser_get_value(COMM_LASER_PWM_DUTY);
+	return laser_get_value(COMM_LASER_PWM_DUTY) ;
 #else
 	uint32_t duty = 0;
 	duty = ledc_get_duty(ledConfig.speed_mode, ledConfig.channel);
@@ -947,11 +951,11 @@ IRAM_ATTR void spindle_set_speed (uint_fast16_t pwm_value)
 #if	ENABLE_DIGITAL_LASER
         if(spindle_pwm.always_on)
         {
-        	laser_set_value(COMM_LASER_PWM_DUTY,spindle_pwm.off_value);
+        	laser_pwm_duty_enqueue(spindle_pwm.off_value);
         }
         else
         {
-        	laser_set_value(COMM_LASER_PWM_DUTY,settings.spindle.invert.pwm ? 1 : 0);
+        	laser_pwm_duty_enqueue(settings.spindle.invert.pwm ? 1 : 0);
         }
 #else
         if(spindle_pwm.always_on) {
@@ -974,7 +978,7 @@ IRAM_ATTR void spindle_set_speed (uint_fast16_t pwm_value)
          ledc_set_fade_step_and_start(ledConfig.speed_mode, ledConfig.channel, pwm_ramp.pwm_target, 1, 4, LEDC_FADE_NO_WAIT);
 #else
 #if	ENABLE_DIGITAL_LASER
-         laser_set_value(COMM_LASER_PWM_DUTY,settings.spindle.invert.pwm ? pwm_max_value - pwm_value : pwm_value);
+         laser_pwm_duty_enqueue(settings.spindle.invert.pwm ? pwm_max_value - pwm_value : pwm_value);
 #else
          ledc_set_duty(ledConfig.speed_mode, ledConfig.channel, settings.spindle.invert.pwm ? pwm_max_value - pwm_value : pwm_value);
          ledc_update_duty(ledConfig.speed_mode, ledConfig.channel);
@@ -991,11 +995,7 @@ IRAM_ATTR void spindle_set_speed (uint_fast16_t pwm_value)
 
 static uint_fast16_t spindleGetPWM (float rpm)
 {
-#if	ENABLE_DIGITAL_LASER
-	return laser_get_value(COMM_LASER_PWM_DUTY);
-#else
     return spindle_compute_pwm_value(&spindle_pwm, rpm, false);
-#endif
 }
 
 #else // Only enable if (when?) ESP IDF supports FPU access in ISR !!
@@ -1424,7 +1424,8 @@ uint8_t fan_GetSpeed(void)
 
 void light_Init(void)
 {
-	 gpio_config_t gpioConfig = {
+#if !(BOARD_VERSION == OCM_ESP_PRO_V1X)
+	gpio_config_t gpioConfig = {
 	        .pin_bit_mask = ((uint64_t)1 << LIGHT_PIN),
 	        .mode = GPIO_MODE_OUTPUT,
 	        .pull_up_en = GPIO_PULLUP_ENABLE,
@@ -1434,11 +1435,13 @@ void light_Init(void)
 
 	gpio_config(&gpioConfig);
 	gpio_set_level(LIGHT_PIN,0);
+#endif
 }
 
 uint8_t light_brightness = 100;
 void light_SetState(uint8_t s)
 {
+#if !(BOARD_VERSION == OCM_ESP_PRO_V1X)
 	if(s)
 	{
 		light_brightness = 100;
@@ -1449,6 +1452,7 @@ void light_SetState(uint8_t s)
 		light_brightness = 0;
 		gpio_set_level(LIGHT_PIN,0);
 	}
+#endif
 }
 uint8_t light_GetBrightness(void)
 {
@@ -1473,7 +1477,8 @@ void alarm_for_estop_init(void)
 
 void beep_Init(void)
 {
-	 gpio_config_t gpioConfig = {
+#if !(BOARD_VERSION == OCM_ESP_PRO_V1X)
+	gpio_config_t gpioConfig = {
 	        .pin_bit_mask = ((uint64_t)1 << BEEP_PIN),
 	        .mode = GPIO_MODE_OUTPUT,
 	        .pull_up_en = GPIO_PULLUP_ENABLE,
@@ -1483,10 +1488,12 @@ void beep_Init(void)
 
 	gpio_config(&gpioConfig);
 	gpio_set_level(BEEP_PIN,0);
+#endif
 }
 
 void beep_PwmSet(uint8_t duty)
 {
+#if !(BOARD_VERSION == OCM_ESP_PRO_V1X)
 	if(duty)
 	{
 		gpio_set_level(BEEP_PIN,1);
@@ -1495,10 +1502,10 @@ void beep_PwmSet(uint8_t duty)
 	{
 		gpio_set_level(BEEP_PIN,0);
 	}
+#endif
 }
 
-
-
+#if ENABLE_FIRE_CHECK
 
 static void check_efuse(void)
 {
@@ -1929,6 +1936,7 @@ void fire_Alarm(void)
 	}
 
 }
+#endif
 /*LED*/
 void led_Init(void)
 {
@@ -2034,7 +2042,7 @@ void system_AutoPowerOff(void)
 /*检测到有24v外部供电时才打开*/
 void power_CtrlInit(void)
 {
-#if BOARD_VERSION == OLM_ESP_PRO_V1X
+#if BOARD_VERSION == OLM_ESP_PRO_V1X || BOARD_VERSION == OCM_ESP_PRO_V1X
 	static uint8_t power_ctrl_init_flag = 0;
 	if(power_ctrl_init_flag == 1)return;
 	power_ctrl_init_flag = 1;
@@ -2061,14 +2069,14 @@ void power_CtrlInit(void)
 
 void power_CtrOn(void)
 {
-#if BOARD_VERSION == OLM_ESP_PRO_V1X
+#if BOARD_VERSION == OLM_ESP_PRO_V1X || BOARD_VERSION == OCM_ESP_PRO_V1X
 	gpio_set_level(PWR_CTR_PIN,1);
 #endif
 }
 
 void power_CtrOff(void)
 {
-#if BOARD_VERSION == OLM_ESP_PRO_V1X
+#if BOARD_VERSION == OLM_ESP_PRO_V1X || BOARD_VERSION == OCM_ESP_PRO_V1X
 	gpio_set_level(PWR_CTR_PIN,0);
 #endif
 }
@@ -2080,7 +2088,7 @@ void power_CtrOff(void)
 void power_CurrCheckInit(void)
 {
 
-#if BOARD_VERSION == OLM_ESP_PRO_V1X
+#if BOARD_VERSION == OLM_ESP_PRO_V1X || BOARD_VERSION == OCM_ESP_PRO_V1X
 	adc1_config_channel_atten(POWER_CURRENT_CHANNEL, ADC_ATTEN_DB_11);
 #endif
 }
@@ -2088,7 +2096,7 @@ void power_CurrCheckInit(void)
 /*实际电流*1000*/
 uint32_t power_GetCurrent(void)
 {
-#if BOARD_VERSION == OLM_ESP_PRO_V1X
+#if BOARD_VERSION == OLM_ESP_PRO_V1X || BOARD_VERSION == OCM_ESP_PRO_V1X
 	uint32_t value = adc1_get_raw((adc1_channel_t)POWER_CURRENT_CHANNEL);
 
 	uint32_t current = (float)value / 8192 * 2.6 / SAMPLING_RES / AMPLIFICATION_FACTOR * 1000;
@@ -2115,7 +2123,7 @@ static uint8_t last_power_flag=0;//变化前电源状态
 void Main_PowerCheckInit(void)
 {
 #if POWER_CHECK_ADC_ENABLE
-#if BOARD_VERSION == OLM_ESP_PRO_V1X
+#if BOARD_VERSION == OLM_ESP_PRO_V1X || BOARD_VERSION == OCM_ESP_PRO_V1X
 	adc1_config_channel_atten(POWER_CHECK_CHANNEL, ADC_ATTEN_DB_11);
 #elif BOARD_VERSION == OLM_ESP_V1X
 	adc2_config_channel_atten(POWER_CHECK_CHANNEL, ADC_ATTEN_DB_11);
@@ -2135,7 +2143,7 @@ void Main_PowerCheckInit(void)
 /*单位mv*/
 uint32_t power_GetVotage(void)
 {
-#if BOARD_VERSION == OLM_ESP_PRO_V1X
+#if BOARD_VERSION == OLM_ESP_PRO_V1X || BOARD_VERSION == OCM_ESP_PRO_V1X
 	uint32_t value = adc1_get_raw((adc1_channel_t)POWER_CHECK_CHANNEL);
 	uint32_t votage = (float)value / 8192 * 2.6 * (VOTAGE_SAMPLING_RES + VOTAGE_DIV_RES) / VOTAGE_SAMPLING_RES * 1000;
 	return votage ;
@@ -2155,7 +2163,7 @@ uint8_t IsMainPowrIn(void)
 {
 #if POWER_CHECK_ADC_ENABLE
 	static uint8_t use_time_save_flag = 0;
-#if BOARD_VERSION == OLM_ESP_PRO_V1X
+#if BOARD_VERSION == OLM_ESP_PRO_V1X || BOARD_VERSION == OCM_ESP_PRO_V1X
 	uint32_t value = adc1_get_raw((adc1_channel_t)POWER_CHECK_CHANNEL);
 #elif BOARD_VERSION == OLM_ESP_V1X
 	int value = 0;
@@ -2410,12 +2418,21 @@ static bool driver_setup (settings_t *settings)
     light_Init();
     /*蜂鸣器初始化*/
     beep_Init();
+#if ENABLE_FIRE_CHECK
     /*火焰检测初始化*/
     fire_CheckInit();
+#endif
     /*电源控制*/
     power_CtrlInit();
     /*电流检测初始化*/
     power_CurrCheckInit();
+    /*iic 初始化*/
+	i2c_master_init();
+#if ENABLE_DIGITAL_LASER
+	/*数字激光器初始化*/
+	laser_init();
+#endif
+
 #if ENABLE_ACCELERATION_DETECT
     /*加速度传感器初始化*/
     Gsensor_Init();
@@ -2721,10 +2738,12 @@ bool driver_init (void)
 // Main stepper driver
 IRAM_ATTR static void stepper_driver_isr (void *arg)
 {
+	laser_enter_isr();
 	TIMERG0.int_clr.t0 = 1;
     TIMERG0.hw_timer[STEP_TIMER_INDEX].config.alarm_en = TIMER_ALARM_EN;
 
     hal.stepper.interrupt_callback();
+    laser_exit_isr();
 }
 
   //GPIO intr process
@@ -2737,6 +2756,8 @@ IRAM_ATTR static void gpio_isr (void *arg)
   intr_status[1] = READ_PERI_REG(GPIO_STATUS1_REG);         // get interrupt status for GPIO32-39
   SET_PERI_REG_MASK(GPIO_STATUS_W1TC_REG, intr_status[0]);  // clear intr for gpio0-gpio31
   SET_PERI_REG_MASK(GPIO_STATUS1_W1TC_REG, intr_status[1]); // clear intr for gpio32-39
+
+  laser_enter_isr();
 
   uint32_t i = sizeof(inputpin) / sizeof(state_signal_t);
   do {
@@ -2777,6 +2798,7 @@ IRAM_ATTR static void gpio_isr (void *arg)
   if(grp & INPUT_GROUP_KEYPAD)
       keypad_keyclick_handler(gpio_get_level(KEYPAD_STROBE_PIN));
 #endif
+  laser_exit_isr();
 }
 
 
@@ -2890,7 +2912,9 @@ void reset_report(void)
 	if((systemGetState().reset == 1) && (pre_reset_flag == 0))
 	{
 		hal.stream.write_all("[MSG:Emergency switch Engaged!]" ASCII_EOL);
+#if ENABLE_FIRE_CHECK
 		fire_AlarmStateSet(0);
+#endif
 		pre_reset_flag = 1;
 		release_reset_timer = HAL_GetTick();
 	}
@@ -2902,7 +2926,9 @@ void reset_report(void)
 			if((HAL_GetTick() - release_reset_timer) > 200)
 			{
 				hal.stream.write_all("[MSG:Emergency switch Cleared.]" ASCII_EOL);
+#if ENABLE_FIRE_CHECK
 				fire_AlarmStateSet(0);
+#endif
 				pre_reset_flag = 0;
 			}
 		}
@@ -2999,7 +3025,10 @@ uint32_t allow_laser_time;//允许激光静态开启时间
 
 void movement_laseron_check(void)
 {
+#if ENABLE_FIRE_CHECK
 	fire_Check();
+#endif
+
 #ifdef DEFAULT_LASER_MODE
     //检查xyz位置是否变化
 	if(sys_position[0] != last_sys_position[0] ||

@@ -9,4 +9,4 @@ set(EXTRA_COMPONENT_DIRS    ./components)
 
 add_compile_options(-fdiagnostics-color=always)
 
-project(ESPLaserMasterGrbl)
+project(ESP_OLM2_PRO_180)

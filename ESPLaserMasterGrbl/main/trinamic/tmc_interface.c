@@ -40,6 +40,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <stdio.h>
 
 #include "common.h"
+#include "my_machine_map.h"
+#include "single_uart.h"
+
+#define BUF_SIZE (254)
+
 
 __attribute__((weak)) TMC_spi_status_t tmc_spi_write (trinamic_motor_t driver, TMC_spi_datagram_t *datagram)
 {
@@ -53,9 +58,19 @@ __attribute__((weak)) TMC_spi_status_t tmc_spi_read (trinamic_motor_t driver, TM
 
 __attribute__((weak)) void tmc_uart_write (trinamic_motor_t driver, TMC_uart_write_datagram_t *datagram)
 {
+	single_uart_write(driver.axis, datagram->data, 8);
 }
 
 __attribute__((weak)) TMC_uart_write_datagram_t *tmc_uart_read (trinamic_motor_t driver, TMC_uart_read_datagram_t *datagram)
 {
+	uint8_t buf[BUF_SIZE] = {0};
+	const TMC_uart_write_datagram_t read_data = {0};
+	single_uart_write(driver.axis, datagram->data, 4);
+	int len = uart_read_bytes(UART_NUM_1, buf, BUF_SIZE, 20 / portTICK_RATE_MS);
+	if(len == 8)
+	{
+		memcpy(read_data.data, buf, 8);
+		return &read_data;
+	}
     return NULL;
 }

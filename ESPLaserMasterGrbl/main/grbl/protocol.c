@@ -163,7 +163,7 @@ bool protocol_main_loop(bool cold_start)
 	//	  report_status_message(system_execute_line(line));
 	//#endif
 
-	#if MACHINE_TYPE == OLM_2_PRO ||  MACHINE_TYPE == OLM_PRO
+	#if MACHINE_TYPE == OLM_2_PRO ||  MACHINE_TYPE == OLM_PRO || (MACHINE_TYPE == AUFERO_1)
 		  memcpy(line,"$H\0",3);
 		  report_status_message(system_execute_line(line));
 
@@ -189,6 +189,7 @@ bool protocol_main_loop(bool cold_start)
 #if ENABLE_POWER_SUPPLY_CHECK
     	Main_PowerCheck();
 #endif
+
         // Process one line of incoming stream data, as the data becomes available. Performs an
         // initial filtering by removing spaces and comments and capitalizing all letters.
         while((c = hal.stream.read()) != SERIAL_NO_DATA) {
@@ -359,6 +360,10 @@ bool protocol_main_loop(bool cold_start)
 
             xcommand[0] = '\0';
         }
+#if ENABLE_DIGITAL_LASER
+        /*自动对焦*/
+        laser_auto_focus_cycle();
+#endif
 #if ENABLE_COMM_LED2
 		//指示USB连接状态
 		if(isUsbPlugIn())
@@ -906,8 +911,10 @@ ISR_CODE bool protocol_enqueue_realtime_command (char c)
         case CMD_CYCLE_START_LEGACY:
             if(!keep_rt_commands || settings.flags.legacy_rt_commands) {
                 system_set_exec_state_flag(EXEC_CYCLE_START);
+#if ENABLE_FIRE_CHECK
                 /*关报警*/
                 fire_AlarmStateSet(0);
+#endif
                 // Cancel any pending tool change
                 gc_state.tool_change = false;
                 drop = true;

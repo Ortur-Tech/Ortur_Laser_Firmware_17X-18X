@@ -5,7 +5,8 @@
 #include "esp32-hal-uart.h"
 #include "accelDetection.h"
 #include "serial_iap.h"
-
+#include "driver/uart.h"
+#include "digital_laser.h"
 #define TIMER_DIVIDER         (80)  //  Hardware timer clock divider
 #define TIMER_SCALE           (TIMER_BASE_CLK / TIMER_DIVIDER)  // convert counter value to seconds
 
@@ -31,9 +32,9 @@ void Usb_ForceReset(void)
 /*扩展功能任务1.加速度检测 2.火焰ad值获取*/
 void extended_FuncTask( void * pvParameters )
 {
+	vTaskDelay(3000/portTICK_PERIOD_MS);
 	for( ;; )
 	{
-
 		vTaskDelay(10/portTICK_PERIOD_MS);
 
 #if ENABLE_ACCELERATION_DETECT
@@ -44,16 +45,21 @@ void extended_FuncTask( void * pvParameters )
 		laser_on_time_count();
 		/*不移动激光检查*/
 		movement_laseron_check();
+#if ENABLE_FIRE_CHECK
 		/*都平均值*/
 		fire_GetAverageValue();
 
 		fire_Check();
+#endif
 
 #ifdef DELAY_OFF_SPINDLE
 		spindle_calculate_heat();
 		spindle_delay_stop();
 #endif
 
+#if ENABLE_DIGITAL_LASER
+		laser_keep_active();
+#endif
 	}
 }
 
@@ -86,13 +92,14 @@ uint32_t hal_tick_timer = 0;
 
 static bool IRAM_ATTR HAL_TickInc(void *args)
 {
+	laser_enter_isr();
+
 	hal_tick_timer++;
-#if ENABLE_ACCELERATION_DETECT
-	/*加速度检测*/
-	//accel_detection_limit();
-#endif
+
+#if ENABLE_FIRE_CHECK
 	/*报警状态处理*/
 	fire_Alarm();
+#endif
 
 #ifdef DELAY_OFF_SPINDLE
 	/*延迟关激光散热风扇*/
@@ -109,6 +116,7 @@ static bool IRAM_ATTR HAL_TickInc(void *args)
     }
 #endif
 
+    laser_exit_isr();
 	return 1;
 }
 /*1ms定时器*/
@@ -226,6 +234,7 @@ void key_func(uint8_t m)
 	    led_Init();
 	    serialInit();
 		power_KeyInit();
+		//single_uart_init(X_AXIS);
 		while(1)
 		{
 			/*接收命令开机*/
@@ -330,6 +339,3 @@ void key_func(uint8_t m)
 		}
 	}
 }
-
-
-
