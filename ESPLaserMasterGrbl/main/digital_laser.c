@@ -425,7 +425,7 @@ void laser_keep_active(void)
 			/*如果频率不匹配则重新匹配*/
 			if(laser_info.laser_fre != settings.spindle.pwm_freq)
 			{
-				laser_read_write_enqueue(LASER_WRITE, COMM_LASER_PWM_FREQUENT, settings.spindle.pwm_freq);
+				//laser_read_write_enqueue(LASER_WRITE, COMM_LASER_PWM_FREQUENT, settings.spindle.pwm_freq);
 			}
 		}
 	}

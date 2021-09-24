@@ -642,11 +642,11 @@ static void stepperWakeUp (void)
 
     timer_set_counter_value(STEP_TIMER_GROUP, STEP_TIMER_INDEX, 0x00000000ULL);
 //  timer_set_alarm_value(STEP_TIMER_GROUP, STEP_TIMER_INDEX, 5000ULL);
-    TIMERG0.hw_timer[STEP_TIMER_INDEX].alarm_high = 0;
-    TIMERG0.hw_timer[STEP_TIMER_INDEX].alarm_low = 5000UL;
+    STEP_TIMER.hw_timer[STEP_TIMER_INDEX].alarm_high = 0;
+    STEP_TIMER.hw_timer[STEP_TIMER_INDEX].alarm_low = 5000UL;
 
     timer_start(STEP_TIMER_GROUP, STEP_TIMER_INDEX);
-    TIMERG0.hw_timer[STEP_TIMER_INDEX].config.alarm_en = TIMER_ALARM_EN;
+    STEP_TIMER.hw_timer[STEP_TIMER_INDEX].config.alarm_en = TIMER_ALARM_EN;
 }
 
 // Disables stepper driver interrupts
@@ -669,9 +669,9 @@ IRAM_ATTR static void stepperCyclesPerTick (uint32_t cycles_per_tick)
 {
 // Limit min steps/s to about 2 (hal.f_step_timer @ 20MHz)
 #ifdef ADAPTIVE_MULTI_AXIS_STEP_SMOOTHING
-    TIMERG0.hw_timer[STEP_TIMER_INDEX].alarm_low = cycles_per_tick < (1UL << 18) ? cycles_per_tick : (1UL << 18) - 1UL;
+    STEP_TIMER.hw_timer[STEP_TIMER_INDEX].alarm_low = cycles_per_tick < (1UL << 18) ? cycles_per_tick : (1UL << 18) - 1UL;
 #else
-    TIMERG0.hw_timer[STEP_TIMER_INDEX].alarm_low = cycles_per_tick < (1UL << 23) ? cycles_per_tick : (1UL << 23) - 1UL;
+    STEP_TIMER.hw_timer[STEP_TIMER_INDEX].alarm_low = cycles_per_tick < (1UL << 23) ? cycles_per_tick : (1UL << 23) - 1UL;
 #endif
 }
 
@@ -2739,8 +2739,8 @@ bool driver_init (void)
 IRAM_ATTR static void stepper_driver_isr (void *arg)
 {
 	laser_enter_isr();
-	TIMERG0.int_clr.t0 = 1;
-    TIMERG0.hw_timer[STEP_TIMER_INDEX].config.alarm_en = TIMER_ALARM_EN;
+	STEP_TIMER.int_clr.t0 = 1;
+    STEP_TIMER.hw_timer[STEP_TIMER_INDEX].config.alarm_en = TIMER_ALARM_EN;
 
     hal.stepper.interrupt_callback();
     laser_exit_isr();

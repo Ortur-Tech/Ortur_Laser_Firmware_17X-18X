@@ -4,8 +4,11 @@
  *  Created on: 2021年9月3日
  *      Author: c
  */
-
-
+#include "single_uart.h"
+#include "board.h"
+#include "driver.h"
+#include "driver/uart.h"
+#include "esp32-hal-uart.h"
 
 #if BOARD_VERSION == OLM_ESP_PRO_V1X
 
