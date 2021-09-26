@@ -119,6 +119,9 @@ static bool IRAM_ATTR HAL_TickInc(void *args)
     laser_exit_isr();
 	return 1;
 }
+
+#define TICK_TIMER_GROUP TIMER_GROUP_1
+#define TICK_TIMER_INDX TIMER_0
 /*1ms定时器*/
 void HAL_TickInit(void)
 {
@@ -130,17 +133,17 @@ void HAL_TickInit(void)
 	        .alarm_en = TIMER_ALARM_EN,
 	        .auto_reload = 1000,
 	    }; // default clock source is APB
-	    timer_init(TIMER_GROUP_1, TIMER_1, &config);
+	    timer_init(TICK_TIMER_GROUP, TICK_TIMER_INDX, &config);
 
 	    /* Timer's counter will initially start from value below.
 		   Also, if auto_reload is set, this value will be automatically reload on alarm */
-		timer_set_counter_value(TIMER_GROUP_1, TIMER_1, 0);
+		timer_set_counter_value(TICK_TIMER_GROUP, TICK_TIMER_INDX, 0);
 
-		timer_set_alarm_value(TIMER_GROUP_1, TIMER_1, 1000);
-		timer_enable_intr(TIMER_GROUP_1, TIMER_1);
+		timer_set_alarm_value(TICK_TIMER_GROUP, TICK_TIMER_INDX, 1000);
+		timer_enable_intr(TICK_TIMER_GROUP, TICK_TIMER_INDX);
 
-		timer_isr_callback_add(TIMER_GROUP_1, TIMER_1, HAL_TickInc, NULL, 0);
-		timer_start(TIMER_GROUP_1, TIMER_1);
+		timer_isr_callback_add(TICK_TIMER_GROUP, TICK_TIMER_INDX, HAL_TickInc, NULL, 0);
+		timer_start(TICK_TIMER_GROUP, TICK_TIMER_INDX);
 }
 
 

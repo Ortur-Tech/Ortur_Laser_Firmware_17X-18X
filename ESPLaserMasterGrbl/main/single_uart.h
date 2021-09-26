@@ -7,6 +7,7 @@
 
 #ifndef MAIN_SINGLE_UART_H_
 #define MAIN_SINGLE_UART_H_
+#include "board.h"
 
 void single_uart_init(uint8_t driver);
 

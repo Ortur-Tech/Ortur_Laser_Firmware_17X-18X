@@ -400,7 +400,7 @@
 #if (MACHINE_TYPE == AUFERO_1)
 #define DEFAULT_DIRECTION_INVERT_MASK (0b11) //(0b00cbazyx)
 #else
-#define DEFAULT_DIRECTION_INVERT_MASK (0b10) //(0b00cbazyx)
+#define DEFAULT_DIRECTION_INVERT_MASK (0b110) //(0b00cbazyx)
 #endif
 
 // Inverts logic of the input signals based on a mask. This essentially means you are using
@@ -490,7 +490,7 @@
 
 #define DEFAULT_AUTO_POWEROFF_TIME 					30//分钟 自动关机
 #define DEFAULT_LASER_FOCAL_LENGTH 					100 //mm 焦距
-#define ENABLE_AUTO_FOCUS	1
+#define ENABLE_AUTO_FOCUS							0
 /*回零偏移*/
 #if MACHINE_TYPE == OLM_2_PRO || (MACHINE_TYPE == OLM_PRO) || (MACHINE_TYPE == AUFERO_4)||(MACHINE_TYPE == AUFERO_1)||(MACHINE_TYPE == AUFERO_CNC)
 #define ENABLE_HOMING_FORCE_SET_ORIGIN_OFFSET 0
@@ -521,16 +521,16 @@
 #if MACHINE_TYPE == OLM_2_PRO
 #define DEFAULT_X_STEPS_PER_MM (5.0f*16)
 #define DEFAULT_Y_STEPS_PER_MM (5.0f*16)
-#define DEFAULT_Z_STEPS_PER_MM (400)
+#define DEFAULT_Z_STEPS_PER_MM (708*3)
 #define DEFAULT_X_MAX_RATE (170.0f*60) // mm/min
 #define DEFAULT_Y_MAX_RATE (170.0f*60) // mm/min
-#define DEFAULT_Z_MAX_RATE (20.0f*60) // mm/min
+#define DEFAULT_Z_MAX_RATE (10.0f*60) // mm/min
 #define DEFAULT_X_ACCELERATION (2200.0f*60*60) // 10*60*60 mm/min^2 = 10 mm/sec^2
 #define DEFAULT_Y_ACCELERATION (1800.0f*60*60) // 10*60*60 mm/min^2 = 10 mm/sec^2
-#define DEFAULT_Z_ACCELERATION (2200.0f*60*60) // 10*60*60 mm/min^2 = 10 mm/sec^2
+#define DEFAULT_Z_ACCELERATION (200.0f*60*60) // 10*60*60 mm/min^2 = 10 mm/sec^2
 #define DEFAULT_X_MAX_TRAVEL 400.0f // mm NOTE: Must be a positive value.
 #define DEFAULT_Y_MAX_TRAVEL 400.0f // mm NOTE: Must be a positive value.
-#define DEFAULT_Z_MAX_TRAVEL  50.0f // mm NOTE: Must be a positive value.
+#define DEFAULT_Z_MAX_TRAVEL 100.0f // mm NOTE: Must be a positive value.
 #elif (MACHINE_TYPE == AUFERO_4)
 #define DEFAULT_X_STEPS_PER_MM (5.0f*16)
 #define DEFAULT_Y_STEPS_PER_MM (5.0f*16)
@@ -615,7 +615,7 @@
 //#define DEFAULT_LATHE_MODE
 #define DEFAULT_HOMING_ENABLE
 #define DEFAULT_HOMING_ALLOW_MANUAL
-#define DEFAULT_HOMING_DIR_MASK (0b000111) // move positive dir (0b00cbazyx)
+#define DEFAULT_HOMING_DIR_MASK (0b000011) // move positive dir (0b00cbazyx)
 #define DEFAULT_HOMING_FEED_RATE (10.0f*60) // mm/min
 #define DEFAULT_HOMING_SEEK_RATE (50.0f*60) // mm/min
 #define DEFAULT_HOMING_DEBOUNCE_DELAY 100 // msec (0-65k)

@@ -137,6 +137,7 @@
 // timer definitions
 #define STEP_TIMER_GROUP TIMER_GROUP_0
 #define STEP_TIMER_INDEX TIMER_0
+#define STEP_TIMER TIMERG0
 
 #if SDCARD_ENABLE
 
