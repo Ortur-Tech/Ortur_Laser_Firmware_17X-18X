@@ -1,0 +1,3 @@
+[submodule "ESPLaserMasterGrbl/components/tinyusb"]
+	path = ESPLaserMasterGrbl/components/tinyusb
+	url = E:\\ESPWorkSpace\\ESPLaserMasterGrbl\\ESPLaserMasterGrbl\\components\\tinyusb
