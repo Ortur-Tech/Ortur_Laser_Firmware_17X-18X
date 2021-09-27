@@ -33,12 +33,11 @@ void Usb_ForceReset(void)
 void extended_FuncTask( void * pvParameters )
 {
 	vTaskDelay(1000/portTICK_PERIOD_MS);
+	/*在这里开电源避免干扰*/
+	power_CtrOn();
 	for( ;; )
 	{
 		vTaskDelay(10/portTICK_PERIOD_MS);
-
-		/*在这里开电源避免干扰*/
-		    power_CtrOn();
 
 #if ENABLE_ACCELERATION_DETECT
 		/*加速度检测*/
