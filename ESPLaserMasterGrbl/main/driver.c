@@ -613,10 +613,16 @@ static void I2S_stepperWakeUp (void)
 
 #else
 
+#if ENABLE_GPIO_SET_CRITICAL
+portMUX_TYPE mux3 = portMUX_INITIALIZER_UNLOCKED;
+#endif
 // Set stepper pulse output pins
 inline IRAM_ATTR static void set_step_outputs (axes_signals_t step_outbits)
 {
-    if(step_outbits.x) {
+#if ENABLE_GPIO_SET_CRITICAL
+	portENTER_CRITICAL(&mux3);
+#endif
+	if(step_outbits.x) {
         RMT.conf_ch[0].conf1.mem_rd_rst = 1;
         RMT.conf_ch[0].conf1.tx_start = 1;
     }
@@ -630,6 +636,9 @@ inline IRAM_ATTR static void set_step_outputs (axes_signals_t step_outbits)
         RMT.conf_ch[2].conf1.mem_rd_rst = 1;
         RMT.conf_ch[2].conf1.tx_start = 1;
     }
+#if ENABLE_GPIO_SET_CRITICAL
+	portEXIT_CRITICAL(&mux3);
+#endif
 }
 
 #endif
@@ -852,7 +861,13 @@ IRAM_ATTR inline void spindle_off (void)
 	spindle_disable_by_grbl_set(1);
 	if(spindle_delay_stop())
 #endif
+#if ENABLE_GPIO_SET_CRITICAL
+	portENTER_CRITICAL(&mux3);
+#endif
     gpio_set_level(SPINDLE_ENABLE_PIN, settings.spindle.invert.on ? 1 : 0);
+#if ENABLE_GPIO_SET_CRITICAL
+	portEXIT_CRITICAL(&mux3);
+#endif
 #endif
 }
 
@@ -865,7 +880,13 @@ IRAM_ATTR inline static void spindle_on (void)
     iopins.spindle_on = settings.spindle.invert.on ? Off : On;
     ioexpand_out(iopins);
 #else
+#if ENABLE_GPIO_SET_CRITICAL
+	portENTER_CRITICAL(&mux3);
+#endif
     gpio_set_level(SPINDLE_ENABLE_PIN, settings.spindle.invert.on ? 0 : 1);
+#if ENABLE_GPIO_SET_CRITICAL
+	portEXIT_CRITICAL(&mux3);
+#endif
 #endif
 }
 
@@ -1060,12 +1081,18 @@ IRAM_ATTR static void coolantSetState (coolant_state_t mode)
     iopins.mist_on = mode.mist;
     ioexpand_out(iopins);
 #else
+#if ENABLE_GPIO_SET_CRITICAL
+	portENTER_CRITICAL(&mux3);
+#endif
   #ifdef COOLANT_FLOOD_PIN
     gpio_set_level(COOLANT_FLOOD_PIN, mode.flood ? 1 : 0);
   #endif
   #ifdef COOLANT_MIST_PIN
     gpio_set_level(COOLANT_MIST_PIN, mode.mist ? 1 : 0);
   #endif
+#if ENABLE_GPIO_SET_CRITICAL
+	portEXIT_CRITICAL(&mux3);
+#endif
 #endif
 }
 
@@ -1442,6 +1469,9 @@ uint8_t light_brightness = 100;
 void light_SetState(uint8_t s)
 {
 #if !(BOARD_VERSION == OCM_ESP_PRO_V1X)
+#if ENABLE_GPIO_SET_CRITICAL
+	portENTER_CRITICAL(&mux3);
+#endif
 	if(s)
 	{
 		light_brightness = 100;
@@ -1452,6 +1482,9 @@ void light_SetState(uint8_t s)
 		light_brightness = 0;
 		gpio_set_level(LIGHT_PIN,0);
 	}
+#if ENABLE_GPIO_SET_CRITICAL
+	portEXIT_CRITICAL(&mux3);
+#endif
 #endif
 }
 uint8_t light_GetBrightness(void)
@@ -1494,6 +1527,9 @@ void beep_Init(void)
 void beep_PwmSet(uint8_t duty)
 {
 #if !(BOARD_VERSION == OCM_ESP_PRO_V1X)
+#if ENABLE_GPIO_SET_CRITICAL
+	portENTER_CRITICAL(&mux3);
+#endif
 	if(duty)
 	{
 		gpio_set_level(BEEP_PIN,1);
@@ -1502,6 +1538,9 @@ void beep_PwmSet(uint8_t duty)
 	{
 		gpio_set_level(BEEP_PIN,0);
 	}
+#if ENABLE_GPIO_SET_CRITICAL
+	portEXIT_CRITICAL(&mux3);
+#endif
 #endif
 }
 
@@ -1961,41 +2000,89 @@ void power_LedAlarm(void)
 		if((HAL_GetTick() - flash_time) > 500)
 		{
 			flash_time = HAL_GetTick();
+#if ENABLE_GPIO_SET_CRITICAL
+	portENTER_CRITICAL(&mux3);
+#endif
 			power_LedToggle();
+#if ENABLE_GPIO_SET_CRITICAL
+	portEXIT_CRITICAL(&mux3);
+#endif
 		}
 	}
 	else if(!power_KeyDown())
 	{
+#if ENABLE_GPIO_SET_CRITICAL
+	portENTER_CRITICAL(&mux3);
+#endif
 		gpio_set_level(POWER_LED_PIN, 1);
+#if ENABLE_GPIO_SET_CRITICAL
+	portEXIT_CRITICAL(&mux3);
+#endif
 	}
 }
 void power_LedToggle(void)
 {
 	static uint8_t status = 0;
 	status = !status;
+#if ENABLE_GPIO_SET_CRITICAL
+	portENTER_CRITICAL(&mux3);
+#endif
 	gpio_set_level(POWER_LED_PIN,status);
+#if ENABLE_GPIO_SET_CRITICAL
+	portEXIT_CRITICAL(&mux3);
+#endif
 }
 void power_LedOn(void)
 {
+#if ENABLE_GPIO_SET_CRITICAL
+	portENTER_CRITICAL(&mux3);
+#endif
 	gpio_set_level(POWER_LED_PIN,1);
+#if ENABLE_GPIO_SET_CRITICAL
+	portEXIT_CRITICAL(&mux3);
+#endif
 }
 void power_LedOff(void)
 {
+#if ENABLE_GPIO_SET_CRITICAL
+	portENTER_CRITICAL(&mux3);
+#endif
 	gpio_set_level(POWER_LED_PIN,0);
+#if ENABLE_GPIO_SET_CRITICAL
+	portEXIT_CRITICAL(&mux3);
+#endif
 }
 void comm_LedToggle(void)
 {
 	static uint8_t status = 0;
 	status = !status;
+#if ENABLE_GPIO_SET_CRITICAL
+	portENTER_CRITICAL(&mux3);
+#endif
 	gpio_set_level(COMM_LED_PIN,status);
+#if ENABLE_GPIO_SET_CRITICAL
+	portEXIT_CRITICAL(&mux3);
+#endif
 }
 void comm_LedOn(void)
 {
+#if ENABLE_GPIO_SET_CRITICAL
+	portENTER_CRITICAL(&mux3);
+#endif
 	gpio_set_level(COMM_LED_PIN,1);
+#if ENABLE_GPIO_SET_CRITICAL
+	portEXIT_CRITICAL(&mux3);
+#endif
 }
 void comm_LedOff(void)
 {
+#if ENABLE_GPIO_SET_CRITICAL
+	portENTER_CRITICAL(&mux3);
+#endif
 	gpio_set_level(COMM_LED_PIN,0);
+#if ENABLE_GPIO_SET_CRITICAL
+	portEXIT_CRITICAL(&mux3);
+#endif
 }
 /*KEY*/
 void power_KeyInit(void)
@@ -2070,14 +2157,26 @@ void power_CtrlInit(void)
 void power_CtrOn(void)
 {
 #if BOARD_VERSION == OLM_ESP_PRO_V1X || BOARD_VERSION == OCM_ESP_PRO_V1X
+#if ENABLE_GPIO_SET_CRITICAL
+	portENTER_CRITICAL(&mux3);
+#endif
 	gpio_set_level(PWR_CTR_PIN,1);
+#if ENABLE_GPIO_SET_CRITICAL
+	portEXIT_CRITICAL(&mux3);
+#endif
 #endif
 }
 
 void power_CtrOff(void)
 {
 #if BOARD_VERSION == OLM_ESP_PRO_V1X || BOARD_VERSION == OCM_ESP_PRO_V1X
+#if ENABLE_GPIO_SET_CRITICAL
+	portENTER_CRITICAL(&mux3);
+#endif
 	gpio_set_level(PWR_CTR_PIN,0);
+#if ENABLE_GPIO_SET_CRITICAL
+	portEXIT_CRITICAL(&mux3);
+#endif
 #endif
 }
 
@@ -2741,8 +2840,13 @@ IRAM_ATTR static void stepper_driver_isr (void *arg)
 	laser_enter_isr();
 	STEP_TIMER.int_clr.t0 = 1;
     STEP_TIMER.hw_timer[STEP_TIMER_INDEX].config.alarm_en = TIMER_ALARM_EN;
-
+#if ENABLE_GPIO_SET_CRITICAL
+	portENTER_CRITICAL(&mux3);
+#endif
     hal.stepper.interrupt_callback();
+#if ENABLE_GPIO_SET_CRITICAL
+	portEXIT_CRITICAL(&mux3);
+#endif
     laser_exit_isr();
 }
 
@@ -2853,7 +2957,7 @@ uint8_t spindle_delay_stop(void)
 
 	return 1;
 }
-
+#ifdef DELAY_OFF_SPINDLE
 void spindle_disable_by_grbl_set(uint8_t status)
 {
 	spindle_disable_by_grbl = status;
@@ -2894,7 +2998,7 @@ void spindle_calculate_heat()
 	  equivalent_power += sys.spindle_rpm;
   }
 }
-
+#endif
 /*该函数在系统定时器中调用用于紧急按钮消抖
  *
  * "Emergency switch Engaged"
