@@ -32,10 +32,13 @@ void Usb_ForceReset(void)
 /*扩展功能任务1.加速度检测 2.火焰ad值获取*/
 void extended_FuncTask( void * pvParameters )
 {
-	vTaskDelay(3000/portTICK_PERIOD_MS);
+	vTaskDelay(1000/portTICK_PERIOD_MS);
 	for( ;; )
 	{
 		vTaskDelay(10/portTICK_PERIOD_MS);
+
+		/*在这里开电源避免干扰*/
+		    power_CtrOn();
 
 #if ENABLE_ACCELERATION_DETECT
 		/*加速度检测*/

@@ -209,8 +209,7 @@ int grbl_enter (void)
 #ifdef WALL_PLOTTER
     wall_plotter_init();
 #endif
-    /*在这里开电源避免干扰*/
-    power_CtrOn();
+
     // Grbl initialization loop upon power-up or a system abort. For the latter, all processes
     // will return to this loop to be cleanly re-initialized.
     while(looping) {

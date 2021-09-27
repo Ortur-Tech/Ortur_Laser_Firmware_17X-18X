@@ -508,7 +508,7 @@
 /*加速度检测使能*/
 #define ENABLE_ACCELERATION_DETECT 	1
 /*GPIO设置时是否进入临界区*/
-#define ENABLE_GPIO_SET_CRITICAL	1
+#define ENABLE_GPIO_SET_CRITICAL	0
 
 
 #if MACHINE_TYPE == AUFERO_1
