@@ -34,9 +34,12 @@ void extended_FuncTask( void * pvParameters )
 {
 	vTaskDelay(1000/portTICK_PERIOD_MS);
 	/*在这里开电源避免干扰*/
-	power_CtrOn();
+	//power_CtrOn();
 	for( ;; )
 	{
+		/*根据是否有供电自动开关，避免插usb供电时打火*/
+		power_auto_ctrl();
+
 		vTaskDelay(10/portTICK_PERIOD_MS);
 
 #if ENABLE_ACCELERATION_DETECT
@@ -123,7 +126,7 @@ static bool IRAM_ATTR HAL_TickInc(void *args)
 }
 
 #define TICK_TIMER_GROUP TIMER_GROUP_1
-#define TICK_TIMER_INDX TIMER_0
+#define TICK_TIMER_INDX TIMER_1
 /*1ms定时器*/
 void HAL_TickInit(void)
 {
