@@ -512,9 +512,9 @@
 
 
 #if MACHINE_TYPE == AUFERO_1
-#define DEFAULT_ACCELERATION_LIMIT 	230
+#define DEFAULT_ACCELERATION_LIMIT 	290
 #else
-#define DEFAULT_ACCELERATION_LIMIT 	230
+#define DEFAULT_ACCELERATION_LIMIT 	290
 #endif
 #define ENABLE_POWER_SUPPLY_CHECK 	1
 #define ENABLE_COMM_LED2			1
@@ -551,11 +551,11 @@
 #define DEFAULT_X_STEPS_PER_MM (5.0f*16)
 #define DEFAULT_Y_STEPS_PER_MM (5.0f*16)
 #define DEFAULT_Z_STEPS_PER_MM (400)
-#define DEFAULT_X_MAX_RATE (170.0f*60) // mm/min
-#define DEFAULT_Y_MAX_RATE (170.0f*60) // mm/min
+#define DEFAULT_X_MAX_RATE (100.0f*60) // mm/min
+#define DEFAULT_Y_MAX_RATE (100.0f*60) // mm/min
 #define DEFAULT_Z_MAX_RATE (20.0f*60) // mm/min
-#define DEFAULT_X_ACCELERATION (2200.0f*60*60) // 10*60*60 mm/min^2 = 10 mm/sec^2
-#define DEFAULT_Y_ACCELERATION (1800.0f*60*60) // 10*60*60 mm/min^2 = 10 mm/sec^2
+#define DEFAULT_X_ACCELERATION (1200.0f*60*60) // 10*60*60 mm/min^2 = 10 mm/sec^2
+#define DEFAULT_Y_ACCELERATION (800.0f*60*60) // 10*60*60 mm/min^2 = 10 mm/sec^2
 #define DEFAULT_Z_ACCELERATION (2200.0f*60*60) // 10*60*60 mm/min^2 = 10 mm/sec^2
 #define DEFAULT_X_MAX_TRAVEL 180.0f // mm NOTE: Must be a positive value.
 #define DEFAULT_Y_MAX_TRAVEL 180.0f // mm NOTE: Must be a positive value.
