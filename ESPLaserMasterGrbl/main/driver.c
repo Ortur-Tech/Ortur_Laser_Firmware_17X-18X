@@ -786,7 +786,12 @@ inline IRAM_ATTR static control_signals_t systemGetState (void)
     signals.feed_hold = gpio_get_level(FEED_HOLD_PIN);
 #endif
 #ifdef CYCLE_START_PIN
+
+#if (BOARD_VERSION == OLM_ESP_PRO_V1X)
+    signals.cycle_start = !gpio_get_level(CYCLE_START_PIN);
+#else
     signals.cycle_start = gpio_get_level(CYCLE_START_PIN);
+#endif
 //    /*电源按键实现cycle start功能*/
 //	if(signals.cycle_start)
 //	{
@@ -2000,13 +2005,8 @@ void power_LedAlarm(void)
 		if((HAL_GetTick() - flash_time) > 500)
 		{
 			flash_time = HAL_GetTick();
-#if ENABLE_GPIO_SET_CRITICAL
-	portENTER_CRITICAL(&mux3);
-#endif
 			power_LedToggle();
-#if ENABLE_GPIO_SET_CRITICAL
-	portEXIT_CRITICAL(&mux3);
-#endif
+
 		}
 	}
 	else if(!power_KeyDown())
@@ -2154,6 +2154,24 @@ void power_CtrlInit(void)
 
 }
 
+/*电源自动开关控制*/
+void power_auto_ctrl(void)
+{
+	static uint8_t power_off_cnt = 0;
+	if(IsMainPowrIn())
+	{
+		power_CtrOn();
+	}
+	else
+	{
+		power_off_cnt++;
+		if(power_off_cnt > 2)
+		{
+			power_off_cnt =0;
+			power_CtrOff();
+		}
+	}
+}
 void power_CtrOn(void)
 {
 #if BOARD_VERSION == OLM_ESP_PRO_V1X || BOARD_VERSION == OCM_ESP_PRO_V1X
@@ -2270,8 +2288,8 @@ uint8_t IsMainPowrIn(void)
 #endif
 
 	uint32_t votage = (float)value / 8192 * 2.6 * (VOTAGE_SAMPLING_RES + VOTAGE_DIV_RES) / VOTAGE_SAMPLING_RES;
-	/*大于21v认为有电*/
-	if(votage > 18)
+	/*大于10v认为有电*/
+	if(votage > 10)
 	{
 		last_power_flag = 1;
 		use_time_save_flag = 1;
@@ -2545,8 +2563,10 @@ static bool driver_setup (settings_t *settings)
 
     hal.stepper.go_idle(true);
 
+#if BOARD_VERSION == OLM_ESP_V1X
     /*开机蜂鸣器提示紧急按钮被错误按下去了*/
 	alarm_for_estop_init();
+#endif
 
     return IOInitDone;
 }
