@@ -387,6 +387,11 @@ void report_init_message (void)
     hal.stream.write_all(ASCII_EOL);
     hal.stream.write_all(ORTUR_MODEL_NAME " Ready!" ASCII_EOL);
     hal.stream.write_all(ORTUR_FW_NAME "." ASCII_EOL);
+    /*硬件版本*/
+    hal.stream.write_all(ORTUR_HW_NAME "." ASCII_EOL);
+    /*TODO:数字激光*/
+	hal.stream.write("[OLM: GENERAL");
+	hal.stream.write("]" ASCII_EOL);
 #if ENABLE_ACCELERATION_DETECT
     gsensor_info_report();
 #endif
@@ -951,6 +956,14 @@ void report_build_info (char *line)
 	hal.stream.write("]" ASCII_EOL);
 
 	hal.stream.write("[OLF: " ORTUR_FW_VERSION );
+	hal.stream.write("]" ASCII_EOL);
+
+	/*硬件版本*/
+	hal.stream.write("[OLH: " ORTUR_HW_NAME );
+	hal.stream.write("]" ASCII_EOL);
+
+	/*TODO:数字激光*/
+	hal.stream.write("[OLM: GENERAL");
 	hal.stream.write("]" ASCII_EOL);
 
 	hal.stream.write("[DATE:"__TIME__" - "__DATE__);
