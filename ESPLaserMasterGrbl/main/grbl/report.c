@@ -386,12 +386,12 @@ void report_init_message (void)
     override_counter = wco_counter = 0;
     hal.stream.write_all(ASCII_EOL);
     hal.stream.write_all(ORTUR_MODEL_NAME " Ready!" ASCII_EOL);
-    hal.stream.write_all(ORTUR_FW_NAME "." ASCII_EOL);
+    hal.stream.write_all("OLF:" ORTUR_FW_NAME "." ASCII_EOL);
     /*硬件版本*/
-    hal.stream.write_all(ORTUR_HW_NAME "." ASCII_EOL);
+    hal.stream.write_all("OLH:" ORTUR_HW_NAME "." ASCII_EOL);
     /*TODO:数字激光*/
-	hal.stream.write("[OLM: GENERAL");
-	hal.stream.write("]" ASCII_EOL);
+	hal.stream.write_all("OLM: GENERAL." ASCII_EOL);
+
 #if ENABLE_ACCELERATION_DETECT
     gsensor_info_report();
 #endif
