@@ -7,6 +7,13 @@
 #include "serial_iap.h"
 #include "driver/uart.h"
 #include "digital_laser.h"
+
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "freertos/timers.h"
+
+#define USE_FREERTOS_TIMER 1
+
 #define TIMER_DIVIDER         (80)  //  Hardware timer clock divider
 #define TIMER_SCALE           (TIMER_BASE_CLK / TIMER_DIVIDER)  // convert counter value to seconds
 
@@ -95,7 +102,11 @@ void HAL_Delay(uint32_t ms)
 }
 uint32_t hal_tick_timer = 0;
 
+#if USE_FREERTOS_TIMER
+void HAL_TickInc(TimerHandle_t xTimer)
+#else
 static bool IRAM_ATTR HAL_TickInc(void *args)
+#endif
 {
 	laser_enter_isr();
 
@@ -122,14 +133,24 @@ static bool IRAM_ATTR HAL_TickInc(void *args)
 #endif
 
     laser_exit_isr();
+#if !USE_FREERTOS_TIMER
 	return 1;
+#endif
 }
+
+
 
 #define TICK_TIMER_GROUP TIMER_GROUP_1
 #define TICK_TIMER_INDX TIMER_1
 /*1ms定时器*/
 void HAL_TickInit(void)
 {
+#if USE_FREERTOS_TIMER
+	int i = 5 ;
+	TimerHandle_t tickTimer = NULL;
+	tickTimer = xTimerCreate("user tick timer.", 1000, pdTRUE, (void*)i, HAL_TickInc);
+	xTimerStart(tickTimer, 0);
+#else
 	/* Select and initialize basic parameters of the timer */
 	    timer_config_t config = {
 	        .divider = TIMER_DIVIDER,
@@ -149,13 +170,18 @@ void HAL_TickInit(void)
 
 		timer_isr_callback_add(TICK_TIMER_GROUP, TICK_TIMER_INDX, HAL_TickInc, NULL, 0);
 		timer_start(TICK_TIMER_GROUP, TICK_TIMER_INDX);
+#endif
 }
 
 
 
 uint32_t HAL_GetTick(void)
 {
+#if USE_FREERTOS_TIMER
+	return xTaskGetTickCount();
+#else
 	return hal_tick_timer;
+#endif
 }
 /**
  * @brief 当单片机主频为72兆赫兹时比较精准的软件延时
