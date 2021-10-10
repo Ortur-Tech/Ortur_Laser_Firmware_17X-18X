@@ -524,23 +524,6 @@ void report_grbl_settings (bool all)
         report_uint_setting(Setting_ForceInitAlarm, settings.flags.force_initialization_alarm);
         report_uint_setting(Setting_ProbingFeedOverride, settings.probe.allow_feed_override);
 
-		report_uint_setting(Setting_FireLogEnable, settings.fire_log_enable); //火焰传感器数据打印
-        report_uint_setting(Setting_FireAlarmDeltaThreshold, settings.fire_alarm_delta_threshold); //火焰传感器报警阈值
-        report_uint_setting(Setting_FireAlarmThreshold, settings.fire_alarm_time_threshold); //火焰传感器报警阈值
-
-#if ENABLE_ACCELERATION_DETECT
-        report_uint_setting(Setting_AccelerateThreshold, settings.accel_sensitivity); //加速度传感器报警阈值
-#endif
-        report_uint_setting(Setting_AutoPowerOffTime, settings.sys_auto_poweroff_time); //自动关机时间
-        report_uint_setting(Setting_LaserUsedTime, settings.laser_used_time); //激光使用时间
-
-        report_uint_setting(Setting_LaserFocalLength, settings.laser_focal_length);	//焦距
-        report_uint_setting(Setting_EnableDigitalLaserMode, settings.laser_control_mode);	//激光器控制模式
-#if ENABLE_HOMING_FORCE_SET_ORIGIN_OFFSET
-        report_uint_setting(Setting_OriginOffsetX, settings.origin_offset_x); //x轴原点偏移
-        report_uint_setting(Setting_OriginOffsetY, settings.origin_offset_y); //y轴原点偏移
-        report_uint_setting(Setting_OriginOffsetZ, settings.origin_offset_z); //z轴原点偏移
-#endif
 
       #ifdef ENABLE_SPINDLE_LINEARIZATION
         for(idx = 0 ; idx < SPINDLE_NPWM_PIECES ; idx++) {
@@ -673,6 +656,27 @@ void report_grbl_settings (bool all)
                     hal.driver_settings.report((setting_type_t)idx);
                 break;
         }
+    }
+
+    if(all)
+    {
+		report_uint_setting(Setting_FireLogEnable, settings.fire_log_enable); //火焰传感器数据打印
+        report_uint_setting(Setting_FireAlarmDeltaThreshold, settings.fire_alarm_delta_threshold); //火焰传感器报警阈值
+        report_uint_setting(Setting_FireAlarmThreshold, settings.fire_alarm_time_threshold); //火焰传感器报警阈值
+
+#if ENABLE_ACCELERATION_DETECT
+        report_uint_setting(Setting_AccelerateThreshold, settings.accel_sensitivity); //加速度传感器报警阈值
+#endif
+        report_uint_setting(Setting_AutoPowerOffTime, settings.sys_auto_poweroff_time); //自动关机时间
+        report_uint_setting(Setting_LaserUsedTime, settings.laser_used_time); //激光使用时间
+
+        report_uint_setting(Setting_LaserFocalLength, settings.laser_focal_length);	//焦距
+        report_uint_setting(Setting_EnableDigitalLaserMode, settings.laser_control_mode);	//激光器控制模式
+#if ENABLE_HOMING_FORCE_SET_ORIGIN_OFFSET
+        report_uint_setting(Setting_OriginOffsetX, settings.origin_offset_x); //x轴原点偏移
+        report_uint_setting(Setting_OriginOffsetY, settings.origin_offset_y); //y轴原点偏移
+        report_uint_setting(Setting_OriginOffsetZ, settings.origin_offset_z); //z轴原点偏移
+#endif
     }
 }
 
