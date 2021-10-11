@@ -2289,7 +2289,7 @@ uint8_t IsMainPowrIn(void)
 
 	uint32_t votage = (float)value / 8192 * 2.6 * (VOTAGE_SAMPLING_RES + VOTAGE_DIV_RES) / VOTAGE_SAMPLING_RES;
 	/*大于10v认为有电*/
-	if(votage > 10)
+	if(votage > VOTAGE_LIMIT)
 	{
 		last_power_flag = 1;
 		use_time_save_flag = 1;

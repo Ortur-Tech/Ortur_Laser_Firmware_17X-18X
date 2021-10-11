@@ -18,7 +18,7 @@
 #define OLM_ESP_PRO_V1X     2   //我们自己的主板
 #define OCM_ESP_PRO_V1X     3   //我们自己的主板
 
-
+#define ORTUR_HW_NAME 		"OLM_ESP_PRO_V1.2"
 #define BOARD_VERSION 		OLM_ESP_PRO_V1X
 /*******************硬件版本定义 END*******************/
 
@@ -31,6 +31,7 @@
 #define AUFERO_2			4	//方框机器
 #define AUFERO_1			5	//悬臂机
 #define AUFERO_4			6	//方框机器370*400
+#define OLM2				7   //方框机400*430
 
 
 
