@@ -2158,7 +2158,7 @@ void power_CtrlInit(void)
 void power_auto_ctrl(void)
 {
 	static uint8_t power_off_cnt = 0;
-	if(IsMainPowrIn())
+	if(IsMainPowrIn() == 1)
 	{
 		power_CtrOn();
 	}
@@ -2231,6 +2231,12 @@ uint32_t power_GetCurrent(void)
 /*大于10V认为有电压*/
 #define VOTAGE_LIMIT 10 //10V
 
+#if (MACHINE_TYPE == OLM2)
+#define RATE_VOTAGE 12
+#else
+#define RATE_VOTAGE 24
+#endif
+
 /*电源检测*/
 uint8_t report_power_flag = 0;//是否报告电源状态
 static uint8_t last_power_flag=0;//变化前电源状态
@@ -2288,8 +2294,12 @@ uint8_t IsMainPowrIn(void)
 #endif
 
 	uint32_t votage = (float)value / 8192 * 2.6 * (VOTAGE_SAMPLING_RES + VOTAGE_DIV_RES) / VOTAGE_SAMPLING_RES;
+	if(votage > (RATE_VOTAGE + 3))
+	{
+		return 2;
+	}
 	/*大于10v认为有电*/
-	if(votage > VOTAGE_LIMIT)
+	else if(votage > VOTAGE_LIMIT)
 	{
 		last_power_flag = 1;
 		use_time_save_flag = 1;
