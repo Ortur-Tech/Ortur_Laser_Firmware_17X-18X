@@ -2115,6 +2115,9 @@ void system_UpdateAutoPoweroffTime(void)
 {
 	auto_poweroff_time = HAL_GetTick();
 }
+/*
+ * breif:自动关机判断函数
+ */
 void system_AutoPowerOff(void)
 {
 	if(settings.sys_auto_poweroff_time == 0) return;
@@ -2172,6 +2175,9 @@ void power_auto_ctrl(void)
 		}
 	}
 }
+/*
+ * breif:打开电机和手柄电源
+ */
 void power_CtrOn(void)
 {
 #if BOARD_VERSION == OLM_ESP_PRO_V1X || BOARD_VERSION == OCM_ESP_PRO_V1X
@@ -2184,7 +2190,9 @@ void power_CtrOn(void)
 #endif
 #endif
 }
-
+/*
+ * breif:关闭电机和手柄电源
+ */
 void power_CtrOff(void)
 {
 #if BOARD_VERSION == OLM_ESP_PRO_V1X || BOARD_VERSION == OCM_ESP_PRO_V1X
@@ -2999,7 +3007,9 @@ void spindle_disable_by_grbl_set(uint8_t status)
 		spindle_fan_delay_time = _MIN(MAX_SPINDLE_FAN_TIME,spindle_fan_delay_time);
 	}
 }
-
+/*
+ * breif：计算积热量
+ */
 void spindle_calculate_heat()
 {
   static uint32_t last_time = 0;
