@@ -25,6 +25,8 @@
 #elif BOARD_VERSION == OLM_ESP_V1X
 #define OTA_FILE_NAME "OLM2_PRO_"
 #endif
+#elif MACHINE_TYPE == OLM2
+#define OTA_FILE_NAME "ESP_OLM_2_"
 #elif (MACHINE_TYPE == AUFERO_4)
 
 #define OTA_FILE_NAME "ESP_AUFERO4_"

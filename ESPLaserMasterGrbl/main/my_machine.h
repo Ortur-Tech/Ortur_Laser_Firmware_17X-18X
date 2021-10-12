@@ -69,8 +69,10 @@
 #define ORTUR_MODEL_NAME "Ortur Aufero 1 S2"
 #elif (MACHINE_TYPE == OLM_PRO)
 #define ORTUR_MODEL_NAME "Ortur Laser Master Pro S2"
-#elif
-#define ORTUR_MODEL_NAME "Unkown Machine S2"
+#elif (MACHINE_TYPE == OLM2)
+#define ORTUR_MODEL_NAME "Ortur Laser Master 2 S0"
+#else
+#error "错误的机型！！"
 #endif
 
 #elif BOARD_VERSION == OCM_ESP_PRO_V1X
