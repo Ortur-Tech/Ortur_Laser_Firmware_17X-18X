@@ -411,17 +411,17 @@ void laser_keep_active(void)
 		if((HAL_GetTick() - time) > 500)
 		{
 			time = HAL_GetTick();
-			laser_read_write_enqueue(LASER_WRITE,COMM_FOCUS_DISTANCE, 0);
-			laser_read_write_enqueue(LASER_WRITE,COMM_GET_TEMPRATURE, 0);
-			laser_read_write_enqueue(LASER_WRITE,COMM_FIRE_DETECT, 0);
-			laser_read_write_enqueue(LASER_WRITE,COMM_FAN_DUTY_CONTROL, 0);
-			laser_read_write_enqueue(LASER_WRITE,COMM_LASER_PWM_DUTY, 0);
-			laser_read_write_enqueue(LASER_WRITE,COMM_LASER_PWM_FREQUENT, 0);
-			laser_read_write_enqueue(LASER_WRITE,COMM_GET_BTN_STATE, 0);
-			laser_read_write_enqueue(LASER_WRITE,COMM_GET_VL6180_CONNECTED, 0);
+			laser_read_write_enqueue(LASER_READ,COMM_FOCUS_DISTANCE, 0);
+			laser_read_write_enqueue(LASER_READ,COMM_GET_TEMPRATURE, 0);
+			laser_read_write_enqueue(LASER_READ,COMM_FIRE_DETECT, 0);
+			laser_read_write_enqueue(LASER_READ,COMM_FAN_DUTY_CONTROL, 0);
+			laser_read_write_enqueue(LASER_READ,COMM_LASER_PWM_DUTY, 0);
+			laser_read_write_enqueue(LASER_READ,COMM_LASER_PWM_FREQUENT, 0);
+			laser_read_write_enqueue(LASER_READ,COMM_GET_BTN_STATE, 0);
+			laser_read_write_enqueue(LASER_READ,COMM_GET_VL6180_CONNECTED, 0);
 
 			/*读取PWM频率*/
-			laser_info.laser_fre = laser_get_value(COMM_LASER_PWM_FREQUENT);
+			//laser_info.laser_fre = laser_get_value(COMM_LASER_PWM_FREQUENT);
 			/*如果频率不匹配则重新匹配*/
 			if(laser_info.laser_fre != settings.spindle.pwm_freq)
 			{
