@@ -1,0 +1,6 @@
+set IDF_PATH=D:\esp-idf-v4.3.1
+set IDF_TOOL_PATH=D:\esp-idf-tool
+set PATH=%IDF_TOOL_PATH%\tools\xtensa-esp32-elf\esp-2021r1-8.4.0\xtensa-esp32-elf\bin;%IDF_TOOL_PATH%\tools\xtensa-esp32s2-elf\esp-2021r1-8.4.0\xtensa-esp32s2-elf\bin;%IDF_TOOL_PATH%\tools\xtensa-esp32s3-elf\esp-2021r1-8.4.0\xtensa-esp32s3-elf\bin;%IDF_TOOL_PATH%\tools\riscv32-esp-elf\esp-2021r1-8.4.0\riscv32-esp-elf\bin;%IDF_TOOL_PATH%\tools\esp32ulp-elf\2.28.51-esp-20191205\esp32ulp-elf-binutils\bin;%PATH%
+set PATH=%IDF_TOOL_PATH%\tools\esp32s2ulp-elf\2.28.51-esp-20191205\esp32s2ulp-elf-binutils\bin;%IDF_TOOL_PATH%\tools\cmake\3.16.4\bin;%IDF_TOOL_PATH%\tools\openocd-esp32\v0.10.0-esp32-20210401\openocd-esp32\bin;%IDF_TOOL_PATH%\tools\ninja\1.10.2\;%IDF_TOOL_PATH%\tools\idf-exe\1.0.1\;%IDF_TOOL_PATH%\tools\ccache\3.7\;%IDF_TOOL_PATH%\tools\dfu-util\0.9\dfu-util-0.9-win64;D:\esp-idf-v4.3.1\tools;%PATH%
+
+%IDF_TOOL_PATH%\tools\xtensa-esp32s2-elf\esp-2021r1-8.4.0\xtensa-esp32s2-elf\bin\xtensa-esp32s2-elf-gdb.exe -x gdbinit build/grblHAL_ESP32_S2.elf
