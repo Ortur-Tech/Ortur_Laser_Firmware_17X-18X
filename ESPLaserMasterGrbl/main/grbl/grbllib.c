@@ -158,6 +158,10 @@ int grbl_enter (void)
     driver_ok &= hal.driver_cap.safety_door;
 #endif
 
+#ifdef COREXY
+    corexy_init();
+#endif
+
   #ifdef BUFFER_NVSDATA
     nvs_buffer_init();
   #endif
@@ -202,9 +206,7 @@ int grbl_enter (void)
     if(hal.get_position)
         hal.get_position(&sys_position); // TODO:  restore on abort when returns true?
 
-#ifdef COREXY
-    corexy_init();
-#endif
+
 
 #ifdef WALL_PLOTTER
     wall_plotter_init();
