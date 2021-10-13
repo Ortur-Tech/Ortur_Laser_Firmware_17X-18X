@@ -24,6 +24,7 @@
 
 #ifdef COREXY
 
+#include <math.h>
 #include "settings.h"
 #include "planner.h"
 #include "kinematics.h"
@@ -56,7 +57,7 @@ static void corexy_convert_array_steps_to_mpos (float *position, int32_t *steps)
 static void corexy_target_to_steps (int32_t *target_steps, float *target)
 {
     uint_fast8_t idx = N_AXIS;
-    int32_t a_steps, b_steps;
+    int32_t a_steps, b_steps = 0;
 
     do {
         switch(--idx) {
