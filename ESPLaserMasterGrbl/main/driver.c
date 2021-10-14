@@ -866,13 +866,17 @@ IRAM_ATTR inline void spindle_off (void)
 	spindle_disable_by_grbl_set(1);
 	if(spindle_delay_stop())
 #endif
+	{
 #if ENABLE_GPIO_SET_CRITICAL
 	portENTER_CRITICAL(&mux3);
 #endif
-    gpio_set_level(SPINDLE_ENABLE_PIN, settings.spindle.invert.on ? 1 : 0);
+#if !ENABLE_DIGITAL_LASER
+	gpio_set_level(SPINDLE_ENABLE_PIN, settings.spindle.invert.on ? 1 : 0);
+#endif
 #if ENABLE_GPIO_SET_CRITICAL
 	portEXIT_CRITICAL(&mux3);
 #endif
+	}
 #endif
 }
 
@@ -888,7 +892,9 @@ IRAM_ATTR inline static void spindle_on (void)
 #if ENABLE_GPIO_SET_CRITICAL
 	portENTER_CRITICAL(&mux3);
 #endif
-    gpio_set_level(SPINDLE_ENABLE_PIN, settings.spindle.invert.on ? 0 : 1);
+#if !ENABLE_DIGITAL_LASER
+	gpio_set_level(SPINDLE_ENABLE_PIN, settings.spindle.invert.on ? 0 : 1);
+#endif
 #if ENABLE_GPIO_SET_CRITICAL
 	portEXIT_CRITICAL(&mux3);
 #endif
@@ -2458,7 +2464,11 @@ static bool driver_setup (settings_t *settings)
         .intr_type = GPIO_INTR_DISABLE
     };
     /*避免开机风扇转*/
+#if !ENABLE_DIGITAL_LASER
     gpio_set_level(SPINDLE_ENABLE_PIN,1);
+#else
+    gpio_set_level(SPINDLE_ENABLE_PIN,0);
+#endif
     gpio_config(&gpioConfig);
 
 
@@ -2972,8 +2982,10 @@ void spindle_reset(void)
 }
 void spindle_off_directly(void)
 {
+#if !ENABLE_DIGITAL_LASER
 	/*关主轴供电*/
 	gpio_set_level(SPINDLE_ENABLE_PIN, settings.spindle.invert.on ? 1 : 0);
+#endif
 
 }
 
@@ -2986,8 +2998,10 @@ uint8_t spindle_delay_stop(void)
 		{
 			spindle_disable_by_grbl = 0;
 			spindle_cumulative_heat = 0;
+#if !ENABLE_DIGITAL_LASER
 			/*关主轴供电*/
 			gpio_set_level(SPINDLE_ENABLE_PIN, settings.spindle.invert.on ? 1 : 0);
+#endif
 		}
 		else
 			return 0;
