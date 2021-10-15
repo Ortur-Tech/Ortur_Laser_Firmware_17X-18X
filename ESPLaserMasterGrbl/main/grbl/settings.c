@@ -85,6 +85,7 @@ const settings_t defaults = {
 	.sys_auto_poweroff_time = DEFAULT_AUTO_POWEROFF_TIME,
 	.laser_focal_length = DEFAULT_LASER_FOCAL_LENGTH,
 	.laser_control_mode = ENABLE_DIGITAL_LASER,
+	.iic_rate = DEFAULT_IIC_RATE,
 	.laser_used_time = 0,
     .mode = Mode_Laser,
     .flags.disable_laser_during_hold = DEFAULT_DISABLE_LASER_DURING_HOLD,
@@ -914,6 +915,9 @@ status_code_t settings_store_global_setting (setting_type_t setting, char *svalu
             case Setting_LaserFocalLength:
             	settings.laser_focal_length = int_value;
             	break;
+            case Setting_IICRate:
+            	settings.iic_rate = int_value;
+				break;
             case Setting_EnableDigitalLaserMode:
 				settings.laser_control_mode = int_value;
 				break;
