@@ -491,7 +491,7 @@
 #define USE_ADC_FIRE_CHECK 1
 
 #define DEFAULT_AUTO_POWEROFF_TIME 					30//分钟 自动关机
-#define DEFAULT_LASER_FOCAL_LENGTH 					100 //mm 焦距
+#define DEFAULT_LASER_FOCAL_LENGTH 					50 //mm 焦距
 #define ENABLE_AUTO_FOCUS							0
 /*回零偏移*/
 #if (MACHINE_TYPE == OLM2) || MACHINE_TYPE == OLM_2_PRO || (MACHINE_TYPE == OLM_PRO) || (MACHINE_TYPE == AUFERO_4)||(MACHINE_TYPE == AUFERO_1)||(MACHINE_TYPE == AUFERO_CNC)
@@ -507,6 +507,8 @@
 #define USE_SOFTWARE_IIC			0
 /*使能数字激光头*/
 #define ENABLE_DIGITAL_LASER 		0
+/*IIC通信速率*/
+#define DEFAULT_IIC_RATE			100 //单位khz
 /*加速度检测使能*/
 #define ENABLE_ACCELERATION_DETECT 	1
 /*GPIO设置时是否进入临界区*/
