@@ -670,9 +670,10 @@ void report_grbl_settings (bool all)
         report_uint_setting(Setting_AutoPowerOffTime, settings.sys_auto_poweroff_time); //自动关机时间
         report_uint_setting(Setting_LaserUsedTime, settings.laser_used_time); //激光使用时间
 
-        report_uint_setting(Setting_LaserFocalLength, settings.laser_focal_length);	//焦距
-        report_uint_setting(Setting_IICRate, settings.iic_rate);	//iic通讯速率
+        report_uint_setting(Setting_LaserFocalLength, settings.laser_focal_length);			//焦距
+        report_uint_setting(Setting_IICRate, settings.iic_rate);							//iic通讯速率
         report_uint_setting(Setting_EnableDigitalLaserMode, settings.laser_control_mode);	//激光器控制模式
+        report_uint_setting(Setting_EnableEcho, settings.echo_enable);						//echo输出使能
 #if ENABLE_HOMING_FORCE_SET_ORIGIN_OFFSET
         report_uint_setting(Setting_OriginOffsetX, settings.origin_offset_x); //x轴原点偏移
         report_uint_setting(Setting_OriginOffsetY, settings.origin_offset_y); //y轴原点偏移

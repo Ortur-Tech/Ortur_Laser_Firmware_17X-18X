@@ -78,6 +78,11 @@ const settings_t defaults = {
     .flags.legacy_rt_commands = DEFAULT_LEGACY_RTCOMMANDS,
     .flags.report_inches = DEFAULT_REPORT_INCHES,
     .flags.sleep_enable = DEFAULT_SLEEP_ENABLE,
+#ifdef REPORT_ECHO_LINE_RECEIVED
+	.echo_enable = 1,
+#else
+	.echo_enable = 0,
+#endif
 #if DEFAULT_LASER_MODE
 	.fire_log_enable = 0,
 	.fire_alarm_delta_threshold = DEFAULT_FIRE_ALARM_TRIGGER_THRESHOLD,
@@ -920,6 +925,9 @@ status_code_t settings_store_global_setting (setting_type_t setting, char *svalu
 				break;
             case Setting_EnableDigitalLaserMode:
 				settings.laser_control_mode = int_value;
+				break;
+            case Setting_EnableEcho:
+				settings.echo_enable = int_value;
 				break;
 /*******************************自定义设置 END****************************************/
 

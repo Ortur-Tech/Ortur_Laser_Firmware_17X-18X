@@ -179,6 +179,7 @@ typedef enum {
 	Setting_LaserFocalLength = 265,//焦距
 	Setting_IICRate = 266,			//IIC通讯速率
 	Setting_EnableDigitalLaserMode = 267,//IIC激光头控制模式
+	Setting_EnableEcho = 268,				//使能echo
 
 /******************************添加参数END************************************************/
 
@@ -541,6 +542,7 @@ typedef struct {
     uint16_t laser_focal_length;  			//焦距
     uint16_t laser_control_mode;
     uint16_t iic_rate;						//数字激光通信速率，单位KHZ
+    uint8_t echo_enable;
 } settings_t;
 
 extern settings_t settings;

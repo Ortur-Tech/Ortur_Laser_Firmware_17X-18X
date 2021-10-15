@@ -229,9 +229,12 @@ bool protocol_main_loop(bool cold_start)
                 comm_LedToggle();
 #endif
 
-              #ifdef REPORT_ECHO_LINE_RECEIVED
-                report_echo_line_received(line);
-              #endif
+              //#ifdef REPORT_ECHO_LINE_RECEIVED
+                if(settings.echo_enable)
+                {
+                	report_echo_line_received(line);
+                }
+              //#endif
 
                 // Direct and execute one line of formatted input, and report status of execution.
                 if (line_flags.overflow) // Report line overflow error.
