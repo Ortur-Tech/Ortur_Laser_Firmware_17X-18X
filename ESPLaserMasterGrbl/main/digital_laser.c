@@ -403,7 +403,7 @@ void laser_keep_active(void)
 		if((HAL_GetTick() - time) > 3000)
 		{
 			time = HAL_GetTick();
-			laser_read_write_enqueue(LASER_WRITE,COMM_TICK_ALIVE, 0);
+			//laser_read_write_enqueue(LASER_WRITE,COMM_TICK_ALIVE, 0);
 		}
 	}
 	else
@@ -474,6 +474,7 @@ void laser_auto_focus_cycle(void)
 		return ;
 	}
 	dis = laser_info.distance - settings.laser_focal_length + FORWARD_DISTANCE ;
+	//printf("***********dis:%d--focus:%d.****************\r\n", laser_info.distance,settings.laser_focal_length);
 	/*先快速移动2/3的距离*/
 
 	sprintf(line, "G38.2Z-%dF600", dis);
