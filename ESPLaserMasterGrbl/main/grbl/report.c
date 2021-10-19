@@ -395,6 +395,8 @@ void report_init_message (void)
 #if ENABLE_ACCELERATION_DETECT
     gsensor_info_report();
 #endif
+    /*如果紧急按钮被按下，报告紧急按钮状态*/
+    estop_StatusReport();
 #if (USE_ADC_FIRE_CHECK && ENABLE_FIRE_CHECK)
     fire_InfoReport();
     fire_AlarmStateSet(0);

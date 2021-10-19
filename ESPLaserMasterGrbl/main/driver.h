@@ -395,6 +395,7 @@ void power_LedAlarm(void);
 void reset_report(void);
 
 void spindle_reset(void);
+void estop_StatusReport(void);
 
 uint32_t power_GetVotage(void);
 uint32_t power_GetCurrent(void);

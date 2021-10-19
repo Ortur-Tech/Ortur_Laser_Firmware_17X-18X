@@ -1535,6 +1535,14 @@ void beep_Init(void)
 #endif
 }
 
+void estop_StatusReport(void)
+{
+	if(gpio_get_level(RESET_PIN) == 1)
+	{
+		hal.stream.write("[MSG: Emergency Switch Engaged.]"ASCII_EOL);
+	}
+}
+
 void beep_PwmSet(uint8_t duty)
 {
 #if !(BOARD_VERSION == OCM_ESP_PRO_V1X)
@@ -1782,6 +1790,7 @@ float curve_GetSmoothness(uint16_t* data,uint32_t len)
 
 	return sensor_data_slope[0];
 }
+
 
 
 void fire_InfoReport(void)
