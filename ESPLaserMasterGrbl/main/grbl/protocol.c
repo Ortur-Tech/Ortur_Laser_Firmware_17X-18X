@@ -455,8 +455,8 @@ bool protocol_execute_realtime ()
 			if (sys.suspend)
 				protocol_exec_rt_suspend();
 #if ENABLE_ACCELERATION_DETECT
-		//检查加速度,侦测移动
-		accel_detection_limit();
+		//检查加速度,侦测移动 这会导致运动卡顿
+		//accel_detection_limit();
 #endif
 		  #ifdef BUFFER_NVSDATA
 			if((sys.state == STATE_IDLE || sys.state == STATE_ALARM || sys.state == STATE_ESTOP) && settings_dirty.is_dirty && !gc_state.file_run)
