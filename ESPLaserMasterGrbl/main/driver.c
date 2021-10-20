@@ -962,7 +962,7 @@ uint16_t laser_GetPower(void)
 	uint32_t duty = 0;
 	duty = ledc_get_duty(ledConfig.speed_mode, ledConfig.channel);
 	duty = settings.spindle.invert.pwm ? pwm_max_value - duty : duty;
-	return spindle_pwm.period > 0 ? (duty * 1000 / spindle_pwm.period) : 0;
+	return (duty * 10) > 1000 ? 1000 : (duty * 10);
 #endif
 }
 // Variable spindle control functions
