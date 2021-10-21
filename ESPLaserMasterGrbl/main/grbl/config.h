@@ -207,8 +207,8 @@
 // majority of RAM that Grbl uses is based on this buffer size. Only increase if there is extra
 // available RAM, like when re-compiling for MCU with ample amounts of RAM. Or decrease if the MCU begins to
 // crash due to the lack of available RAM or if the CPU is having trouble keeping up with planning
-// new incoming motions as they are executed.
-#define BLOCK_BUFFER_SIZE 100 // Uncomment to override default in planner.h.
+// new incoming motions as they are executed.这个参数调大可能会造成卡顿
+//#define BLOCK_BUFFER_SIZE 100 // Uncomment to override default in planner.h.
 
 // Governs the size of the intermediary step segment buffer between the step execution algorithm
 // and the planner blocks. Each segment is set of steps executed at a constant velocity over a
@@ -400,7 +400,7 @@
 #if (MACHINE_TYPE == AUFERO_1)
 #define DEFAULT_DIRECTION_INVERT_MASK (0b11) //(0b00cbazyx)
 #elif MACHINE_TYPE == AUFERO_2
-#define DEFAULT_DIRECTION_INVERT_MASK (0b11) //(0b00cbazyx)
+#define DEFAULT_DIRECTION_INVERT_MASK (0b10) //(0b00cbazyx)
 #elif  MACHINE_TYPE == OLM2
 #define DEFAULT_DIRECTION_INVERT_MASK (0b00) //(0b00cbazyx)
 #else
