@@ -163,12 +163,13 @@ bool protocol_main_loop(bool cold_start)
 	//	  report_status_message(system_execute_line(line));
 	//#endif
 
-	#if MACHINE_TYPE == OLM_2_PRO ||  MACHINE_TYPE == OLM_PRO || (MACHINE_TYPE == AUFERO_1)
-		  memcpy(line,"$H\0",3);
+#if (MACHINE_TYPE == OLM2) ||MACHINE_TYPE == OLM_2_PRO ||  MACHINE_TYPE == OLM_PRO || (MACHINE_TYPE == AUFERO_1)
+#ifndef COREXY
+	  	  memcpy(line,"$H\0",3);
 		  report_status_message(system_execute_line(line));
-
+#endif
 		  //laser_auto_focus_task_create();
-	#endif
+#endif
 	}
 
     // ---------------------------------------------------------------------------------
@@ -228,9 +229,12 @@ bool protocol_main_loop(bool cold_start)
                 comm_LedToggle();
 #endif
 
-              #ifdef REPORT_ECHO_LINE_RECEIVED
-                report_echo_line_received(line);
-              #endif
+              //#ifdef REPORT_ECHO_LINE_RECEIVED
+                if(settings.echo_enable)
+                {
+                	report_echo_line_received(line);
+                }
+              //#endif
 
                 // Direct and execute one line of formatted input, and report status of execution.
                 if (line_flags.overflow) // Report line overflow error.

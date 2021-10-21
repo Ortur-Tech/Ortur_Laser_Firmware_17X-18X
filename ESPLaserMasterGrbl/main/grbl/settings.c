@@ -78,6 +78,11 @@ const settings_t defaults = {
     .flags.legacy_rt_commands = DEFAULT_LEGACY_RTCOMMANDS,
     .flags.report_inches = DEFAULT_REPORT_INCHES,
     .flags.sleep_enable = DEFAULT_SLEEP_ENABLE,
+#ifdef REPORT_ECHO_LINE_RECEIVED
+	.echo_enable = 1,
+#else
+	.echo_enable = 0,
+#endif
 #if DEFAULT_LASER_MODE
 	.fire_log_enable = 0,
 	.fire_alarm_delta_threshold = DEFAULT_FIRE_ALARM_TRIGGER_THRESHOLD,
@@ -85,6 +90,7 @@ const settings_t defaults = {
 	.sys_auto_poweroff_time = DEFAULT_AUTO_POWEROFF_TIME,
 	.laser_focal_length = DEFAULT_LASER_FOCAL_LENGTH,
 	.laser_control_mode = ENABLE_DIGITAL_LASER,
+	.iic_rate = DEFAULT_IIC_RATE,
 	.laser_used_time = 0,
     .mode = Mode_Laser,
     .flags.disable_laser_during_hold = DEFAULT_DISABLE_LASER_DURING_HOLD,
@@ -914,8 +920,14 @@ status_code_t settings_store_global_setting (setting_type_t setting, char *svalu
             case Setting_LaserFocalLength:
             	settings.laser_focal_length = int_value;
             	break;
+            case Setting_IICRate:
+            	settings.iic_rate = int_value;
+				break;
             case Setting_EnableDigitalLaserMode:
 				settings.laser_control_mode = int_value;
+				break;
+            case Setting_EnableEcho:
+				settings.echo_enable = int_value;
 				break;
 /*******************************自定义设置 END****************************************/
 

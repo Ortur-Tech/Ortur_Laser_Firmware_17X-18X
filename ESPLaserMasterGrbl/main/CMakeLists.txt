@@ -51,6 +51,7 @@ set(SRCS main.c driver.c nvs.c esp32-hal-uart.c board.c usb_serial.c accelDetect
  ioexpand.c
  i2s_out.c
  networking/strutils.c
+ grbl/corexy.c
  grbl/grbllib.c
  grbl/coolant_control.c
  grbl/nvs_buffer.c

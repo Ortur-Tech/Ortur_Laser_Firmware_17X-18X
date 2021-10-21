@@ -38,7 +38,7 @@
 #define ASCII_EOL  "\r\n"
 
 #ifndef RX_BUFFER_SIZE
-#define RX_BUFFER_SIZE 1024 // must be a power of 2
+#define RX_BUFFER_SIZE (1024 * 16) // must be a power of 2
 #endif
 
 #ifndef TX_BUFFER_SIZE
