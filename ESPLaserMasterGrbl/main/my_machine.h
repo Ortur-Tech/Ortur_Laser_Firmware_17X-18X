@@ -33,7 +33,7 @@
 #define ORTUR_FW_VERSION "173"
 #elif BOARD_VERSION == OLM_ESP_PRO_V1X
 #define ORTUR_FW_VERSION_NUM 184
-#define ORTUR_FW_VERSION "184"
+#define ORTUR_FW_VERSION "185"
 #elif BOARD_VERSION == OCM_ESP_PRO_V1X
 #define ORTUR_FW_VERSION_NUM 300
 #define ORTUR_FW_VERSION "300"
@@ -65,6 +65,8 @@
 #define ORTUR_MODEL_NAME "Ortur Laser Master 2 Pro S2"
 #elif (MACHINE_TYPE == AUFERO_4)
 #define ORTUR_MODEL_NAME "Ortur Aufero 4 S2"
+#elif (MACHINE_TYPE == AUFERO_2)
+#define ORTUR_MODEL_NAME "Ortur Aufero 2 S2"
 #elif (MACHINE_TYPE == AUFERO_1)
 #define ORTUR_MODEL_NAME "Ortur Aufero 1 S2"
 #elif (MACHINE_TYPE == OLM_PRO)

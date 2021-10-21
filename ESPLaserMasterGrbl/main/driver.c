@@ -962,7 +962,7 @@ uint16_t laser_GetPower(void)
 	uint32_t duty = 0;
 	duty = ledc_get_duty(ledConfig.speed_mode, ledConfig.channel);
 	duty = settings.spindle.invert.pwm ? pwm_max_value - duty : duty;
-	return spindle_pwm.period > 0 ? (duty * 1000 / spindle_pwm.period) : 0;
+	return (duty * 10) > 1000 ? 1000 : (duty * 10);
 #endif
 }
 // Variable spindle control functions
@@ -1535,6 +1535,14 @@ void beep_Init(void)
 #endif
 }
 
+void estop_StatusReport(void)
+{
+	if(gpio_get_level(RESET_PIN) == 1)
+	{
+		hal.stream.write("[MSG: Emergency Switch Engaged.]"ASCII_EOL);
+	}
+}
+
 void beep_PwmSet(uint8_t duty)
 {
 #if !(BOARD_VERSION == OCM_ESP_PRO_V1X)
@@ -1784,6 +1792,7 @@ float curve_GetSmoothness(uint16_t* data,uint32_t len)
 }
 
 
+
 void fire_InfoReport(void)
 {
 	char str[100] = {0};
@@ -2008,12 +2017,30 @@ void power_LedAlarm(void)
 	static uint32_t flash_time = 0;
 	if((sys.state == STATE_ALARM) && (!power_KeyDown()))
 	{
-		if((HAL_GetTick() - flash_time) > 500)
+		if(hal.control.get_state().reset)
 		{
-			flash_time = HAL_GetTick();
-			power_LedToggle();
-
+			if((HAL_GetTick() - flash_time) > 600)
+			{
+				flash_time = HAL_GetTick();
+				power_LedOn();
+				comm_LedOff();
+			}
+			else if((HAL_GetTick() - flash_time) > 300)
+			{
+				power_LedOff();
+				comm_LedOn();
+			}
 		}
+		else
+		{
+			if((HAL_GetTick() - flash_time) > 500)
+			{
+				flash_time = HAL_GetTick();
+				power_LedToggle();
+
+			}
+		}
+
 	}
 	else if(!power_KeyDown())
 	{

@@ -75,7 +75,7 @@
 // immediately forces a feed hold and then safely de-energizes the machine. Resuming is blocked until
 // the safety door is re-engaged. When it is, Grbl will re-energize the machine and then resume on the
 // previous tool path, as if nothing happened.
-#if MACHINE_TYPE == OLM2 || MACHINE_TYPE == OLM_2_PRO || (MACHINE_TYPE == OLM_PRO) ||(MACHINE_TYPE == AUFERO_4) ||(MACHINE_TYPE == AUFERO_1) ||(MACHINE_TYPE == AUFERO_CNC)
+#if MACHINE_TYPE == AUFERO_2 ||MACHINE_TYPE == OLM2 || MACHINE_TYPE == OLM_2_PRO || (MACHINE_TYPE == OLM_PRO) ||(MACHINE_TYPE == AUFERO_4) ||(MACHINE_TYPE == AUFERO_1) ||(MACHINE_TYPE == AUFERO_CNC)
 
 #else
 #define ENABLE_SAFETY_DOOR_INPUT_PIN // Default disabled. Uncomment to enable.
@@ -207,8 +207,8 @@
 // majority of RAM that Grbl uses is based on this buffer size. Only increase if there is extra
 // available RAM, like when re-compiling for MCU with ample amounts of RAM. Or decrease if the MCU begins to
 // crash due to the lack of available RAM or if the CPU is having trouble keeping up with planning
-// new incoming motions as they are executed.
-#define BLOCK_BUFFER_SIZE 100 // Uncomment to override default in planner.h.
+// new incoming motions as they are executed.这个参数调大可能会造成卡顿
+//#define BLOCK_BUFFER_SIZE 100 // Uncomment to override default in planner.h.
 
 // Governs the size of the intermediary step segment buffer between the step execution algorithm
 // and the planner blocks. Each segment is set of steps executed at a constant velocity over a
@@ -399,6 +399,8 @@
 #define DEFAULT_STEPPING_INVERT_MASK (0)
 #if (MACHINE_TYPE == AUFERO_1)
 #define DEFAULT_DIRECTION_INVERT_MASK (0b11) //(0b00cbazyx)
+#elif MACHINE_TYPE == AUFERO_2
+#define DEFAULT_DIRECTION_INVERT_MASK (0b10) //(0b00cbazyx)
 #elif  MACHINE_TYPE == OLM2
 #define DEFAULT_DIRECTION_INVERT_MASK (0b00) //(0b00cbazyx)
 #else
@@ -478,7 +480,7 @@
 /********************************自定义功能 BEGIN****************************************/
 
 /*火焰报警触发阈值*/
-#if (MACHINE_TYPE == OLM2) || (BOARD_VERSION == OCM_ESP_PRO_V1X) || (MACHINE_TYPE == AUFERO_1) || (MACHINE_TYPE == AUFERO_4)
+#if  (MACHINE_TYPE == AUFERO_2) || (MACHINE_TYPE == OLM2) || (BOARD_VERSION == OCM_ESP_PRO_V1X) || (MACHINE_TYPE == AUFERO_1) || (MACHINE_TYPE == AUFERO_4)
 #define ENABLE_FIRE_CHECK 0
 #else
 #define ENABLE_FIRE_CHECK 1
@@ -494,7 +496,7 @@
 #define DEFAULT_LASER_FOCAL_LENGTH 					50 //mm 焦距
 #define ENABLE_AUTO_FOCUS							0
 /*回零偏移*/
-#if (MACHINE_TYPE == OLM2) || MACHINE_TYPE == OLM_2_PRO || (MACHINE_TYPE == OLM_PRO) || (MACHINE_TYPE == AUFERO_4)||(MACHINE_TYPE == AUFERO_1)||(MACHINE_TYPE == AUFERO_CNC)
+#if (MACHINE_TYPE == AUFERO_2) || (MACHINE_TYPE == OLM2) || MACHINE_TYPE == OLM_2_PRO || (MACHINE_TYPE == OLM_PRO) || (MACHINE_TYPE == AUFERO_4)||(MACHINE_TYPE == AUFERO_1)||(MACHINE_TYPE == AUFERO_CNC)
 #define ENABLE_HOMING_FORCE_SET_ORIGIN_OFFSET 0
 #else
 #define ENABLE_HOMING_FORCE_SET_ORIGIN_OFFSET 1
@@ -538,6 +540,19 @@
 #define DEFAULT_X_MAX_TRAVEL 400.0f // mm NOTE: Must be a positive value.
 #define DEFAULT_Y_MAX_TRAVEL 400.0f // mm NOTE: Must be a positive value.
 #define DEFAULT_Z_MAX_TRAVEL 100.0f // mm NOTE: Must be a positive value.
+#elif (MACHINE_TYPE == AUFERO_2)
+#define DEFAULT_X_STEPS_PER_MM (5.0f*16)
+#define DEFAULT_Y_STEPS_PER_MM (5.0f*16)
+#define DEFAULT_Z_STEPS_PER_MM (400)
+#define DEFAULT_X_MAX_RATE (170.0f*60) // mm/min
+#define DEFAULT_Y_MAX_RATE (170.0f*60) // mm/min
+#define DEFAULT_Z_MAX_RATE (20.0f*60) // mm/min
+#define DEFAULT_X_ACCELERATION (2200.0f*60*60) // 10*60*60 mm/min^2 = 10 mm/sec^2
+#define DEFAULT_Y_ACCELERATION (1800.0f*60*60) // 10*60*60 mm/min^2 = 10 mm/sec^2
+#define DEFAULT_Z_ACCELERATION (2200.0f*60*60) // 10*60*60 mm/min^2 = 10 mm/sec^2
+#define DEFAULT_X_MAX_TRAVEL 390.0f // mm NOTE: Must be a positive value.
+#define DEFAULT_Y_MAX_TRAVEL 390.0f // mm NOTE: Must be a positive value.
+#define DEFAULT_Z_MAX_TRAVEL  50.0f // mm NOTE: Must be a positive value.
 #elif (MACHINE_TYPE == OLM2)
 #define DEFAULT_X_STEPS_PER_MM (5.0f*16)
 #define DEFAULT_Y_STEPS_PER_MM (5.0f*16)
@@ -624,7 +639,7 @@
 #define DEFAULT_ARC_TOLERANCE 0.002f // mm
 //#define DEFAULT_REPORT_INCHES
 //#define DEFAULT_INVERT_LIMIT_PINS
-#if MACHINE_TYPE == AUFERO_4
+#if (MACHINE_TYPE == AUFERO_2) || MACHINE_TYPE == AUFERO_4
 
 #else
 #define DEFAULT_HARD_LIMIT_ENABLE
@@ -733,7 +748,7 @@
 // NOTE: Still a work-in-progress. Machine coordinates must be in all negative space and
 // does not work with HOMING_FORCE_SET_ORIGIN enabled. Parking motion also moves only in
 // positive direction.
-#if (MACHINE_TYPE == OLM2) ||(MACHINE_TYPE == OLM_2_PRO) || (MACHINE_TYPE == OLM_PRO) ||(MACHINE_TYPE == AUFERO_4) ||(MACHINE_TYPE == AUFERO_1) ||(MACHINE_TYPE == AUFERO_CNC)
+#if (MACHINE_TYPE == AUFERO_2) || (MACHINE_TYPE == OLM2) ||(MACHINE_TYPE == OLM_2_PRO) || (MACHINE_TYPE == OLM_PRO) ||(MACHINE_TYPE == AUFERO_4) ||(MACHINE_TYPE == AUFERO_1) ||(MACHINE_TYPE == AUFERO_CNC)
 
 #else
 #define DEFAULT_PARKING_ENABLE // Default disabled. Uncomment to enable.
