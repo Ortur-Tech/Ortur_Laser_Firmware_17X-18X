@@ -76,9 +76,14 @@ esp_err_t i2c_master_init(void)
         .sda_pullup_en = GPIO_PULLUP_ENABLE,
         .scl_io_num = IIC_SCL_PIN,
         .scl_pullup_en = GPIO_PULLUP_ENABLE,
+#if ENABLE_DIGITAL_LASER
         .master.clk_speed = settings.iic_rate ? (settings.iic_rate * 1000) : 100000,// 400000,
-        // .clk_flags = 0,          /*!< Optional, you can use I2C_SCLK_SRC_FLAG_* flags to choose i2c source clock here. */
+#else
+        .master.clk_speed = 100000,// 400000,
+#endif
+        		// .clk_flags = 0,          /*!< Optional, you can use I2C_SCLK_SRC_FLAG_* flags to choose i2c source clock here. */
     };
+    //printf("iic speed:%d.\r\n", conf.master.clk_speed);
     esp_err_t err = i2c_param_config(i2c_master_port, &conf);
     if (err != ESP_OK) {
     	mprintf(LOG_ERROR,"IIC Init error:%d.\r\n",err);
