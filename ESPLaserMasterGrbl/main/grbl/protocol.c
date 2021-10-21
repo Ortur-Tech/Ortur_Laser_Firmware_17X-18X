@@ -369,11 +369,14 @@ bool protocol_main_loop(bool cold_start)
         laser_auto_focus_cycle();
 #endif
 #if ENABLE_COMM_LED2
-		//指示USB连接状态
-		if(isUsbPlugIn())
-			comm_LedOn();
-		else
-			comm_LedOff();
+        if(!hal.control.get_state().reset)
+        {
+			//指示USB连接状态
+			if(isUsbPlugIn())
+				comm_LedOn();
+			else
+				comm_LedOff();
+        }
 #endif
 		power_LedAlarm();
     	/*添加实时检测reset状态*/

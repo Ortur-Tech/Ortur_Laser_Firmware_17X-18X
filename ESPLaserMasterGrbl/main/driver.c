@@ -2017,12 +2017,30 @@ void power_LedAlarm(void)
 	static uint32_t flash_time = 0;
 	if((sys.state == STATE_ALARM) && (!power_KeyDown()))
 	{
-		if((HAL_GetTick() - flash_time) > 500)
+		if(hal.control.get_state().reset)
 		{
-			flash_time = HAL_GetTick();
-			power_LedToggle();
-
+			if((HAL_GetTick() - flash_time) > 600)
+			{
+				flash_time = HAL_GetTick();
+				power_LedOn();
+				comm_LedOff();
+			}
+			else if((HAL_GetTick() - flash_time) > 300)
+			{
+				power_LedOff();
+				comm_LedOn();
+			}
 		}
+		else
+		{
+			if((HAL_GetTick() - flash_time) > 500)
+			{
+				flash_time = HAL_GetTick();
+				power_LedToggle();
+
+			}
+		}
+
 	}
 	else if(!power_KeyDown())
 	{
