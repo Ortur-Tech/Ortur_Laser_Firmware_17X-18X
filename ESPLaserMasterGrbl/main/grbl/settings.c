@@ -83,6 +83,7 @@ const settings_t defaults = {
 #else
 	.echo_enable = 0,
 #endif
+	.power_log_enable = DEFAULT_POWER_LOG_ENABLE,
 #if DEFAULT_LASER_MODE
 	.fire_log_enable = 0,
 	.fire_alarm_delta_threshold = DEFAULT_FIRE_ALARM_TRIGGER_THRESHOLD,
@@ -928,6 +929,9 @@ status_code_t settings_store_global_setting (setting_type_t setting, char *svalu
 				break;
             case Setting_EnableEcho:
 				settings.echo_enable = int_value;
+				break;
+            case Setting_PowerLogEnable:
+				settings.power_log_enable = int_value;
 				break;
 /*******************************自定义设置 END****************************************/
 
