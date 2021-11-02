@@ -366,7 +366,7 @@ message_code_t report_feedback_message (message_code_t message_code)
         	hal.stream.write_all("Power Supplied");
         	break;
         case Message_NoPowerSupply:
-        	hal.stream.write_all("No Power Supply! Check TroubleShooting Section in User Manual.");
+        	hal.stream.write_all(appendbuf(3, "No Power Supply:", uitoa(power_GetVotage() / 1000), "V.Check TroubleShooting Section in User Manual."));
         	break;
         default:
             if(grbl.on_unknown_feedback_message)
