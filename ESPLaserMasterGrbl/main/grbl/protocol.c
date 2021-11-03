@@ -378,6 +378,7 @@ bool protocol_main_loop(bool cold_start)
 				comm_LedOff();
         }
 #endif
+        Main_PowerSupplyDebug();
 		power_LedAlarm();
     	/*添加实时检测reset状态*/
     	if(hal.control.get_state().reset)

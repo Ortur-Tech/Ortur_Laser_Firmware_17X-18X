@@ -43,6 +43,9 @@
 #include "esp_adc_cal.h"
 #include "driver/adc.h"
 #include "digital_laser.h"
+#include "driver/ledc.h"
+#include "hal/ledc_ll.h"
+#include "hal/ledc_types.h"
 
 #if TRINAMIC_ENABLE
 #include "motors/trinamic.h"
@@ -962,7 +965,14 @@ uint16_t laser_GetPower(void)
 	uint32_t duty = 0;
 	duty = ledc_get_duty(ledConfig.speed_mode, ledConfig.channel);
 	duty = settings.spindle.invert.pwm ? pwm_max_value - duty : duty;
-	return (duty * 10) > 1000 ? 1000 : (duty * 10);
+
+	if(ledc_get_sig_out_en(ledConfig.speed_mode, ledConfig.channel))
+	{
+		return (duty * 10) > 1000 ? 1000 : (duty * 10);
+	}
+
+	return 0;
+
 #endif
 }
 // Variable spindle control functions
@@ -2370,7 +2380,24 @@ uint8_t IsMainPowrIn(void)
 	return 0;
 #endif
 }
+void Main_PowerSupplyDebug(void)
+{
+#if BOARD_VERSION == OLM_ESP_PRO_V1X
+	static uint32_t s_time = 0;
+	if(settings.power_log_enable == 1)
+	{
 
+		if((HAL_GetTick() - s_time) > 500)
+		{
+			s_time = HAL_GetTick();
+			hal.stream.write_all("[MSG:");
+			hal.stream.write_all(appendbuf(2, "Votage:", uitoa((uint32_t)power_GetVotage())));
+			hal.stream.write_all(appendbuf(2, ",Current:", uitoa((uint32_t)power_GetCurrent())));
+			hal.stream.write_all("]" ASCII_EOL);
+		}
+	}
+#endif
+}
 /*0:check power 1:report power*/
 void Main_PowerCheckReport(uint8_t mode)
 {

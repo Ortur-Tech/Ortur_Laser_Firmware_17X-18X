@@ -83,6 +83,7 @@ const settings_t defaults = {
 #else
 	.echo_enable = 0,
 #endif
+	.power_log_enable = DEFAULT_POWER_LOG_ENABLE,
 #if DEFAULT_LASER_MODE
 	.fire_log_enable = 0,
 	.fire_alarm_delta_threshold = DEFAULT_FIRE_ALARM_TRIGGER_THRESHOLD,
@@ -681,19 +682,33 @@ status_code_t settings_store_global_setting (setting_type_t setting, char *svalu
                 break;
 
             case Setting_HomingEnable:
-                if (bit_istrue(int_value, bit(0))) {
+            	if(bit_istrue(int_value, bit(7)))
+            	{
+					if (bit_istrue(int_value, bit(0))) {
 #if COMPATIBILITY_LEVEL > 1
-                    settings.homing.flags.enabled = On;
+						settings.homing.flags.enabled = On;
 #else
-                    settings.homing.flags.value = int_value & 0x0F;
-                    settings.homing.flags.manual = bit_istrue(int_value, bit(5));
-                    settings.limits.flags.two_switches = bit_istrue(int_value, bit(4));
+						settings.homing.flags.value = int_value & 0x0F;
+						settings.homing.flags.manual = bit_istrue(int_value, bit(5));
+						settings.limits.flags.two_switches = bit_istrue(int_value, bit(4));
 #endif
-                } else {
-                    settings.homing.flags.value = 0;
-                    settings.limits.flags.soft_enabled = Off; // Force disable soft-limits.
-                    settings.limits.flags.jog_soft_limited = Off;
-                }
+					} else {
+						settings.homing.flags.value = 0;
+						settings.limits.flags.soft_enabled = Off; // Force disable soft-limits.
+						settings.limits.flags.jog_soft_limited = Off;
+					}
+            	}
+            	else
+            	{
+            		if (bit_istrue(int_value, bit(0)))
+            		{
+            			settings.homing.flags.enabled = 1;
+            		}
+            		else
+            		{
+            			settings.homing.flags.enabled = 0;
+            		}
+            	}
                 break;
 
             case Setting_HomingDirMask:
@@ -928,6 +943,9 @@ status_code_t settings_store_global_setting (setting_type_t setting, char *svalu
 				break;
             case Setting_EnableEcho:
 				settings.echo_enable = int_value;
+				break;
+            case Setting_PowerLogEnable:
+				settings.power_log_enable = int_value;
 				break;
 /*******************************自定义设置 END****************************************/
 

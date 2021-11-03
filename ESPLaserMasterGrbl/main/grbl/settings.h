@@ -180,7 +180,7 @@ typedef enum {
 	Setting_IICRate = 266,			//IIC通讯速率
 	Setting_EnableDigitalLaserMode = 267,//IIC激光头控制模式
 	Setting_EnableEcho = 268,				//使能echo
-
+	Setting_PowerLogEnable = 269,			//电源调试信息使能
 /******************************添加参数END************************************************/
 
     // Normally used for Ethernet or WiFi Station
@@ -543,6 +543,7 @@ typedef struct {
     uint16_t laser_control_mode;
     uint16_t iic_rate;						//数字激光通信速率，单位KHZ
     uint8_t echo_enable;
+    uint8_t power_log_enable;				//打印电源电压，电流信息
 } settings_t;
 
 extern settings_t settings;

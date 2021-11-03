@@ -411,5 +411,5 @@ void movement_laseron_check(void);
 void laser_use_time_save(void);
 void laser_on_time_count(void);
 void power_auto_ctrl(void);
-
+void Main_PowerSupplyDebug(void);
 #endif // __DRIVER_H__
