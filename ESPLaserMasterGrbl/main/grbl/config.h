@@ -652,7 +652,7 @@
 //#define DEFAULT_LATHE_MODE
 #define DEFAULT_HOMING_ENABLE
 #define DEFAULT_HOMING_ALLOW_MANUAL
-#define DEFAULT_HOMING_DIR_MASK (0b000011) // move positive dir (0b00cbazyx)
+#define DEFAULT_HOMING_DIR_MASK (0b000111) // move positive dir (0b00cbazyx)
 #define DEFAULT_HOMING_FEED_RATE (10.0f*60) // mm/min
 #define DEFAULT_HOMING_SEEK_RATE (50.0f*60) // mm/min
 #define DEFAULT_HOMING_DEBOUNCE_DELAY 100 // msec (0-65k)
