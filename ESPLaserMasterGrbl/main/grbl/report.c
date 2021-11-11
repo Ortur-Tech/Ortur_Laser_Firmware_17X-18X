@@ -366,7 +366,7 @@ message_code_t report_feedback_message (message_code_t message_code)
         	hal.stream.write_all("Power Supplied");
         	break;
         case Message_NoPowerSupply:
-        	hal.stream.write_all(appendbuf(3, "No Power Supply:", uitoa(power_GetVotage() / 1000), "V.Check TroubleShooting Section in User Manual."));
+        	hal.stream.write_all(appendbuf(3, "Power Supply Problem:", uitoa(power_GetVotage() / 1000), "V.Check TroubleShooting Section in User Manual."));
         	break;
         default:
             if(grbl.on_unknown_feedback_message)
@@ -471,9 +471,10 @@ void report_grbl_settings (bool all)
 
     report_uint_setting(Setting_SoftLimitsEnable, settings.limits.flags.soft_enabled);
     report_uint_setting(Setting_HardLimitsEnable, ((settings.limits.flags.hard_enabled & bit(0)) ? bit(0) | (settings.limits.flags.check_at_init ? bit(1) : 0) : 0));
-    report_uint_setting(Setting_HomingEnable, (settings.homing.flags.value & 0x0F) |
-                                               (settings.limits.flags.two_switches ? bit(4) : 0) |
-                                                (settings.homing.flags.manual ? bit(5) : 0));
+//    report_uint_setting(Setting_HomingEnable, (settings.homing.flags.value & 0x0F) |
+//                                               (settings.limits.flags.two_switches ? bit(4) : 0) |
+//                                                (settings.homing.flags.manual ? bit(5) : 0));
+    report_uint_setting(Setting_HomingEnable, (settings.homing.flags.enabled ? 1 : 0));
     report_uint_setting(Setting_HomingDirMask, settings.homing.dir_mask.value);
     report_float_setting(Setting_HomingFeedRate, settings.homing.feed_rate, N_DECIMAL_SETTINGVALUE);
     report_float_setting(Setting_HomingSeekRate, settings.homing.seek_rate, N_DECIMAL_SETTINGVALUE);
