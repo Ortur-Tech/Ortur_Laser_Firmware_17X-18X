@@ -397,9 +397,9 @@
 //       Specify at least X_AXIS_BIT if a common enable signal is used.
 //#define ST_DEENERGIZE_MASK (X_AXIS_BIT|Y_AXIS_BIT|Z_AXIS_BIT) // Default disabled. Uncomment to enable.
 #define DEFAULT_STEPPING_INVERT_MASK (0)
-#if (MACHINE_TYPE == AUFERO_1)|| MACHINE_TYPE == OLM2_S2
+#if (MACHINE_TYPE == AUFERO_1)
 #define DEFAULT_DIRECTION_INVERT_MASK (0b11) //(0b00cbazyx)
-#elif MACHINE_TYPE == AUFERO_2
+#elif MACHINE_TYPE == AUFERO_2|| MACHINE_TYPE == OLM2_S2
 #define DEFAULT_DIRECTION_INVERT_MASK (0b10) //(0b00cbazyx)
 #elif  MACHINE_TYPE == OLM2
 #define DEFAULT_DIRECTION_INVERT_MASK (0b00) //(0b00cbazyx)
