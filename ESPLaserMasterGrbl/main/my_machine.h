@@ -32,8 +32,8 @@
 #define ORTUR_FW_VERSION_NUM 173
 #define ORTUR_FW_VERSION "173"
 #elif BOARD_VERSION == OLM_ESP_PRO_V1X
-#define ORTUR_FW_VERSION_NUM 184
-#define ORTUR_FW_VERSION "185"
+#define ORTUR_FW_VERSION_NUM 186
+#define ORTUR_FW_VERSION "186"
 #elif BOARD_VERSION == OCM_ESP_PRO_V1X
 #define ORTUR_FW_VERSION_NUM 300
 #define ORTUR_FW_VERSION "300"
@@ -73,6 +73,8 @@
 #define ORTUR_MODEL_NAME "Ortur Laser Master Pro S2"
 #elif (MACHINE_TYPE == OLM2)
 #define ORTUR_MODEL_NAME "Ortur Laser Master 2 S0"
+#elif MACHINE_TYPE == OLM2_S2
+#define ORTUR_MODEL_NAME "Ortur Laser Master 2 S2"
 #else
 #error "错误的机型！！"
 #endif

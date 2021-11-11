@@ -965,14 +965,7 @@ uint16_t laser_GetPower(void)
 	uint32_t duty = 0;
 	duty = ledc_get_duty(ledConfig.speed_mode, ledConfig.channel);
 	duty = settings.spindle.invert.pwm ? pwm_max_value - duty : duty;
-
-	if(ledc_get_sig_out_en(ledConfig.speed_mode, ledConfig.channel))
-	{
-		return (duty * 10) > 1000 ? 1000 : (duty * 10);
-	}
-
-	return 0;
-
+	return (duty) > 1000 ? 1000 : (duty);
 #endif
 }
 // Variable spindle control functions
@@ -1003,8 +996,14 @@ IRAM_ATTR void spindle_set_speed (uint_fast16_t pwm_value)
         if(spindle_pwm.always_on) {
             ledc_set_duty(ledConfig.speed_mode, ledConfig.channel, spindle_pwm.off_value);
             ledc_update_duty(ledConfig.speed_mode, ledConfig.channel);
-        } else
+        }
+        else
+        {
+        	ledc_set_duty(ledConfig.speed_mode, ledConfig.channel, spindle_pwm.off_value);
+        	ledc_update_duty(ledConfig.speed_mode, ledConfig.channel);
+        	while(spindle_pwm.off_value != ledc_get_duty(ledConfig.speed_mode, ledConfig.channel));
             ledc_stop(ledConfig.speed_mode, ledConfig.channel, settings.spindle.invert.pwm ? 1 : 0);
+        }
 #endif
 #endif
         pwmEnabled = false;

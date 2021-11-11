@@ -60,6 +60,8 @@ static void vGrblTask (void *pvParameters)
 	power_CtrlInit();
 	app_iap();
 	key_func(1);
+	/*重置时间，避免开机立即关机*/
+	system_UpdateAutoPoweroffTime();
 	printf("this is partition %s.\r\n",_part_ota0->label);
 	creat_ExtFuncTask();
     grbl_enter();
