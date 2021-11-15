@@ -163,6 +163,7 @@ typedef struct {
 int16_t multiSteamGetC (void);
 void multiSteamWriteS (const char *s);
 void multiSteamWriteSAll (const char *s);
+void multiSteamWriteBufSize(void);
 uint16_t multiSteamRxFree (void);
 void multiSteamRxFlush (void);
 void multiSteamRxCancel (void);
@@ -179,6 +180,7 @@ const io_stream_t serial_stream = {
     .read = multiSteamGetC,
     .write = multiSteamWriteS,
     .write_all = multiSteamWriteSAll,
+	.write_buffer_size = multiSteamWriteBufSize,
     .get_rx_buffer_available = multiSteamRxFree,
     .reset_read_buffer = multiSteamRxFlush,
     .cancel_read_buffer = multiSteamRxCancel,
@@ -2667,7 +2669,7 @@ int16_t multiSteamGetC (void)
 
 	if( isUsbCDCConnected() )
 	{
-		if( last_steam == USBCDC || hal.stream.switchable)
+		if(last_steam == USBCDC || hal.stream.switchable)
 		{
 			c = usbGetC();
 			if(last_steam != USBCDC && (c != -1))
@@ -2682,7 +2684,7 @@ int16_t multiSteamGetC (void)
 		hal.stream.switchable = true;
 		last_steam = HWUART;
 		usbRxFlush();//清空USBCDC中剩余的数据
-		serialFlush();//清空串口积累的数据
+		//serialFlush();//清空串口积累的数据
 		c = '\n'; //强行补换行符防止命令被截断,或者污染后续的命令字符串
 	}
 
@@ -2715,6 +2717,12 @@ void multiSteamWriteS (const char *s)
 		serialWriteS(s);
 }
 
+void multiSteamWriteBufSize(void)
+{
+	if(isUsbCDCConnected())
+		usbWriteS(uitoa(usbRxFree())); //仅在VCP连接的情况下发送字符串,否则会造成发送缓冲溢出阻塞
+	serialWriteS(uitoa(serialRXFree()));
+}
 //
 // Writes a null terminated string to all output stream, blocks if buffer full
 //
