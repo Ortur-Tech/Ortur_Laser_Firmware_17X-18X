@@ -158,9 +158,9 @@ static void uartEnableInterrupt (uart_t *uart, uart_isr_ptr isr, bool enable_rx)
 {
     UART_MUTEX_LOCK(uart);
 
-    esp_intr_alloc(UART_INTR_SOURCE(uart->num), (int)ESP_INTR_FLAG_IRAM, isr, NULL, &uart->intr_handle);
+    esp_intr_alloc(UART_INTR_SOURCE(uart->num), (int)ESP_INTR_FLAG_IRAM|ESP_INTR_FLAG_LEVEL3, isr, NULL, &uart->intr_handle);
 
-    uart->dev->conf1.rxfifo_full_thrhd = 112;
+    uart->dev->conf1.rxfifo_full_thrhd = 64;
     //uart->dev->conf1.rx_tout_thrhd = 2;
     uart->dev->conf1.rx_tout_en = 1;
     uart->dev->int_ena.rxfifo_full = enable_rx;
@@ -262,8 +262,14 @@ IRAM_ATTR static void flush (uart_t *uart)
 void serialInit (void)
 {
     uart1 = &_uart_bus_array[0]; // use UART 0
-
-    uartConfig(uart1, BAUD_RATE);
+    if((settings.uart_baudrate < 2000001) && (settings.uart_baudrate > 9000))
+    {
+    	uartConfig(uart1, settings.uart_baudrate);
+    }
+    else
+    {
+    	uartConfig(uart1, BAUD_RATE);
+    }
 
     serialFlush();
     uartEnableInterrupt(uart1, _uart1_isr, true);
