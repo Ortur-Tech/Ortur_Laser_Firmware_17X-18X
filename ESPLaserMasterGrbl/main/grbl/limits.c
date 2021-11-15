@@ -92,8 +92,8 @@ void limits_set_machine_positions (axes_signals_t cycle, bool add_pulloff)
     do {
         if (cycle.mask & bit(--idx)) {
         	sys.home_position[idx] = bit_istrue(settings.homing.dir_mask.value, bit(idx))
-        	                                      ? origin_offset[idx] + pulloff
-        	                                      : origin_offset[idx] - pulloff;
+        	                                      ? origin_offset[idx]
+        	                                      : origin_offset[idx];
 			sys_position[idx] = sys.home_position[idx] * settings.axis[idx].steps_per_mm;
         }
     } while(idx);
