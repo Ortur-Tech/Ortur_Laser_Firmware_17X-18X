@@ -163,11 +163,6 @@ typedef enum {
     Setting_TrinamicHoming = 257,
 
 /*******************************添加参数BEGIN***************************************************/
-#if ENABLE_HOMING_FORCE_SET_ORIGIN_OFFSET
-	Setting_OriginOffsetX = 263,
-	Setting_OriginOffsetY = 264,
-	Setting_OriginOffsetZ = 265,
-#endif
 	Setting_FireLogEnable = 259,
 	Setting_FireAlarmDeltaThreshold = 260,
 	Setting_FireAlarmThreshold = 261,
@@ -181,6 +176,12 @@ typedef enum {
 	Setting_EnableDigitalLaserMode = 267,//IIC激光头控制模式
 	Setting_EnableEcho = 268,				//使能echo
 	Setting_PowerLogEnable = 269,			//电源调试信息使能
+	Setting_UartBaudrate = 270,			//串口baud
+#if ENABLE_HOMING_FORCE_SET_ORIGIN_OFFSET
+	Setting_OriginOffsetX = 271,
+	Setting_OriginOffsetY = 272,
+	Setting_OriginOffsetZ = 273,
+#endif
 /******************************添加参数END************************************************/
 
     // Normally used for Ethernet or WiFi Station
@@ -544,6 +545,7 @@ typedef struct {
     uint16_t iic_rate;						//数字激光通信速率，单位KHZ
     uint8_t echo_enable;
     uint8_t power_log_enable;				//打印电源电压，电流信息
+    uint32_t uart_baudrate;					//串口波特率
 } settings_t;
 
 extern settings_t settings;

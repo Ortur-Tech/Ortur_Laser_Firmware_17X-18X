@@ -120,7 +120,7 @@ const settings_t defaults = {
 	.origin_offset_y = ORIGIN_OFFSET_Y,
 	.origin_offset_z = ORIGIN_OFFSET_Z,
 #endif
-
+	.uart_baudrate = BAUD_RATE,
 #if ENABLE_ACCELERATION_DETECT
 	.accel_sensitivity = DEFAULT_ACCELERATION_LIMIT,
 #endif
@@ -908,6 +908,9 @@ status_code_t settings_store_global_setting (setting_type_t setting, char *svalu
 				break;
             case Setting_FireAlarmThreshold: //设置火焰报警次数阈值
             	settings.fire_alarm_time_threshold = int_value;
+            	break;
+            case Setting_UartBaudrate:
+            	settings.uart_baudrate = int_value;
             	break;
 #if ENABLE_HOMING_FORCE_SET_ORIGIN_OFFSET
             case Setting_OriginOffsetX:     //设置x原点偏移

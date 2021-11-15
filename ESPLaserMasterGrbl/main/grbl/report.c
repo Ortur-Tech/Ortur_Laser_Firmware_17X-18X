@@ -678,6 +678,7 @@ void report_grbl_settings (bool all)
         report_uint_setting(Setting_EnableDigitalLaserMode, settings.laser_control_mode);	//激光器控制模式
         report_uint_setting(Setting_EnableEcho, settings.echo_enable);						//echo输出使能
         report_uint_setting(Setting_PowerLogEnable, settings.power_log_enable);					//电源信息输出使能
+        report_uint_setting(Setting_UartBaudrate, settings.uart_baudrate);					//串口波特率
 #if ENABLE_HOMING_FORCE_SET_ORIGIN_OFFSET
         report_uint_setting(Setting_OriginOffsetX, settings.origin_offset_x); //x轴原点偏移
         report_uint_setting(Setting_OriginOffsetY, settings.origin_offset_y); //y轴原点偏移
@@ -1273,7 +1274,8 @@ void report_realtime_status (void)
         hal.stream.write_all("|Bf:");
         hal.stream.write_all(uitoa((uint32_t)plan_get_block_buffer_available()));
         hal.stream.write_all(",");
-        hal.stream.write_all(uitoa(hal.stream.get_rx_buffer_available()));
+        //hal.stream.write_all(uitoa(hal.stream.get_rx_buffer_available() > 512 ?  hal.stream.get_rx_buffer_available() - 512 : 0));
+        hal.stream.write_buffer_size();
     }
 
     if(settings.status_report.line_numbers) {
@@ -1348,9 +1350,7 @@ void report_realtime_status (void)
 			hal.stream.write_all(appendbuf(2, "|ER:", uitoa((uint32_t)fire_GetEvnValue())));
 			hal.stream.write_all(appendbuf(2, ",", uitoa((uint32_t)fire_GetCurrentValue())));
 #endif
-			/*输出电压电流*/
-			hal.stream.write_all(appendbuf(2, "|VA:", uitoa((uint32_t)power_GetVotage())));
-		    hal.stream.write_all(appendbuf(2, ",", uitoa((uint32_t)power_GetCurrent())));
+
 
 #if ENABLE_DIGITAL_LASER
 		    hal.stream.write_all(appendbuf(2, "|FTFFLK:", uitoa(laser_info.distance)));
@@ -1396,6 +1396,10 @@ void report_realtime_status (void)
             hal.stream.write_all("|WCO:");
             hal.stream.write_all(get_axis_values(wco));
         }
+
+		/*输出电压电流*/
+		hal.stream.write_all(appendbuf(2, "|VA:", uitoa((uint32_t)power_GetVotage())));
+	    hal.stream.write_all(appendbuf(2, ",", uitoa((uint32_t)power_GetCurrent())));
 
         if(sys.report.gwco) {
             hal.stream.write_all("|WCS:G");
