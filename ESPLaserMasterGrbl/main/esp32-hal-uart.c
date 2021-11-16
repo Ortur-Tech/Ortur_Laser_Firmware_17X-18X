@@ -261,10 +261,15 @@ IRAM_ATTR static void flush (uart_t *uart)
 
 void serialInit (void)
 {
+	static uint32_t baud = 0;
+	if(baud == (settings.uart_baudrate * 100) && settings.uart_baudrate !=0)
+		return;
+
+	baud = settings.uart_baudrate * 100;
     uart1 = &_uart_bus_array[0]; // use UART 0
-    if((settings.uart_baudrate < 2000001) && (settings.uart_baudrate > 9000))
+    if((baud <= 2000000) && (baud >= 9600))
     {
-    	uartConfig(uart1, settings.uart_baudrate);
+    	uartConfig(uart1, baud);
     }
     else
     {
