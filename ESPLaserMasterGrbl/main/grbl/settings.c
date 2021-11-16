@@ -120,7 +120,7 @@ const settings_t defaults = {
 	.origin_offset_y = ORIGIN_OFFSET_Y,
 	.origin_offset_z = ORIGIN_OFFSET_Z,
 #endif
-	.uart_baudrate = BAUD_RATE,
+	.uart_baudrate = BAUD_RATE / 100,
 #if ENABLE_ACCELERATION_DETECT
 	.accel_sensitivity = DEFAULT_ACCELERATION_LIMIT,
 #endif
@@ -295,6 +295,8 @@ bool settings_read_startup_line (uint8_t idx, char *line)
 // Write selected coordinate data to persistent storage.
 void settings_write_coord_data (coord_system_id_t id, float (*coord_data)[N_AXIS])
 {
+	return ;
+	
     assert(id <= N_CoordinateSystems);
 
 #ifdef FORCE_BUFFER_SYNC_DURING_NVS_WRITE
@@ -308,6 +310,9 @@ void settings_write_coord_data (coord_system_id_t id, float (*coord_data)[N_AXIS
 // Read selected coordinate data from persistent storage.
 bool settings_read_coord_data (coord_system_id_t id, float (*coord_data)[N_AXIS])
 {
+	memset(coord_data, 0, sizeof(coord_data_t));
+	return true;
+	
     assert(id <= N_CoordinateSystems);
 
     if (!(hal.nvs.type != NVS_None && hal.nvs.memcpy_from_nvs((uint8_t *)coord_data, NVS_ADDR_PARAMETERS + id * (sizeof(coord_data_t) + NVS_CRC_BYTES), sizeof(coord_data_t), true) == NVS_TransferResult_OK)) {
@@ -370,7 +375,10 @@ void write_global_settings ()
     }
 }
 
-
+void coord_data_restore(void)
+{
+	settings_read_coord_data(CoordinateSystem_G92, &gc_state.g92_coord_offset);
+}
 // Restore Grbl global settings to defaults and write to persistent storage
 void settings_restore (settings_restore_t restore)
 {

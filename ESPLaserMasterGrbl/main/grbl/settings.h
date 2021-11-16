@@ -585,4 +585,6 @@ bool settings_read_tool_data (uint32_t tool, tool_data_t *tool_data);
 
 void write_global_settings ();//添加函数声明
 
+/*恢复出厂设置*/
+void coord_data_restore(void);
 #endif
