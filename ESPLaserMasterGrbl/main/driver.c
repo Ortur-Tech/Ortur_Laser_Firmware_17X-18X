@@ -46,6 +46,7 @@
 #include "driver/ledc.h"
 #include "hal/ledc_ll.h"
 #include "hal/ledc_types.h"
+#include "esp32-hal-uart.h"
 
 #if TRINAMIC_ENABLE
 #include "motors/trinamic.h"
@@ -943,10 +944,29 @@ uint8_t esp32s2_read_output_pin(uint32_t num)
 	return 0;
 }
 
+uint32_t  spindle_pwm_value = 0;
+
+uint32_t spindle_pwm_get(void)
+{
+	return spindle_pwm_value;
+}
+
+void spindle_pwm_set(uint32_t pwm)
+{
+	spindle_pwm_value = pwm;
+	if(pwm == 0)
+	{
+		ledc_stop(ledConfig.speed_mode, ledConfig.channel, settings.spindle.invert.pwm ? 1 : 0);
+	}
+	else
+	{
+		ledc_set_duty(ledConfig.speed_mode, ledConfig.channel, pwm);
+		ledc_update_duty(ledConfig.speed_mode, ledConfig.channel);
+	}
+}
 
 uint8_t is_SpindleEnable(void)
 {
-
 	return esp32s2_read_output_pin(SPINDLE_ENABLE_PIN) ? 0:1 ;
 }
 
@@ -954,10 +974,11 @@ uint8_t is_SpindleEnable(void)
 uint8_t is_SpindleOpen(void)
 {
 	uint32_t duty = 0;
-	duty = ledc_get_duty(ledConfig.speed_mode, ledConfig.channel);
+	duty = spindle_pwm_get();
 	duty = settings.spindle.invert.pwm ? pwm_max_value - duty : duty;
 	return duty && is_SpindleEnable();
 }
+
 /*获取激光pwm功率，*/
 uint16_t laser_GetPower(void)
 {
@@ -965,7 +986,7 @@ uint16_t laser_GetPower(void)
 	return laser_get_value(COMM_LASER_PWM_DUTY) ;
 #else
 	uint32_t duty = 0;
-	duty = ledc_get_duty(ledConfig.speed_mode, ledConfig.channel);
+	duty = spindle_pwm_get();
 	duty = settings.spindle.invert.pwm ? pwm_max_value - duty : duty;
 	return (duty) > 1000 ? 1000 : (duty);
 #endif
@@ -995,16 +1016,13 @@ IRAM_ATTR void spindle_set_speed (uint_fast16_t pwm_value)
         	laser_pwm_duty_enqueue(settings.spindle.invert.pwm ? 1 : 0);
         }
 #else
-        if(spindle_pwm.always_on) {
-            ledc_set_duty(ledConfig.speed_mode, ledConfig.channel, spindle_pwm.off_value);
-            ledc_update_duty(ledConfig.speed_mode, ledConfig.channel);
+        if(spindle_pwm.always_on)
+        {
+            spindle_pwm_set(spindle_pwm.off_value);
         }
         else
         {
-        	ledc_set_duty(ledConfig.speed_mode, ledConfig.channel, spindle_pwm.off_value);
-        	ledc_update_duty(ledConfig.speed_mode, ledConfig.channel);
-        	while(spindle_pwm.off_value != ledc_get_duty(ledConfig.speed_mode, ledConfig.channel));
-            ledc_stop(ledConfig.speed_mode, ledConfig.channel, settings.spindle.invert.pwm ? 1 : 0);
+        	spindle_pwm_set(0);
         }
 #endif
 #endif
@@ -1023,8 +1041,7 @@ IRAM_ATTR void spindle_set_speed (uint_fast16_t pwm_value)
 #if	ENABLE_DIGITAL_LASER
          laser_pwm_duty_enqueue(settings.spindle.invert.pwm ? pwm_max_value - pwm_value : pwm_value);
 #else
-         ledc_set_duty(ledConfig.speed_mode, ledConfig.channel, settings.spindle.invert.pwm ? pwm_max_value - pwm_value : pwm_value);
-         ledc_update_duty(ledConfig.speed_mode, ledConfig.channel);
+         spindle_pwm_set(settings.spindle.invert.pwm ? pwm_max_value - pwm_value : pwm_value);
 #endif
 #endif
         if(!pwmEnabled) {
@@ -1238,6 +1255,7 @@ void debounceTimerCallback (TimerHandle_t xTimer)
 // Configures perhipherals when settings are initialized or changed
 static void settings_changed (settings_t *settings)
 {
+	serialInit();
 
 #ifndef VFD_SPINDLE
 
@@ -2476,7 +2494,7 @@ static bool driver_setup (settings_t *settings)
 #if TRINAMIC_ENABLE && CNC_BOOSTERPACK // Trinamic BoosterPack does not support mixed drivers
     driver_settings.trinamic.driver_enable.mask = AXES_BITMASK;
 #endif
-
+    serialInit();
     /******************
      *  Stepper init  *
      ******************/
