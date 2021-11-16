@@ -240,6 +240,8 @@ int grbl_enter (void)
 
         flush_override_buffers();
 
+        hal.stream.switchable = true;
+        coord_data_restore();
         // Reset Grbl primary systems.
         hal.stream.reset_read_buffer(); // Clear input stream buffer
         gc_init(cold_start); // Set g-code parser to default state
