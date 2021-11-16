@@ -65,7 +65,8 @@ void usb_cdc_line_state_changed_callback(int itf, cdcacm_event_t *event)
 void usb_cdc_line_coding_changed_callback(int itf, cdcacm_event_t *event)
 {
 	uint32_t baud = event->line_coding_changed_data.p_line_coding->bit_rate;
-	setUsbCDCConnected(1);
+
+	//setUsbCDCConnected(1);
 }
 void usb_SerialInit(void)
 {
@@ -130,7 +131,7 @@ void setUsbPlugIn(uint8_t value)
 uint8_t isUsbCDCConnected(void)
 {
 	//return usbPlugIn && usbCDCConnected;
-	return usbCDCConnected;
+	return usbCDCConnected && isUsbPlugIn();
 }
 
 void setUsbCDCConnected(uint8_t value)
@@ -176,7 +177,10 @@ static inline bool usb_write (void)
 {
     static uint8_t dummy = 0;
     uint32_t start_write_time = HAL_GetTick();
-    #define MAX_WRITE_TIME 500 //500ms
+    #define MAX_WRITE_TIME 50 //500ms
+
+    if(!isUsbCDCConnected())
+    	return false;
 
     txbuf.s = use_tx2data ? txdata2 : txbuf.data;
 
@@ -186,20 +190,17 @@ static inline bool usb_write (void)
     tinyusb_cdcacm_write_queue(TINYUSB_CDC_ACM_0, (uint8_t*)txbuf.s, txbuf.length);
     esp_err_t err = tinyusb_cdcacm_write_flush(TINYUSB_CDC_ACM_0, 10);
 
-    while(isUsbCDCConnected() && err == ESP_FAIL)
+    while(isUsbCDCConnected() && err != ESP_OK)
     {
     	err = tinyusb_cdcacm_write_flush(TINYUSB_CDC_ACM_0, 10);
 
-        if(!hal.stream_blocking_callback())
-            return false;
-        if(!isUsbCDCConnected())
-        	return false;
         //Avoid death waiting
         if(start_write_time + MAX_WRITE_TIME < HAL_GetTick())
         {
-        	printf("usb_write timeout.\r\n");
-        	setUsbCDCConnected(0);
-        	break;
+           	//printf("usb_write timeout.\r\n");
+            setUsbCDCConnected(0);
+            hal.stream_blocking_callback();
+            return false;
         }
     }
 
