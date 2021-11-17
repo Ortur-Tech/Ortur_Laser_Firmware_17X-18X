@@ -47,7 +47,7 @@
 
 #if BOARD_VERSION == OLM_ESP_V1X
 
-#if (MACHINE_TYPE == OLM_2_PRO)
+#if (MACHINE_TYPE == OLM2_PRO)
 #define ORTUR_MODEL_NAME "Ortur Laser Master 2 Pro S1"
 #elif (MACHINE_TYPE == AUFERO_4)
 #define ORTUR_MODEL_NAME "Ortur Aufero 4 S1"
@@ -61,7 +61,7 @@
 
 #elif BOARD_VERSION == OLM_ESP_PRO_V1X
 
-#if (MACHINE_TYPE == OLM_2_PRO)
+#if (MACHINE_TYPE == OLM2_PRO)
 #define ORTUR_MODEL_NAME "Ortur Laser Master 2 Pro S2"
 #elif (MACHINE_TYPE == AUFERO_4)
 #define ORTUR_MODEL_NAME "Ortur Aufero 4 S2"
