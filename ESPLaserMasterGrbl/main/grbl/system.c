@@ -520,14 +520,14 @@ bool system_check_travel_limits (float *target)
     bool failed = false;
     uint_fast8_t idx = N_AXIS;
 #if ENABLE_HOMING_FORCE_SET_ORIGIN_OFFSET
-    int32_t origin_offset[N_AXIS] = {settings.origin_offset_x,settings.origin_offset_y,settings.origin_offset_z} ;
+    float origin_offset[N_AXIS] = {settings.origin_offset_x,settings.origin_offset_y,settings.origin_offset_z} ;
     do {
 			idx--;
 		// When homing forced set origin is enabled, soft limits checks need to account for directionality.
 			failed = settings.axis[idx].max_travel < -0.0f &&
 					  (bit_istrue(settings.homing.dir_mask.value, bit(idx))
-						? (target[idx] < 0.0f  || target[idx] > -settings.axis[idx].max_travel )
-						: (target[idx] > 0.0f  || target[idx] < settings.axis[idx].max_travel));
+						? (target[idx] < 0.0f  || target[idx] > -settings.axis[idx].max_travel + origin_offset[idx] )
+						: (target[idx] > 0.0f  || target[idx] < settings.axis[idx].max_travel) + origin_offset[idx] );
 		} while(!failed && idx);
 #else
     if(settings.homing.flags.force_set_origin) {

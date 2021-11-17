@@ -922,13 +922,13 @@ status_code_t settings_store_global_setting (setting_type_t setting, char *svalu
             	break;
 #if ENABLE_HOMING_FORCE_SET_ORIGIN_OFFSET
             case Setting_OriginOffsetX:     //设置x原点偏移
-            	settings.origin_offset_x = int_value;
+            	settings.origin_offset_x = value;
             	break;
             case Setting_OriginOffsetY:		//设置y原点偏移
-            	settings.origin_offset_y = int_value;
+            	settings.origin_offset_y = value;
 				break;
             case Setting_OriginOffsetZ:		//设置z原点偏移
-            	settings.origin_offset_z = int_value;
+            	settings.origin_offset_z = value;
 				break;
 #endif
 

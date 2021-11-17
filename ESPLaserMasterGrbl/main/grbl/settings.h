@@ -532,9 +532,9 @@ typedef struct {
     uint32_t fire_alarm_time_threshold;    	//次数阈值
     uint32_t laser_used_time;				//激光器使用时长
 #if ENABLE_HOMING_FORCE_SET_ORIGIN_OFFSET
-    int16_t origin_offset_x;
-    int16_t origin_offset_y;
-    int16_t origin_offset_z;
+    float origin_offset_x;
+    float origin_offset_y;
+    float origin_offset_z;
 #endif
 #if ENABLE_ACCELERATION_DETECT
     uint16_t accel_sensitivity;
