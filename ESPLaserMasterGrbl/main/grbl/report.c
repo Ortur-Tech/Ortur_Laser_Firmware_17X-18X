@@ -391,7 +391,7 @@ void report_init_message (void)
     /*硬件版本*/
     hal.stream.write_all("OLH:" ORTUR_HW_NAME "." ASCII_EOL);
     /*TODO:数字激光*/
-	hal.stream.write_all("OLM: GENERAL." ASCII_EOL);
+	hal.stream.write_all("OLM:GENERAL." ASCII_EOL);
 
 #if ENABLE_ACCELERATION_DETECT
     gsensor_info_report();
@@ -681,9 +681,9 @@ void report_grbl_settings (bool all)
         report_uint_setting(Setting_PowerLogEnable, settings.power_log_enable);					//电源信息输出使能
         report_uint_setting(Setting_UartBaudrate, settings.uart_baudrate);					//串口波特率
 #if ENABLE_HOMING_FORCE_SET_ORIGIN_OFFSET
-        report_uint_setting(Setting_OriginOffsetX, settings.origin_offset_x); //x轴原点偏移
-        report_uint_setting(Setting_OriginOffsetY, settings.origin_offset_y); //y轴原点偏移
-        report_uint_setting(Setting_OriginOffsetZ, settings.origin_offset_z); //z轴原点偏移
+        report_float_setting(Setting_OriginOffsetX, settings.origin_offset_x, N_DECIMAL_SETTINGVALUE); //x轴原点偏移
+        report_float_setting(Setting_OriginOffsetY, settings.origin_offset_y, N_DECIMAL_SETTINGVALUE); //y轴原点偏移
+        report_float_setting(Setting_OriginOffsetZ, settings.origin_offset_z, N_DECIMAL_SETTINGVALUE); //z轴原点偏移
 #endif
     }
 }
@@ -974,8 +974,10 @@ void report_build_info (char *line)
 	hal.stream.write("[OLH: " ORTUR_HW_NAME );
 	hal.stream.write("]" ASCII_EOL);
 
+	//esp_efuse_mac_get_default(mac)
+
 	/*TODO:数字激光*/
-	hal.stream.write("[OLM: GENERAL");
+	hal.stream.write("[OLM:GENERAL");
 	hal.stream.write("]" ASCII_EOL);
 
 	hal.stream.write("[DATE:"__TIME__" - "__DATE__);
