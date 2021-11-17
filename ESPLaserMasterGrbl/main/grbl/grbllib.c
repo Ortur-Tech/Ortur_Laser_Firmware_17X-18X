@@ -269,10 +269,11 @@ int grbl_enter (void)
         // Print welcome message. Indicates an initialization has occured at power-up or with a reset.
         report_init_message();
 
+#if ENABLE_POWER_SUPPLY_CHECK
         /*添加电源状态报告*/
         Main_PowerCheckReport(0);
         Main_PowerCheckReport(1);
-
+#endif
         if(sys.state == STATE_ESTOP)
             set_state(STATE_ALARM);
 
