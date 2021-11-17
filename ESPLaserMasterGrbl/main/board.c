@@ -49,6 +49,9 @@ void extended_FuncTask( void * pvParameters )
 
 		vTaskDelay(10/portTICK_PERIOD_MS);
 
+		/*读取当前电源状态*/
+		power_supply_detect();
+
 #if ENABLE_ACCELERATION_DETECT
 		/*加速度检测*/
 		accel_detection_limit();

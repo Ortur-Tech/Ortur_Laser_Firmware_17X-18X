@@ -2307,9 +2307,6 @@ uint32_t power_GetCurrent(void)
 #define RATE_VOTAGE 24
 #endif
 
-/*电源检测*/
-uint8_t report_power_flag = 0;//是否报告电源状态
-static uint8_t last_power_flag=0;//变化前电源状态
 
 #define IsMainPowrBitSet() (gpio_get_level(POWER_CHECK_PIN) ? 1:0)
 
@@ -2371,7 +2368,6 @@ uint8_t IsMainPowrIn(void)
 	/*大于10v认为有电*/
 	else if(votage > VOTAGE_LIMIT)
 	{
-		last_power_flag = 1;
 		use_time_save_flag = 1;
 		return 1;
 	}
@@ -2417,26 +2413,46 @@ void Main_PowerSupplyDebug(void)
 	}
 #endif
 }
+static uint8_t power_supply_status = 0;
+
 /*0:check power 1:report power*/
 void Main_PowerCheckReport(uint8_t mode)
 {
+	static uint8_t report_flag = 0;
 	/*报告状态*/
 	if(mode)
 	{
-		if(report_power_flag)
+		if(report_flag)
 		{
-		  report_feedback_message(report_power_flag);
-		  report_power_flag=0;
+			report_flag = 0;
+			report_feedback_message(Message_NoPowerSupply);
 		}
 	}
 	else /*检测状态*/
 	{
-		if(!IsMainPowrIn())
-		 {
-			report_power_flag = Message_NoPowerSupply;
-			 //report_feedback_message(MESSAGE_MAIN_POWER_OFF);
-		 }
+		report_flag = !power_supply_detect();
 	}
+}
+
+
+
+/*在功能任务函数里面调用*/
+uint8_t power_supply_detect(void)
+{
+	static uint32_t time = 0;
+
+	if(power_supply_status != IsMainPowrIn())
+	{
+		if((HAL_GetTick() - time) > 10)
+		{
+			time = HAL_GetTick();
+			if(power_supply_status != IsMainPowrIn())
+			{
+				power_supply_status = IsMainPowrIn();
+			}
+		}
+	}
+	return power_supply_status;
 }
 /**
  * 检测主电源状态
@@ -2444,23 +2460,12 @@ void Main_PowerCheckReport(uint8_t mode)
 void Main_PowerCheck(void)
 {
 #if POWER_CHECK_ADC_ENABLE
-	if(last_power_flag==0)
+	static uint8_t last_power_flag=0;//变化前电源状态
+
+	if(last_power_flag != power_supply_status)
 	{
-		if(IsMainPowrIn())
-		{
-			//power_CtrOn();
-			report_feedback_message(Message_PowerSupplied);
-		}
-	}
-	else
-	{
-		/*掉电去抖*/
-		if(!IsMainPowrIn())
-		{
-			last_power_flag=0;
-			//power_CtrOff();
-			report_feedback_message(Message_NoPowerSupply);
-		}
+		last_power_flag = power_supply_status;
+		report_feedback_message(last_power_flag ? Message_PowerSupplied : Message_NoPowerSupply);
 	}
 #else
 
@@ -2486,6 +2491,7 @@ void Main_PowerCheck(void)
 	}
 #endif
 }
+
 
 
 // Initializes MCU peripherals for Grbl use
@@ -2735,11 +2741,13 @@ void multiSteamWriteS (const char *s)
 		serialWriteS(s);
 }
 
+#define RX_BUF_RESERVE 512
+
 void multiSteamWriteBufSize(void)
 {
 	if(isUsbCDCConnected())
-		usbWriteS(uitoa(usbRxFree())); //仅在VCP连接的情况下发送字符串,否则会造成发送缓冲溢出阻塞
-	serialWriteS(uitoa(serialRXFree()));
+		usbWriteS(uitoa(usbRxFree() >= RX_BUF_RESERVE ? usbRxFree() - RX_BUF_RESERVE : 0 )); //仅在VCP连接的情况下发送字符串,否则会造成发送缓冲溢出阻塞
+	serialWriteS(uitoa(serialRXFree() >= RX_BUF_RESERVE ? serialRXFree() - RX_BUF_RESERVE : 0));
 }
 //
 // Writes a null terminated string to all output stream, blocks if buffer full
