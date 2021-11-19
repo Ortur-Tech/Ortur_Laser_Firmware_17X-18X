@@ -527,7 +527,7 @@ bool system_check_travel_limits (float *target)
 			failed = settings.axis[idx].max_travel < -0.0f &&
 					  (bit_istrue(settings.homing.dir_mask.value, bit(idx))
 						? (target[idx] < 0.0f  || target[idx] > -settings.axis[idx].max_travel + origin_offset[idx] )
-						: (target[idx] > 0.0f  || target[idx] < settings.axis[idx].max_travel) + origin_offset[idx] );
+						: (target[idx] > 0.0f  || target[idx] < settings.axis[idx].max_travel + origin_offset[idx] ));
 		} while(!failed && idx);
 #else
     if(settings.homing.flags.force_set_origin) {
@@ -538,6 +538,10 @@ bool system_check_travel_limits (float *target)
                       (bit_istrue(settings.homing.dir_mask.value, bit(idx))
                         ? (target[idx] < 0.0f || target[idx] > -settings.axis[idx].max_travel)
                         : (target[idx] > 0.0f || target[idx] < settings.axis[idx].max_travel));
+            if(failed)
+            {
+            	printf("idx:%d,target:%f.\r\n", idx, target[idx]);
+            }
         } while(!failed && idx);
     } else do {
         idx--;
