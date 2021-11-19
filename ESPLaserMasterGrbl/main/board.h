@@ -18,7 +18,7 @@
 #define OLM_ESP_PRO_V1X     2   //我们自己的主板
 #define OCM_ESP_PRO_V1X     3   //我们自己的主板
 
-#define ORTUR_HW_NAME 		"OLM_ESP_PRO_V1.2" //"OLM_ESP_V1X"
+#define ORTUR_HW_NAME 		"OLM_ESP_PRO_V1.2" //"OLM_ESP_V1X" //
 #define BOARD_VERSION 		OLM_ESP_PRO_V1X //OLM_ESP_V1X //
 /*******************硬件版本定义 END*******************/
 
@@ -46,7 +46,7 @@
 #define AUFERO_4			200400	//方框机器370*400
 
 
-#define MACHINE_TYPE 	    AUFERO_1 //OLM2_PRO //OLM2_S2 //AUFERO_2 //AUFERO_2 // //AUFERO_1
+#define MACHINE_TYPE 	    AUFERO_1 //OLM2_PRO //AUFERO_1 //OLM2_PRO //OLM2_S2 //AUFERO_2 //AUFERO_2 // //AUFERO_1
 /*******************机型定义 END*******************/
 
 
@@ -93,5 +93,6 @@ uint32_t HAL_GetTick(void);
 void creat_ExtFuncTask(void );
 
 void Usb_ForceReset(void);
+void disable_rom_code_console(void);
 
 #endif /* MAIN_BOARD_H_ */
