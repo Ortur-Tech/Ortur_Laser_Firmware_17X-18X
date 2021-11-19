@@ -58,6 +58,14 @@ bool nvsRead (uint8_t *dest)
     return ok;
 }
 
+bool nvsBytes (uint8_t * dest ,uint32_t addr, size_t size)
+{
+	bool ok = false;
+    if(!(ok = grblNVS && esp_partition_read(grblNVS, addr, (void *)dest, size) == ESP_OK))
+        grblNVS = NULL;
+    return ok;
+}
+
 bool nvsWrite (uint8_t *source)
 {
 	portENTER_CRITICAL(&mux);

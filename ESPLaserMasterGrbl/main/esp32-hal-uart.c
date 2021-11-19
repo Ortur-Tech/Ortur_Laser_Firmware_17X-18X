@@ -262,11 +262,32 @@ IRAM_ATTR static void flush (uart_t *uart)
 void serialInit (void)
 {
 	static uint32_t baud = 0;
+
+	// 由于串口初始化时grbl settings 还未初始化，这里直接在flash中读取存储的波特率值
+	static bool first_init = true;
+	if(first_init)
+	{
+		extern bool nvsInit (void);
+		extern bool nvsBytes (uint8_t * dest ,uint32_t addr, size_t size);
+
+		nvsInit();
+
+		settings_t temp_settings = {0};
+		if(nvsBytes(&temp_settings, NVS_ADDR_GLOBAL, sizeof(settings_t)))
+		{
+			baud = temp_settings.uart_baudrate;
+		}
+	}
+
 	if(baud == (settings.uart_baudrate * 100) && settings.uart_baudrate !=0)
 		return;
+	if(!first_init)
+		baud = settings.uart_baudrate * 100;
+	else
+		baud = baud * 100;
 
-	baud = settings.uart_baudrate * 100;
     uart1 = &_uart_bus_array[0]; // use UART 0
+
     if((baud <= 2000000) && (baud >= 9600))
     {
     	uartConfig(uart1, baud);
@@ -278,6 +299,7 @@ void serialInit (void)
 
     serialFlush();
     uartEnableInterrupt(uart1, _uart1_isr, true);
+    first_init = false;
 }
 
 uint32_t serialAvailable (void)
