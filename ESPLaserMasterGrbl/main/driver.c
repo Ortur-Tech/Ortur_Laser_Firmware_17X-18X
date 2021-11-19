@@ -2299,7 +2299,7 @@ uint32_t power_GetCurrent(void)
 #define VOTAGE_SAMPLING_RES 1000
 #define VOTAGE_DIV_RES 10000
 /*大于10V认为有电压*/
-#define VOTAGE_LIMIT 10 //10V
+#define VOTAGE_LIMIT 21 //10V
 
 #if (MACHINE_TYPE == OLM2)
 #define RATE_VOTAGE 12
