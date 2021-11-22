@@ -512,6 +512,15 @@ void system_convert_array_steps_to_mpos (float *position, int32_t *steps)
 #endif
 }
 
+#define DEFAULT_PRECISION 100000
+
+/*舍入运算*/
+float round_f(float f, int64_t precision)
+{
+	double value = f * precision;
+	return round(value) / precision;
+}
+
 // Checks and reports if target array exceeds machine travel limits. Returns false if check failed.
 // NOTE: max_travel is stored as negative
 // TODO: only check homed axes?
@@ -533,15 +542,12 @@ bool system_check_travel_limits (float *target)
     if(settings.homing.flags.force_set_origin) {
         do {
             idx--;
-        // When homing forced set origin is enabled, soft limits checks need to account for directionality.
+            target[idx] = round_f(target[idx], DEFAULT_PRECISION);
+            // When homing forced set origin is enabled, soft limits checks need to account for directionality.
             failed = settings.axis[idx].max_travel < -0.0f &&
                       (bit_istrue(settings.homing.dir_mask.value, bit(idx))
                         ? (target[idx] < 0.0f || target[idx] > -settings.axis[idx].max_travel)
                         : (target[idx] > 0.0f || target[idx] < settings.axis[idx].max_travel));
-            if(failed)
-            {
-            	printf("idx:%d,target:%f.\r\n", idx, target[idx]);
-            }
         } while(!failed && idx);
     } else do {
         idx--;
