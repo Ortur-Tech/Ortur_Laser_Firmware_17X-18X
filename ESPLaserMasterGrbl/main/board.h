@@ -18,25 +18,35 @@
 #define OLM_ESP_PRO_V1X     2   //我们自己的主板
 #define OCM_ESP_PRO_V1X     3   //我们自己的主板
 
-#define ORTUR_HW_NAME 		"OLM_ESP_PRO_V1.2" //"OLM_ESP_V1X"
+#define ORTUR_HW_NAME 		"OLM_ESP_PRO_V1.2" //"OLM_ESP_V1X" //
 #define BOARD_VERSION 		OLM_ESP_PRO_V1X //OLM_ESP_V1X //
 /*******************硬件版本定义 END*******************/
 
 
 /*******************机型定义 BEGIN*******************/
 #define MACHINE_UNKOWN 		0
-#define AUFERO_CNC			1
-#define OLM_2_PRO			2
-#define OLM_PRO				3
-#define AUFERO_2			4	//方框机器390*390
-#define AUFERO_1			5	//悬臂机
-#define AUFERO_4			6	//方框机器370*400
-#define OLM2				7   //方框机400*430
-#define OLM2_S2             8
 
 
+// 三段型号命名 , 主版本xx , 次版本xx , 小修订xx
+// Ortur 10
+#define OLM	     			101000
+#define OLM_PRO				100100
+#define OLM2				100200   //方框机400*430
+#define OLM2_S2             100202
+#define OLM2_PRO		    102000
+#define OLM2_PRO_S1		    102001
+#define OLM2_PRO_S2		    102002
+#define OLM3	     		100300
 
-#define MACHINE_TYPE 	    AUFERO_1 //OLM_2_PRO //OLM2_S2 //AUFERO_2 //AUFERO_2 // //AUFERO_1
+// Aufero 20
+#define AUFERO_CNC			200000
+#define AUFERO_1			200100	//悬臂机
+#define AUFERO_2			200200	//方框机器390*390
+#define AUFERO_3			200300
+#define AUFERO_4			200400	//方框机器370*400
+
+
+#define MACHINE_TYPE 	    AUFERO_1 //OLM2_PRO //AUFERO_1 //OLM2_PRO //OLM2_S2 //AUFERO_2 //AUFERO_2 // //AUFERO_1
 /*******************机型定义 END*******************/
 
 
@@ -83,5 +93,6 @@ uint32_t HAL_GetTick(void);
 void creat_ExtFuncTask(void );
 
 void Usb_ForceReset(void);
+void disable_rom_code_console(void);
 
 #endif /* MAIN_BOARD_H_ */

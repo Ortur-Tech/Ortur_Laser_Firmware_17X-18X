@@ -87,6 +87,7 @@ typedef struct {
     stream_write_ptr write;     // write string to current I/O stream only.
     stream_write_ptr write_all; // write string to all active output streams.
     int16_t (*read)(void);
+    void (*write_buffer_size)(void);
     void (*reset_read_buffer)(void);
     void (*cancel_read_buffer)(void);
     bool (*suspend_read)(bool await);

@@ -120,7 +120,7 @@ const settings_t defaults = {
 	.origin_offset_y = ORIGIN_OFFSET_Y,
 	.origin_offset_z = ORIGIN_OFFSET_Z,
 #endif
-
+	.uart_baudrate = BAUD_RATE / 100,
 #if ENABLE_ACCELERATION_DETECT
 	.accel_sensitivity = DEFAULT_ACCELERATION_LIMIT,
 #endif
@@ -295,6 +295,8 @@ bool settings_read_startup_line (uint8_t idx, char *line)
 // Write selected coordinate data to persistent storage.
 void settings_write_coord_data (coord_system_id_t id, float (*coord_data)[N_AXIS])
 {
+	return ;
+	
     assert(id <= N_CoordinateSystems);
 
 #ifdef FORCE_BUFFER_SYNC_DURING_NVS_WRITE
@@ -308,6 +310,9 @@ void settings_write_coord_data (coord_system_id_t id, float (*coord_data)[N_AXIS
 // Read selected coordinate data from persistent storage.
 bool settings_read_coord_data (coord_system_id_t id, float (*coord_data)[N_AXIS])
 {
+	memset(coord_data, 0, sizeof(coord_data_t));
+	return true;
+	
     assert(id <= N_CoordinateSystems);
 
     if (!(hal.nvs.type != NVS_None && hal.nvs.memcpy_from_nvs((uint8_t *)coord_data, NVS_ADDR_PARAMETERS + id * (sizeof(coord_data_t) + NVS_CRC_BYTES), sizeof(coord_data_t), true) == NVS_TransferResult_OK)) {
@@ -370,7 +375,10 @@ void write_global_settings ()
     }
 }
 
-
+void coord_data_restore(void)
+{
+	settings_read_coord_data(CoordinateSystem_G92, &gc_state.g92_coord_offset);
+}
 // Restore Grbl global settings to defaults and write to persistent storage
 void settings_restore (settings_restore_t restore)
 {
@@ -909,15 +917,18 @@ status_code_t settings_store_global_setting (setting_type_t setting, char *svalu
             case Setting_FireAlarmThreshold: //设置火焰报警次数阈值
             	settings.fire_alarm_time_threshold = int_value;
             	break;
+            case Setting_UartBaudrate:
+            	settings.uart_baudrate = int_value;
+            	break;
 #if ENABLE_HOMING_FORCE_SET_ORIGIN_OFFSET
             case Setting_OriginOffsetX:     //设置x原点偏移
-            	settings.origin_offset_x = int_value;
+            	settings.origin_offset_x = value;
             	break;
             case Setting_OriginOffsetY:		//设置y原点偏移
-            	settings.origin_offset_y = int_value;
+            	settings.origin_offset_y = value;
 				break;
             case Setting_OriginOffsetZ:		//设置z原点偏移
-            	settings.origin_offset_z = int_value;
+            	settings.origin_offset_z = value;
 				break;
 #endif
 
