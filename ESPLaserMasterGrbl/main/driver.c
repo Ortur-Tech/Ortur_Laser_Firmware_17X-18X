@@ -2517,7 +2517,7 @@ static bool driver_setup (settings_t *settings)
         .intr_type = GPIO_INTR_DISABLE
     };
     /*避免开机风扇转*/
-#if !ENABLE_DIGITAL_LASER
+#if !ENABLE_DIGITAL_LASER && !ENABLE_CNC_SPINDLE
     gpio_set_level(SPINDLE_ENABLE_PIN,1);
 #else
     gpio_set_level(SPINDLE_ENABLE_PIN,0);

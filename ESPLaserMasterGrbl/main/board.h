@@ -26,17 +26,17 @@
 /*******************机型定义 BEGIN*******************/
 #define MACHINE_UNKOWN 		0
 #define AUFERO_CNC			1
-#define OLM_2_PRO			2
+#define OLM_2_PRO			2  //400*400
 #define OLM_PRO				3
 #define AUFERO_2			4	//方框机器390*390
 #define AUFERO_1			5	//悬臂机
 #define AUFERO_4			6	//方框机器370*400
 #define OLM2				7   //方框机400*430
-#define OLM2_S2             8
+#define OLM2_S2             8   //400*430
+#define OLM_2_PRO_MAX       9   //400*600
 
 
-
-#define MACHINE_TYPE 	    AUFERO_1 //OLM_2_PRO //OLM2_S2 //AUFERO_2 //AUFERO_2 // //AUFERO_1
+#define MACHINE_TYPE 	    OLM2_S2 //OLM_2_PRO //OLM2_S2 //AUFERO_2 //AUFERO_2 // //AUFERO_1
 /*******************机型定义 END*******************/
 
 

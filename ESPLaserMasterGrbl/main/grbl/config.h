@@ -101,8 +101,10 @@
 
 //Since the cooling fan on the laser module shares power with the laser,
 //we need to delay the power off in order to better heat dissipation.
+#if MACHINE_TYPE == AUFERO_CNC
+#else
 #define DELAY_OFF_SPINDLE // For better cooling, delay turn off the laser power.
-
+#endif
 // ---------------------------------------------------------------------------------------
 // ADVANCED CONFIGURATION OPTIONS:
 
@@ -399,7 +401,7 @@
 #define DEFAULT_STEPPING_INVERT_MASK (0)
 #if (MACHINE_TYPE == AUFERO_1)
 #define DEFAULT_DIRECTION_INVERT_MASK (0b11) //(0b00cbazyx)
-#elif MACHINE_TYPE == AUFERO_2|| MACHINE_TYPE == OLM2_S2
+#elif MACHINE_TYPE == AUFERO_2 || MACHINE_TYPE == OLM2_S2 || MACHINE_TYPE == AUFERO_CNC
 #define DEFAULT_DIRECTION_INVERT_MASK (0b10) //(0b00cbazyx)
 #elif  MACHINE_TYPE == OLM2
 #define DEFAULT_DIRECTION_INVERT_MASK (0b00) //(0b00cbazyx)
@@ -510,10 +512,24 @@
 #define USE_SOFTWARE_IIC			0
 /*使能数字激光头*/
 #define ENABLE_DIGITAL_LASER 		0
-/*IIC通信速率*/
-#define DEFAULT_IIC_RATE			100 //单位khz
+/*使能CNC SPINDLE*/
+#if MACHINE_TYPE == AUFERO_CNC
+/*主轴电机使能*/
+#define ENABLE_CNC_SPINDLE 		    1
+/*加速度检测disable*/
+#define ENABLE_ACCELERATION_DETECT  0
+/*激光头不移动检测*/
+#define MOVEMENT_LASERON_CHECK      0//movement_laseron_check
+#else
+#define MOVEMENT_LASERON_CHECK      1
 /*加速度检测使能*/
 #define ENABLE_ACCELERATION_DETECT 	1
+/*主轴电机disable*/
+#define ENABLE_CNC_SPINDLE 		    0
+#endif
+/*IIC通信速率*/
+#define DEFAULT_IIC_RATE			100 //单位khz
+
 /*GPIO设置时是否进入临界区*/
 #define ENABLE_GPIO_SET_CRITICAL	0
 
@@ -607,6 +623,19 @@
 #define DEFAULT_X_MAX_TRAVEL 200.0f // mm NOTE: Must be a positive value.
 #define DEFAULT_Y_MAX_TRAVEL 200.0f // mm NOTE: Must be a positive value.
 #define DEFAULT_Z_MAX_TRAVEL  50.0f // mm NOTE: Must be a positive value.
+#elif (MACHINE_TYPE == AUFERO_CNC)
+#define DEFAULT_X_STEPS_PER_MM (50.0f*16)
+#define DEFAULT_Y_STEPS_PER_MM (50.0f*16)
+#define DEFAULT_Z_STEPS_PER_MM (50.0f*16)
+#define DEFAULT_X_MAX_RATE (20.0f*60) // mm/min
+#define DEFAULT_Y_MAX_RATE (20.0f*60) // mm/min
+#define DEFAULT_Z_MAX_RATE (20.0f*60) // mm/min
+#define DEFAULT_X_ACCELERATION (10.0f*60*60) // 10*60*60 mm/min^2 = 10 mm/sec^2
+#define DEFAULT_Y_ACCELERATION (10.0f*60*60) // 10*60*60 mm/min^2 = 10 mm/sec^2
+#define DEFAULT_Z_ACCELERATION (10.0f*60*60) // 10*60*60 mm/min^2 = 10 mm/sec^2
+#define DEFAULT_X_MAX_TRAVEL 300.0f // mm NOTE: Must be a positive value.
+#define DEFAULT_Y_MAX_TRAVEL 180.0f // mm NOTE: Must be a positive value.
+#define DEFAULT_Z_MAX_TRAVEL  50.0f // mm NOTE: Must be a positive value.
 #else
 #define DEFAULT_X_STEPS_PER_MM (5.0f*16)
 #define DEFAULT_Y_STEPS_PER_MM (5.0f*16)
@@ -629,10 +658,18 @@
 #define DEFAULT_SPINDLE_PWM_OFF_VALUE 0.0f // Percent
 #define DEFAULT_SPINDLE_PWM_MAX_VALUE 100.0f // Percent
 //#define DEFAULT_SPINDLE_AT_SPEED_TOLERANCE 0.0f // Percent - 0 means not checked
+#if (MACHINE_TYPE == AUFERO_CNC)
+#define DEFAULT_SPINDLE_RPM_MAX 10000.0 // rpm
+#else
 #define DEFAULT_SPINDLE_RPM_MAX 1000.0 // rpm
+#endif
 #define DEFAULT_SPINDLE_RPM_MIN 0.0 // rpm
 //#define DEFAULT_SPINDLE_ENABLE_OFF_WITH_ZERO_SPEED 0
+#if (MACHINE_TYPE == AUFERO_CNC)
+#define DEFAULT_INVERT_SPINDLE_DISABLE_PIN
+#else
 #define DEFAULT_INVERT_SPINDLE_ENABLE_PIN
+#endif
 #define DEFAULT_STEP_PULSE_MICROSECONDS 5.0f
 //#define DEFAULT_STEP_PULSE_DELAY 5.0f // uncomment to set default > 0.0f
 #define DEFAULT_STEPPER_IDLE_LOCK_TIME (100) // msec (0-65535, 255 keeps steppers enabled)
@@ -652,6 +689,19 @@
 //#define DEFAULT_LATHE_MODE
 #define DEFAULT_HOMING_ENABLE
 #define DEFAULT_HOMING_ALLOW_MANUAL
+
+#if (MACHINE_TYPE == AUFERO_CNC)
+#define DEFAULT_HOMING_DIR_MASK (0b000011) // move positive dir (0b00cbazyx) 111
+#define DEFAULT_HOMING_FEED_RATE (1.0f*60) // mm/min
+#define DEFAULT_HOMING_SEEK_RATE (10.0f*60) // mm/min
+#define DEFAULT_HOMING_DEBOUNCE_DELAY 250 // msec (0-65k)
+#define DEFAULT_HOMING_PULLOFF 0.5f // mm
+
+#define DEFAULT_A_STEPS_PER_MM (50.0f*16)
+#define DEFAULT_A_MAX_RATE (100.0f*60) // mm/min
+#define DEFAULT_A_ACCELERATION (10.0*60*60) // 10*60*60 mm/min^2 = 10 mm/sec^2
+#define DEFAULT_A_MAX_TRAVEL 0 // mm
+#else
 #define DEFAULT_HOMING_DIR_MASK (0b000111) // move positive dir (0b00cbazyx)
 #define DEFAULT_HOMING_FEED_RATE (10.0f*60) // mm/min
 #define DEFAULT_HOMING_SEEK_RATE (50.0f*60) // mm/min
@@ -662,7 +712,7 @@
 #define DEFAULT_A_MAX_RATE (100.0f*60) // mm/min
 #define DEFAULT_A_ACCELERATION (10.0*60*60) // 10*60*60 mm/min^2 = 10 mm/sec^2
 #define DEFAULT_A_MAX_TRAVEL 0 // mm
-
+#endif
 //#define DEFAULT_B_STEPS_PER_MM 250.0f
 //#define DEFAULT_B_MAX_RATE 500.0f // mm/min
 //#define DEFAULT_B_ACCELERATION (10.0*60*60) // 10*60*60 mm/min^2 = 10 mm/sec^2
@@ -677,10 +727,12 @@
 
 #ifdef DEFAULT_HOMING_ENABLE
 
+#if (MACHINE_TYPE == AUFERO_CNC)
 // Number of homing cycles performed after when the machine initially jogs to limit switches.
 // This help in preventing overshoot and should improve repeatability. This value should be one or
 // greater.
-#define DEFAULT_N_HOMING_LOCATE_CYCLE 1 // Integer (1-127)
+
+#define DEFAULT_N_HOMING_LOCATE_CYCLE 2 // Integer (1-127)
 
 // If homing is enabled, homing init lock sets Grbl into an alarm state upon power up. This forces
 // the user to perform the homing cycle (or override the locks) before doing anything else. This is
@@ -703,8 +755,12 @@
 // will not be affected by pin sharing.
 // NOTE: Defaults are set for a traditional 3-axis CNC machine. Z-axis first to clear, followed by X & Y.
 
-#define HOMING_CYCLE_0 (X_AXIS_BIT|Y_AXIS_BIT) //(Z_AXIS_BIT)             // REQUIRED: First move Z to clear workspace.
-#define HOMING_CYCLE_1 (Z_AXIS_BIT)  // OPTIONAL: Then move X,Y at the same time.
+#define HOMING_CYCLE_1 (X_AXIS_BIT|Y_AXIS_BIT) //(Z_AXIS_BIT)             // REQUIRED: First move Z to clear workspace.
+#define HOMING_CYCLE_0 (Z_AXIS_BIT)  // OPTIONAL: Then move X,Y at the same time.
+#else
+#define DEFAULT_N_HOMING_LOCATE_CYCLE  1// Integer (1-127)
+#define  HOMING_CYCLE_0 (X_AXIS_BIT|Y_AXIS_BIT)
+#endif
 //#define HOMING_CYCLE_2 0                        // OPTIONAL: Uncomment and add axes mask to enable
 #if N_AXIS > 3
 //#define HOMING_CYCLE_3 0                        // OPTIONAL: Uncomment and add axes mask to enable
