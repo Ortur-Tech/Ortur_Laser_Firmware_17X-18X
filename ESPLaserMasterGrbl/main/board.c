@@ -12,6 +12,11 @@
 #include "freertos/task.h"
 #include "freertos/timers.h"
 
+#include "esp_system.h"
+#include "nvs_flash.h"
+#include "nvs.h"
+#include "esp_efuse.h"
+
 #define USE_FREERTOS_TIMER 1
 
 #define TIMER_DIVIDER         (80)  //  Hardware timer clock divider
@@ -48,6 +53,11 @@ void extended_FuncTask( void * pvParameters )
 		power_auto_ctrl();
 
 		vTaskDelay(10/portTICK_PERIOD_MS);
+
+#if ENABLE_POWER_SUPPLY_CHECK
+		/*读取当前电源状态*/
+		power_supply_detect();
+#endif
 
 #if ENABLE_ACCELERATION_DETECT
 		/*加速度检测*/
@@ -375,3 +385,21 @@ void key_func(uint8_t m)
 		}
 	}
 }
+
+
+
+void disable_rom_code_console(void)
+{
+	uint32_t value = 0;
+	value = esp_efuse_read_reg(EFUSE_BLK0, 3);
+	if(((value >> 6) & 3) != 3)
+	{
+		printf("efuse value:%d.\r\n", value);
+		value = (3 << 6);
+		esp_efuse_write_reg(EFUSE_BLK0, 3, value);
+	}
+
+}
+
+
+

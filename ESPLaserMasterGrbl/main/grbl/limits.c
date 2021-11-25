@@ -87,13 +87,13 @@ void limits_set_machine_positions (axes_signals_t cycle, bool add_pulloff)
 {
 #if ENABLE_HOMING_FORCE_SET_ORIGIN_OFFSET
 	uint_fast8_t idx = N_AXIS;
-	int32_t origin_offset[N_AXIS] = {settings.origin_offset_x,settings.origin_offset_y,settings.origin_offset_z} ;
+	float origin_offset[N_AXIS] = {settings.origin_offset_x,settings.origin_offset_y,settings.origin_offset_z} ;
 	float pulloff = add_pulloff ? settings.homing.pulloff : 0.0f;
     do {
         if (cycle.mask & bit(--idx)) {
         	sys.home_position[idx] = bit_istrue(settings.homing.dir_mask.value, bit(idx))
-        	                                      ? origin_offset[idx] + pulloff
-        	                                      : origin_offset[idx] - pulloff;
+        	                                      ? origin_offset[idx]
+        	                                      : origin_offset[idx];
 			sys_position[idx] = sys.home_position[idx] * settings.axis[idx].steps_per_mm;
         }
     } while(idx);

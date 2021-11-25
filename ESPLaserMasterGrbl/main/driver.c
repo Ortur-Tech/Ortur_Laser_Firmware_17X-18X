@@ -46,6 +46,7 @@
 #include "driver/ledc.h"
 #include "hal/ledc_ll.h"
 #include "hal/ledc_types.h"
+#include "esp32-hal-uart.h"
 
 #if TRINAMIC_ENABLE
 #include "motors/trinamic.h"
@@ -163,6 +164,7 @@ typedef struct {
 int16_t multiSteamGetC (void);
 void multiSteamWriteS (const char *s);
 void multiSteamWriteSAll (const char *s);
+void multiSteamWriteBufSize(void);
 uint16_t multiSteamRxFree (void);
 void multiSteamRxFlush (void);
 void multiSteamRxCancel (void);
@@ -179,6 +181,7 @@ const io_stream_t serial_stream = {
     .read = multiSteamGetC,
     .write = multiSteamWriteS,
     .write_all = multiSteamWriteSAll,
+	.write_buffer_size = multiSteamWriteBufSize,
     .get_rx_buffer_available = multiSteamRxFree,
     .reset_read_buffer = multiSteamRxFlush,
     .cancel_read_buffer = multiSteamRxCancel,
@@ -941,10 +944,29 @@ uint8_t esp32s2_read_output_pin(uint32_t num)
 	return 0;
 }
 
+uint32_t  spindle_pwm_value = 0;
+
+uint32_t spindle_pwm_get(void)
+{
+	return spindle_pwm_value;
+}
+
+void spindle_pwm_set(uint32_t pwm)
+{
+	spindle_pwm_value = pwm;
+	if(pwm == 0)
+	{
+		ledc_stop(ledConfig.speed_mode, ledConfig.channel, settings.spindle.invert.pwm ? 1 : 0);
+	}
+	else
+	{
+		ledc_set_duty(ledConfig.speed_mode, ledConfig.channel, pwm);
+		ledc_update_duty(ledConfig.speed_mode, ledConfig.channel);
+	}
+}
 
 uint8_t is_SpindleEnable(void)
 {
-
 	return esp32s2_read_output_pin(SPINDLE_ENABLE_PIN) ? 0:1 ;
 }
 
@@ -952,10 +974,11 @@ uint8_t is_SpindleEnable(void)
 uint8_t is_SpindleOpen(void)
 {
 	uint32_t duty = 0;
-	duty = ledc_get_duty(ledConfig.speed_mode, ledConfig.channel);
+	duty = spindle_pwm_get();
 	duty = settings.spindle.invert.pwm ? pwm_max_value - duty : duty;
 	return duty && is_SpindleEnable();
 }
+
 /*获取激光pwm功率，*/
 uint16_t laser_GetPower(void)
 {
@@ -963,7 +986,7 @@ uint16_t laser_GetPower(void)
 	return laser_get_value(COMM_LASER_PWM_DUTY) ;
 #else
 	uint32_t duty = 0;
-	duty = ledc_get_duty(ledConfig.speed_mode, ledConfig.channel);
+	duty = spindle_pwm_get();
 	duty = settings.spindle.invert.pwm ? pwm_max_value - duty : duty;
 	return (duty) > 1000 ? 1000 : (duty);
 #endif
@@ -993,16 +1016,13 @@ IRAM_ATTR void spindle_set_speed (uint_fast16_t pwm_value)
         	laser_pwm_duty_enqueue(settings.spindle.invert.pwm ? 1 : 0);
         }
 #else
-        if(spindle_pwm.always_on) {
-            ledc_set_duty(ledConfig.speed_mode, ledConfig.channel, spindle_pwm.off_value);
-            ledc_update_duty(ledConfig.speed_mode, ledConfig.channel);
+        if(spindle_pwm.always_on)
+        {
+            spindle_pwm_set(spindle_pwm.off_value);
         }
         else
         {
-        	ledc_set_duty(ledConfig.speed_mode, ledConfig.channel, spindle_pwm.off_value);
-        	ledc_update_duty(ledConfig.speed_mode, ledConfig.channel);
-        	while(spindle_pwm.off_value != ledc_get_duty(ledConfig.speed_mode, ledConfig.channel));
-            ledc_stop(ledConfig.speed_mode, ledConfig.channel, settings.spindle.invert.pwm ? 1 : 0);
+        	spindle_pwm_set(0);
         }
 #endif
 #endif
@@ -1021,8 +1041,7 @@ IRAM_ATTR void spindle_set_speed (uint_fast16_t pwm_value)
 #if	ENABLE_DIGITAL_LASER
          laser_pwm_duty_enqueue(settings.spindle.invert.pwm ? pwm_max_value - pwm_value : pwm_value);
 #else
-         ledc_set_duty(ledConfig.speed_mode, ledConfig.channel, settings.spindle.invert.pwm ? pwm_max_value - pwm_value : pwm_value);
-         ledc_update_duty(ledConfig.speed_mode, ledConfig.channel);
+         spindle_pwm_set(settings.spindle.invert.pwm ? pwm_max_value - pwm_value : pwm_value);
 #endif
 #endif
         if(!pwmEnabled) {
@@ -1236,6 +1255,7 @@ void debounceTimerCallback (TimerHandle_t xTimer)
 // Configures perhipherals when settings are initialized or changed
 static void settings_changed (settings_t *settings)
 {
+	serialInit();
 
 #ifndef VFD_SPINDLE
 
@@ -2279,7 +2299,7 @@ uint32_t power_GetCurrent(void)
 #define VOTAGE_SAMPLING_RES 1000
 #define VOTAGE_DIV_RES 10000
 /*大于10V认为有电压*/
-#define VOTAGE_LIMIT 10 //10V
+#define VOTAGE_LIMIT 21 //10V
 
 #if (MACHINE_TYPE == OLM2)
 #define RATE_VOTAGE 12
@@ -2287,9 +2307,6 @@ uint32_t power_GetCurrent(void)
 #define RATE_VOTAGE 24
 #endif
 
-/*电源检测*/
-uint8_t report_power_flag = 0;//是否报告电源状态
-static uint8_t last_power_flag=0;//变化前电源状态
 
 #define IsMainPowrBitSet() (gpio_get_level(POWER_CHECK_PIN) ? 1:0)
 
@@ -2351,7 +2368,6 @@ uint8_t IsMainPowrIn(void)
 	/*大于10v认为有电*/
 	else if(votage > VOTAGE_LIMIT)
 	{
-		last_power_flag = 1;
 		use_time_save_flag = 1;
 		return 1;
 	}
@@ -2397,26 +2413,46 @@ void Main_PowerSupplyDebug(void)
 	}
 #endif
 }
+static uint8_t power_supply_status = 0;
+
 /*0:check power 1:report power*/
 void Main_PowerCheckReport(uint8_t mode)
 {
+	static uint8_t report_flag = 0;
 	/*报告状态*/
 	if(mode)
 	{
-		if(report_power_flag)
+		if(report_flag)
 		{
-		  report_feedback_message(report_power_flag);
-		  report_power_flag=0;
+			report_flag = 0;
+			report_feedback_message(Message_NoPowerSupply);
 		}
 	}
 	else /*检测状态*/
 	{
-		if(!IsMainPowrIn())
-		 {
-			report_power_flag = Message_NoPowerSupply;
-			 //report_feedback_message(MESSAGE_MAIN_POWER_OFF);
-		 }
+		report_flag = !power_supply_detect();
 	}
+}
+
+
+
+/*在功能任务函数里面调用*/
+uint8_t power_supply_detect(void)
+{
+	static uint32_t time = 0;
+
+	if(power_supply_status != IsMainPowrIn())
+	{
+		if((HAL_GetTick() - time) > 10)
+		{
+			time = HAL_GetTick();
+			if(power_supply_status != IsMainPowrIn())
+			{
+				power_supply_status = IsMainPowrIn();
+			}
+		}
+	}
+	return power_supply_status;
 }
 /**
  * 检测主电源状态
@@ -2424,23 +2460,12 @@ void Main_PowerCheckReport(uint8_t mode)
 void Main_PowerCheck(void)
 {
 #if POWER_CHECK_ADC_ENABLE
-	if(last_power_flag==0)
+	static uint8_t last_power_flag=0;//变化前电源状态
+
+	if(last_power_flag != power_supply_status)
 	{
-		if(IsMainPowrIn())
-		{
-			//power_CtrOn();
-			report_feedback_message(Message_PowerSupplied);
-		}
-	}
-	else
-	{
-		/*掉电去抖*/
-		if(!IsMainPowrIn())
-		{
-			last_power_flag=0;
-			//power_CtrOff();
-			report_feedback_message(Message_NoPowerSupply);
-		}
+		last_power_flag = power_supply_status;
+		report_feedback_message(last_power_flag ? Message_PowerSupplied : Message_NoPowerSupply);
 	}
 #else
 
@@ -2468,13 +2493,14 @@ void Main_PowerCheck(void)
 }
 
 
+
 // Initializes MCU peripherals for Grbl use
 static bool driver_setup (settings_t *settings)
 {
 #if TRINAMIC_ENABLE && CNC_BOOSTERPACK // Trinamic BoosterPack does not support mixed drivers
     driver_settings.trinamic.driver_enable.mask = AXES_BITMASK;
 #endif
-
+    serialInit();
     /******************
      *  Stepper init  *
      ******************/
@@ -2667,7 +2693,7 @@ int16_t multiSteamGetC (void)
 
 	if( isUsbCDCConnected() )
 	{
-		if( last_steam == USBCDC || hal.stream.switchable)
+		if(last_steam == USBCDC || hal.stream.switchable)
 		{
 			c = usbGetC();
 			if(last_steam != USBCDC && (c != -1))
@@ -2682,7 +2708,7 @@ int16_t multiSteamGetC (void)
 		hal.stream.switchable = true;
 		last_steam = HWUART;
 		usbRxFlush();//清空USBCDC中剩余的数据
-		serialFlush();//清空串口积累的数据
+		//serialFlush();//清空串口积累的数据
 		c = '\n'; //强行补换行符防止命令被截断,或者污染后续的命令字符串
 	}
 
@@ -2715,6 +2741,14 @@ void multiSteamWriteS (const char *s)
 		serialWriteS(s);
 }
 
+#define RX_BUF_RESERVE 512
+
+void multiSteamWriteBufSize(void)
+{
+	if(isUsbCDCConnected())
+		usbWriteS(uitoa(usbRxFree() >= RX_BUF_RESERVE ? usbRxFree() - RX_BUF_RESERVE : 0 )); //仅在VCP连接的情况下发送字符串,否则会造成发送缓冲溢出阻塞
+	serialWriteS(uitoa(serialRXFree() >= RX_BUF_RESERVE ? serialRXFree() - RX_BUF_RESERVE : 0));
+}
 //
 // Writes a null terminated string to all output stream, blocks if buffer full
 //

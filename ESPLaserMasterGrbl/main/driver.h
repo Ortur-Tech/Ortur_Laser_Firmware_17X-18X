@@ -412,4 +412,5 @@ void laser_use_time_save(void);
 void laser_on_time_count(void);
 void power_auto_ctrl(void);
 void Main_PowerSupplyDebug(void);
+uint8_t power_supply_detect(void);
 #endif // __DRIVER_H__

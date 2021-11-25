@@ -549,6 +549,8 @@ void accel_detection_limit()
 {
   static uint8_t recursion = 0;
 
+  if(settings.accel_sensitivity == 0) return;//灵敏度为0即关闭功能
+
   if(GsensorDeviceType == 0) return;
 
   if(!iic_init_flag) return;
