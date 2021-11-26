@@ -763,6 +763,7 @@
 #else
 #define DEFAULT_N_HOMING_LOCATE_CYCLE  1// Integer (1-127)
 #define  HOMING_CYCLE_0 (X_AXIS_BIT|Y_AXIS_BIT)
+#define  HOMING_CYCLE_1 0
 #endif
 //#define HOMING_CYCLE_2 0                        // OPTIONAL: Uncomment and add axes mask to enable
 #if N_AXIS > 3
