@@ -2294,7 +2294,11 @@ uint32_t power_GetCurrent(void)
 }
 
 /*电压使用ADC检测方式*/
+#if (BOARD_VERSION == OLM_ESP_V1X)
+#define POWER_CHECK_ADC_ENABLE 0
+#else
 #define POWER_CHECK_ADC_ENABLE 1
+#endif
 
 #define VOTAGE_SAMPLING_RES 1000
 #define VOTAGE_DIV_RES 10000
@@ -2388,7 +2392,7 @@ uint8_t IsMainPowrIn(void)
 		HAL_Delay(10);
 		if(IsMainPowrBitSet())
 		{
-			last_power_flag=1;
+		//	last_power_flag=1;
 			return 1;
 		}
 	}
@@ -2459,9 +2463,8 @@ uint8_t power_supply_detect(void)
  */
 void Main_PowerCheck(void)
 {
-#if POWER_CHECK_ADC_ENABLE
 	static uint8_t last_power_flag=0;//变化前电源状态
-
+#if POWER_CHECK_ADC_ENABLE
 	if(last_power_flag != power_supply_status)
 	{
 		last_power_flag = power_supply_status;
@@ -2474,6 +2477,7 @@ void Main_PowerCheck(void)
 		if(IsMainPowrIn())
 		{
 			report_feedback_message(Message_PowerSupplied);
+			last_power_flag = 1;
 		}
 	}
 	else
