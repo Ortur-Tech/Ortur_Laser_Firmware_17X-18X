@@ -306,6 +306,7 @@ static bool IOInitDone = false;
 portMUX_TYPE mux = portMUX_INITIALIZER_UNLOCKED;
 // Inverts the probe pin state depending on user settings and probing cycle mode.
 static uint8_t probe_invert;
+static uint8_t last_power_flag=0;//变化前电源状态
 
 #ifdef USE_I2S_OUT
 #define DIGITAL_IN(pin) i2s_out_state(pin)
@@ -2392,7 +2393,7 @@ uint8_t IsMainPowrIn(void)
 		HAL_Delay(10);
 		if(IsMainPowrBitSet())
 		{
-		//	last_power_flag=1;
+			last_power_flag=1;
 			return 1;
 		}
 	}
@@ -2463,7 +2464,6 @@ uint8_t power_supply_detect(void)
  */
 void Main_PowerCheck(void)
 {
-	static uint8_t last_power_flag=0;//变化前电源状态
 #if POWER_CHECK_ADC_ENABLE
 	if(last_power_flag != power_supply_status)
 	{

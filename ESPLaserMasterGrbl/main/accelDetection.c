@@ -80,7 +80,7 @@ esp_err_t i2c_master_init(void)
 #if ENABLE_DIGITAL_LASER
         .master.clk_speed = settings.iic_rate ? (settings.iic_rate * 1000) : 100000,// 400000,
 #else
-        .master.clk_speed = 400000,// 400000,
+        .master.clk_speed = 100000,// 400000,
 #endif
         		// .clk_flags = 0,          /*!< Optional, you can use I2C_SCLK_SRC_FLAG_* flags to choose i2c source clock here. */
     };
