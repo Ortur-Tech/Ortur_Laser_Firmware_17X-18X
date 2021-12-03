@@ -19,7 +19,7 @@
 #include "my_machine_map.h"
 #include "driver.h"
 
-#if MACHINE_TYPE == OLM2_PRO
+#if MACHINE_TYPE == OLM2_PRO_S1
 #if BOARD_VERSION == OLM_ESP_PRO_V1X
 #define OTA_FILE_NAME "ESP_OLM2_PRO_"
 #elif BOARD_VERSION == OLM_ESP_V1X
@@ -104,7 +104,7 @@ uint8_t msc_disk0[DISK_BLOCK_NUM][DISK_BLOCK_SIZE] = {
 				0xF8, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00,
 				0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x00, 0x29, 0x34, 0x12,
 				0x56, 0x78,
-#if (MACHINE_TYPE == OLM2_PRO) || (MACHINE_TYPE == OLM_PRO) || (MACHINE_TYPE == OLM2_S2) || (MACHINE_TYPE == OLM2)
+#if (MACHINE_TYPE == OLM2_PRO_S1) || (MACHINE_TYPE == OLM_PRO) || (MACHINE_TYPE == OLM2_S2) || (MACHINE_TYPE == OLM2)
 				'O', 'r', 't', 'u', 'r', ' ', 'L', 'a', 's', 'e', 'r',
 #elif (MACHINE_TYPE == AUFERO_1) || (MACHINE_TYPE == AUFERO_2)
 				'A', 'u', 'f', 'e', 'r', 'o', 'L', 'a', 's', 'e', 'r',
@@ -171,7 +171,14 @@ uint8_t msc_disk0[DISK_BLOCK_NUM][DISK_BLOCK_SIZE] = {
 		//------------- Block2: Root Directory -------------//
 		{
 				// first entry is volume label
-				'O', 'R', 'T', 'U', 'R', ' ', 'L', 'a', 's', 'e', 'r', 0x08,
+#if (MACHINE_TYPE == OLM2_PRO_S1) || (MACHINE_TYPE == OLM_PRO) || (MACHINE_TYPE == OLM2_S2) || (MACHINE_TYPE == OLM2)
+				'O', 'r', 't', 'u', 'r', ' ', 'L', 'a', 's', 'e', 'r',
+#elif (MACHINE_TYPE == AUFERO_1) || (MACHINE_TYPE == AUFERO_2)
+				'A', 'u', 'f', 'e', 'r', 'o', 'L', 'a', 's', 'e', 'r',
+#else
+#error "unsupport machine."
+#endif
+				0x08,
 				0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 				0x4F, 0x6D, 0x65, 0x43, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 				// second entry is readme file
