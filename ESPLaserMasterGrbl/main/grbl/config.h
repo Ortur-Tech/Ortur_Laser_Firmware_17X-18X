@@ -75,7 +75,7 @@
 // immediately forces a feed hold and then safely de-energizes the machine. Resuming is blocked until
 // the safety door is re-engaged. When it is, Grbl will re-energize the machine and then resume on the
 // previous tool path, as if nothing happened.
-#if MACHINE_TYPE == AUFERO_2 ||MACHINE_TYPE == OLM2_S2 ||MACHINE_TYPE == OLM2 || MACHINE_TYPE == OLM2_PRO || (MACHINE_TYPE == OLM_PRO) ||(MACHINE_TYPE == AUFERO_4) ||(MACHINE_TYPE == AUFERO_1) ||(MACHINE_TYPE == AUFERO_CNC)
+#if MACHINE_TYPE == AUFERO_2 ||MACHINE_TYPE == OLM2_S2 ||MACHINE_TYPE == OLM2 || MACHINE_TYPE == OLM2_PRO_S1 || (MACHINE_TYPE == OLM_PRO) ||(MACHINE_TYPE == AUFERO_4) ||(MACHINE_TYPE == AUFERO_1) ||(MACHINE_TYPE == AUFERO_CNC)
 
 #else
 #define ENABLE_SAFETY_DOOR_INPUT_PIN // Default disabled. Uncomment to enable.
@@ -490,7 +490,7 @@
 /*检测阈值*/
 #define DEFAULT_FIRE_ALARM_TRIGGER_THRESHOLD 		70
 /*触发次数阈值*/
-#define DEFAULT_FIRE_ALARM_TRIGGER_TIME_THRESHOLD 	70
+#define DEFAULT_FIRE_ALARM_TRIGGER_TIME_THRESHOLD 	0//0 ：默认关闭 火焰检测， 70
 /*IO触发或ADC触发*/
 #define USE_ADC_FIRE_CHECK 1
 
@@ -499,7 +499,7 @@
 #define DEFAULT_LASER_FOCAL_LENGTH 					50 //mm 焦距
 #define ENABLE_AUTO_FOCUS							0
 /*回零偏移*/
-#if (MACHINE_TYPE == AUFERO_2) || (MACHINE_TYPE == OLM2) || MACHINE_TYPE == OLM2_S2 || MACHINE_TYPE == OLM2_PRO || (MACHINE_TYPE == OLM_PRO) || (MACHINE_TYPE == AUFERO_4)||(MACHINE_TYPE == AUFERO_1)||(MACHINE_TYPE == AUFERO_CNC)
+#if (MACHINE_TYPE == AUFERO_2) || (MACHINE_TYPE == OLM2) || MACHINE_TYPE == OLM2_S2 || MACHINE_TYPE == OLM2_PRO_S1 || (MACHINE_TYPE == OLM_PRO) || (MACHINE_TYPE == AUFERO_4)||(MACHINE_TYPE == AUFERO_1)||(MACHINE_TYPE == AUFERO_CNC)
 #define ENABLE_HOMING_FORCE_SET_ORIGIN_OFFSET 0
 #else
 #define ENABLE_HOMING_FORCE_SET_ORIGIN_OFFSET 1
@@ -547,7 +547,7 @@
 
 /********************************自定义功能 END****************************************/
 
-#if MACHINE_TYPE == OLM2_PRO
+#if MACHINE_TYPE == OLM2_PRO_S1
 #define DEFAULT_X_STEPS_PER_MM (5.0f*16)
 #define DEFAULT_Y_STEPS_PER_MM (5.0f*16)
 #define DEFAULT_Z_STEPS_PER_MM (708*3)
@@ -685,12 +685,12 @@
 #else
 #define DEFAULT_HARD_LIMIT_ENABLE
 #define DEFAULT_SOFT_LIMIT_ENABLE
+#define DEFAULT_HOMING_ENABLE
 #endif
 #define DEFAULT_JOG_LIMIT_ENABLE
 #define DEFAULT_INVERT_PROBE_PIN
 #define DEFAULT_LASER_MODE
 //#define DEFAULT_LATHE_MODE
-#define DEFAULT_HOMING_ENABLE
 #define DEFAULT_HOMING_ALLOW_MANUAL
 
 #if (MACHINE_TYPE == AUFERO_CNC)
@@ -781,7 +781,7 @@
 // After homing, Grbl will set by default the entire machine space into negative space, as is typical
 // for professional CNC machines, regardless of where the limit switches are located. Set this
 // define to 1 to force Grbl to always set the machine origin at the homed location despite switch orientation.
-#if (MACHINE_TYPE == OLM2) || MACHINE_TYPE == OLM2_S2 || MACHINE_TYPE == OLM2_PRO || (MACHINE_TYPE == OLM_PRO) || (MACHINE_TYPE == AUFERO_1) || (MACHINE_TYPE == AUFERO_CNC)
+#if (MACHINE_TYPE == OLM2) || MACHINE_TYPE == OLM2_S2 || MACHINE_TYPE == OLM2_PRO_S1 || (MACHINE_TYPE == OLM_PRO) || (MACHINE_TYPE == AUFERO_1) || (MACHINE_TYPE == AUFERO_CNC)
 #define HOMING_FORCE_SET_ORIGIN // Default disabled. Uncomment to enable.
 #endif
 
@@ -809,7 +809,7 @@
 // NOTE: Still a work-in-progress. Machine coordinates must be in all negative space and
 // does not work with HOMING_FORCE_SET_ORIGIN enabled. Parking motion also moves only in
 // positive direction.
-#if (MACHINE_TYPE == AUFERO_2) || (MACHINE_TYPE == OLM2) || MACHINE_TYPE == OLM2_S2 ||(MACHINE_TYPE == OLM2_PRO) || (MACHINE_TYPE == OLM_PRO) ||(MACHINE_TYPE == AUFERO_4) ||(MACHINE_TYPE == AUFERO_1) ||(MACHINE_TYPE == AUFERO_CNC)
+#if (MACHINE_TYPE == AUFERO_2) || (MACHINE_TYPE == OLM2) || MACHINE_TYPE == OLM2_S2 ||(MACHINE_TYPE == OLM2_PRO_S1) || (MACHINE_TYPE == OLM_PRO) ||(MACHINE_TYPE == AUFERO_4) ||(MACHINE_TYPE == AUFERO_1) ||(MACHINE_TYPE == AUFERO_CNC)
 
 #else
 #define DEFAULT_PARKING_ENABLE // Default disabled. Uncomment to enable.
