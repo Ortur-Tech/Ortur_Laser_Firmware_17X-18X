@@ -13,7 +13,6 @@
 #include "my_machine_map.h"
 #include "digital_laser.h"
 #include "software_i2c.h"
-#include "math.h"
 
 
 #ifndef ABS
@@ -22,7 +21,7 @@
 
 int16_t accel_x,accel_y, accel_z;
 int16_t accel_x_old,accel_y_old,accel_z_old;
-float   accel_slope;
+uint16_t accel_slope;
 uint8_t shake_detected = 0; //是否检测到震动
 #define  accel_check_interval_ms 100 //100毫秒检测一次
 uint32_t last_accel_check_ms = 0;
@@ -238,10 +237,9 @@ void BMA250_Init(void)
 void Sc7a20_Init(void)
 {
 
-	Write_One_Byte_iicaddr(SC7A20_ADDR, 0x20, 0x57); //200hz
-	Write_One_Byte_iicaddr(SC7A20_ADDR, 0x23, 0x08);//BDU-0：连续更新
-	Write_One_Byte_iicaddr(SC7A20_ADDR, 0x24, 0x40);//使能FIFO
-	Write_One_Byte_iicaddr(SC7A20_ADDR, 0x2E, 0x9F);//FM[]:10 Stream模式
+	Write_One_Byte_iicaddr(SC7A20_ADDR, 0x20, 0x47);
+	Write_One_Byte_iicaddr(SC7A20_ADDR, 0x23, 0x88);
+
 }
 /**
  * @brief Get_GsensorType
@@ -373,86 +371,34 @@ void BMA250_Get_Acceleration(short *gx, short *gy, short *gz)
 
 }
 
-void Quick_Sort(float *a, int left, int right) //方法
- {
-     if(left >= right)/*如果左边索引大于或者等于右边的索引就代表已经整理完成一个组了*/
-         return ;
-     int i = left;
-     int j = right;
-     int key = a[left];
-     while( i < j)    /*控制在当组内寻找一遍*/
-     {
-         while(i < j && key <= a[j])
-         /*而寻找结束的条件就是，1，找到一个大于key的数（大于或小于取决于你想升
-         序还是降序，这里是升序）2，没有符合条件1的，并且i与j的大小没有反转*/
-         {
-             j--;
-         }
-         a[i] = a[j];
-         while(i < j && key >= a[i])
-         /*这是i在当组内向前寻找，同上，不过注意与key的大小关系停止循环和上面相反，
-         因为排序思想是把数往两边扔，所以左右两边的数大小与key的关系相反*/
-         {
-             i++;
-         }
-         a[j] = a[i];
-     }
-     a[i] = key;/*当在当组内找完一遍以后就把中间数key回归*/
-     Quick_Sort(a, left, i - 1);/*最后用同样的方式对分出来的左边的小组进行同上的做法*/
-     Quick_Sort(a, i +1, right); /*用同样的方式对分出来的右边的小组进行同上的做法*/
- }
-
 /**
  * @brief Get_Acceleration
  * @param devAddr 设备地址
  * @param firstAddr 读取首地址
- * @return jitter_value 合加速度的最大差值（抖动大小）
+ * @param gx x轴加速度value
+ * @param gy y轴加速度value
+ * @param gz z轴加速度值
  */
-
-float Get_Acceleration(uint8_t devAddr ,uint8_t firstAddr)
+void Get_Acceleration(uint8_t devAddr ,uint8_t firstAddr,short *gx, short *gy, short *gz)
 {
-	uint16_t x_l8[32],x_h8[32],y_l8[32],y_h8[32],z_l8[32],z_h8[32];
-	short xyz_value[3][32]={0};
-	static float   xyz_acc[32] = {0};
-	float jitter_value = 0;
-	uint8_t len = 0;
-	uint8_t i = 0;
+	uint16_t x_l8,x_h8,y_l8,y_h8,z_l8,z_h8;
+
     /*读加速度值*/
-	firstAddr |= 0x80;
-	len = 0x1F&Read_One_Byte(devAddr, 0X2F);
-    while(len)
-    {
-		x_l8[i] = Read_One_Byte(devAddr, firstAddr);
-		x_h8[i] = Read_One_Byte(devAddr, firstAddr+1);
-		y_l8[i] = Read_One_Byte(devAddr, firstAddr+2);
-		y_h8[i] = Read_One_Byte(devAddr, firstAddr+3);
-		z_l8[i] = Read_One_Byte(devAddr, firstAddr+4);
-		z_h8[i] = Read_One_Byte(devAddr, firstAddr+5);
+    x_l8 = Read_One_Byte(devAddr, firstAddr);
+    x_h8 = Read_One_Byte(devAddr, firstAddr+1);
+    y_l8 = Read_One_Byte(devAddr, firstAddr+2);
+    y_h8 = Read_One_Byte(devAddr, firstAddr+3);
+    z_l8 = Read_One_Byte(devAddr, firstAddr+4);
+    z_h8 = Read_One_Byte(devAddr, firstAddr+5);
 
-		/*取高10bit*/
-		xyz_value[0][i] = (short)((x_h8[i]<<8)|x_l8[i]);
-		xyz_value[1][i] = (short)((y_h8[i]<<8)|y_l8[i]);
-		xyz_value[2][i] = (short)((z_h8[i]<<8)|z_l8[i]);
+    /*取高10bit*/
+    *gx=(short)((x_h8<<8)|x_l8);
+    *gy=(short)((y_h8<<8)|y_l8);
+    *gz=(short)((z_h8<<8)|z_l8);
 
-		xyz_value[0][i] = xyz_value[0][i] >> 6;
-		xyz_value[1][i] = xyz_value[1][i] >> 6;
-		xyz_value[2][i] = xyz_value[2][i] >> 6;
-
-		xyz_acc[i] = xyz_value[0][i]*xyz_value[0][i] + xyz_value[1][i]*xyz_value[1][i] + xyz_value[2][i]*xyz_value[2][i];
-		if(++i > 9)
-		{
-			break;
-		}
-		len --;
-    }
-    len = i;
-    if(len == 0)
-    {
-    	return 0;
-    }
-    Quick_Sort(xyz_acc,0,len-1);
-    jitter_value = sqrt(xyz_acc[len-1]) - sqrt(xyz_acc[0]);
-    return jitter_value;
+	*gx=(*gx)>>6;
+	*gy=(*gy)>>6;
+	*gz=(*gz)>>6;
 }
 
 portMUX_TYPE mux2 = portMUX_INITIALIZER_UNLOCKED;
@@ -469,45 +415,35 @@ void accel_detection()
 	portENTER_CRITICAL(&mux2);
 #endif
 	if(GsensorDeviceType == SC7A20_DEVICE)
-	{
-		accel_slope	 = Get_Acceleration(SC7A20_ADDR, 0X28);
-		if( accel_slope >= settings.accel_sensitivity )
-		{
-			shake_detected = 1;
-		}
-	}
+		Get_Acceleration(SC7A20_ADDR, 0X28,&accel_x,&accel_y,&accel_z);
 	else
-	{
-		BMA250_Get_Acceleration(&accel_x,&accel_y,&accel_z);
-		//计算加速度斜率(加加速度)突变
-		//如果加速度突变,就表明有较大的震动或位移,这样雕刻会错位,无法继续
-		//至少记录2次值以上加速度值
-		if(detection_count > 2)
-		{
-			//计算加速度变化,雕刻时,不允许加速度突变
-			// 3.91mg   g==10m/s
-	        #define G2MS(g) (g*10) // g 转 mm/s
-	        #define MG2G(mg) (mg*1000/391) // mg 转 g
-	        #define GS_K  1000  * 10 / 391 / accel_check_interval_ms //计算斜率的常数K
-			accel_slope = (float)( ABS(accel_x - accel_x_old) + ABS(accel_y - accel_y_old) + ABS(accel_z - accel_z_old) ) * GS_K * gsensor_extern_scale;
-			mprintf(LOG_INFO,"accel_slope:%f.\r\n",accel_slope);
-
-			if( accel_slope >= settings.accel_sensitivity )
-			{
-				mprintf(LOG_INFO,"xValue:%d. yValue:%d. zValue:%d.\r\n",accel_x_old,accel_y_old,accel_z_old);
-				mprintf(LOG_INFO,"xValue:%d. yValue:%d. zValue:%d.\r\n",accel_x,accel_y,accel_z);
-				shake_detected = 1;
-			}
-		}
-		//计算均值
-		accel_x_old = accel_x;
-		accel_y_old = accel_y;
-		accel_z_old = accel_z;
-	}
+		Get_Acceleration(BMA250_Addr, BMP_ACC_X_LSB,&accel_x,&accel_y,&accel_z);
 #if USE_SOFTWARE_IIC
 	portEXIT_CRITICAL(&mux2);
 #endif
 	mprintf(LOG_INFO,"xValue:%d. yValue:%d. zValue:%d.\r\n",accel_x,accel_y,accel_z);
+
+	//计算加速度斜率(加加速度)突变
+	//如果加速度突变,就表明有较大的震动或位移,这样雕刻会错位,无法继续
+	//至少记录2次值以上加速度值
+	if(detection_count > 2)
+	{
+		//计算加速度变化,雕刻时,不允许加速度突变
+		// 3.91mg   g==10m/s
+        #define G2MS(g) (g*10) // g 转 mm/s
+        #define MG2G(mg) (mg*1000/391) // mg 转 g
+        #define GS_K  1000  * 10 / 391 / accel_check_interval_ms //计算斜率的常数K
+		accel_slope = ( ABS(accel_x - accel_x_old) + ABS(accel_y - accel_y_old) + ABS(accel_z - accel_z_old) ) * GS_K * gsensor_extern_scale;
+		mprintf(LOG_INFO,"accel_slope:%d.\r\n",accel_slope);
+
+		if( accel_slope >= settings.accel_sensitivity )
+		{
+			mprintf(LOG_INFO,"xValue:%d. yValue:%d. zValue:%d.\r\n",accel_x_old,accel_y_old,accel_z_old);
+			mprintf(LOG_INFO,"xValue:%d. yValue:%d. zValue:%d.\r\n",accel_x,accel_y,accel_z);
+			shake_detected = 1;
+		}
+	}
+
 	if(shake_detected)
 	{
 		shake_detected = 0;
@@ -530,7 +466,7 @@ void accel_detection()
 			default:
 				hal.stream.write_all("[UKNW:(");
 			}
-			hal.stream.write(appendbuf(1,ftoa(accel_slope,3)));
+			hal.stream.write(appendbuf(1,uitoa((uint32_t)accel_slope)));
 			hal.stream.write_all(") Shock and Movement detected! Check TroubleShooting Section in User Manual.]"ASCII_EOL);
 			sys.state = STATE_ALARM;
 			sys.abort = 1;
@@ -538,6 +474,12 @@ void accel_detection()
 			spindle_off_directly();
 		}
 	}
+
+	//计算均值
+	accel_x_old = accel_x;
+	accel_y_old = accel_y;
+	accel_z_old = accel_z;
+
 	++detection_count;//统计检测次数
 }
 
