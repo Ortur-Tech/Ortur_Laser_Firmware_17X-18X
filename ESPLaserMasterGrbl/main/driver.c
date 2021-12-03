@@ -2304,7 +2304,7 @@ uint32_t power_GetCurrent(void)
 #define VOTAGE_SAMPLING_RES 1000
 #define VOTAGE_DIV_RES 10000
 /*大于10V认为有电压*/
-#define VOTAGE_LIMIT 21 //10V
+//#define VOTAGE_LIMIT 21 //10V
 
 #if (MACHINE_TYPE == OLM2)
 #define RATE_VOTAGE 12
@@ -2371,7 +2371,7 @@ uint8_t IsMainPowrIn(void)
 		return 2;
 	}
 	/*大于10v认为有电*/
-	else if(votage > VOTAGE_LIMIT)
+	else if(votage > (RATE_VOTAGE - 3))
 	{
 		use_time_save_flag = 1;
 		return 1;
