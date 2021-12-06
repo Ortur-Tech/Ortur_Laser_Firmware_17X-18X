@@ -10,6 +10,14 @@
 
 #include "stdio.h"
 #include "config.h"
+/************************硬件版本对应的机型*********************************
+// *    BOARD_VERSION                    MACHINE_TYPE                         软件版本
+// *  OLM_ESP_PRO_V1X  --- AUFERO1---AUFERO2---OLM2S2---OLM2_PRO_S1(S2机型)     V18X
+// *                                             ||
+// *  S2_MAX_V10                               OLM2(S0)                         V18X
+// *
+// *  OLM_ESP_V1X      --- OLM2_PRO_S1（S1机型）                                 V17X
+ ****************************************************************************/
 
 
 /*******************硬件版本定义 BEGIN*******************/
@@ -18,8 +26,8 @@
 #define OLM_ESP_PRO_V1X     2   //我们自己的主板
 #define OCM_ESP_PRO_V1X     3   //我们自己的主板
 
-#define ORTUR_HW_NAME 		"OLM_ESP_PRO_V1.2" //"OLM_ESP_V1X" //
-#define BOARD_VERSION 		OLM_ESP_PRO_V1X //OLM_ESP_V1X //
+#define ORTUR_HW_NAME 		"OLM_ESP_PRO_V1.2"  //"OLM_ESP_PRO_V1.2"   //"OLM_ESP_V1X"  //"S2_MAX_V1.0"
+#define BOARD_VERSION 		 OLM_ESP_PRO_V1X     //OLM_ESP_PRO_V1X   //OLM_ESP_V1X   //OLM_ESP_PRO_V1X
 /*******************硬件版本定义 END*******************/
 
 
@@ -34,7 +42,7 @@
 #define OLM2				100200   //方框机400*430
 #define OLM2_S2             100202
 #define OLM2_PRO		    102000
-#define OLM2_PRO_S1		    102001
+#define OLM2_PRO_S1		    102001  //S2版本只需要修改主板名
 #define OLM2_PRO_S2		    102002
 #define OLM3	     		100300
 
@@ -46,7 +54,7 @@
 #define AUFERO_4			200400	//方框机器370*400
 
 
-#define MACHINE_TYPE 	    AUFERO_1 //OLM2_PRO //AUFERO_1 //OLM2_PRO //OLM2_S2 //AUFERO_2 //AUFERO_2 // //AUFERO_1
+#define MACHINE_TYPE 	    OLM2_S2  //OLM2_PRO_S1 //AUFERO_1 //OLM2_PRO_S1 //OLM2_S2 //AUFERO_2 //AUFERO_2 // //AUFERO_1
 /*******************机型定义 END*******************/
 
 

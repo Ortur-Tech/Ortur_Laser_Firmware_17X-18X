@@ -807,7 +807,7 @@ status_code_t mc_homing_cycle (axes_signals_t cycle)
                     if(!limits_go_home(cycle))
                         break;
                 }
-            } while(++idx < (N_AXIS-2));
+            } while(++idx < N_AXIS);//++idx < (N_AXIS-2)
         }
 
         // If hard limits feature enabled, re-enable hard limits pin change register after homing cycle.

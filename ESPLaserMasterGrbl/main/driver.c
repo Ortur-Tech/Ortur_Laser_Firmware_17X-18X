@@ -306,6 +306,7 @@ static bool IOInitDone = false;
 portMUX_TYPE mux = portMUX_INITIALIZER_UNLOCKED;
 // Inverts the probe pin state depending on user settings and probing cycle mode.
 static uint8_t probe_invert;
+static uint8_t last_power_flag=0;//变化前电源状态
 
 #ifdef USE_I2S_OUT
 #define DIGITAL_IN(pin) i2s_out_state(pin)
@@ -2294,12 +2295,16 @@ uint32_t power_GetCurrent(void)
 }
 
 /*电压使用ADC检测方式*/
+#if (BOARD_VERSION == OLM_ESP_V1X)
+#define POWER_CHECK_ADC_ENABLE 0
+#else
 #define POWER_CHECK_ADC_ENABLE 1
+#endif
 
 #define VOTAGE_SAMPLING_RES 1000
 #define VOTAGE_DIV_RES 10000
 /*大于10V认为有电压*/
-#define VOTAGE_LIMIT 21 //10V
+//#define VOTAGE_LIMIT 21 //10V
 
 #if (MACHINE_TYPE == OLM2)
 #define RATE_VOTAGE 12
@@ -2366,7 +2371,7 @@ uint8_t IsMainPowrIn(void)
 		return 2;
 	}
 	/*大于10v认为有电*/
-	else if(votage > VOTAGE_LIMIT)
+	else if(votage > (RATE_VOTAGE - 3))
 	{
 		use_time_save_flag = 1;
 		return 1;
@@ -2460,8 +2465,6 @@ uint8_t power_supply_detect(void)
 void Main_PowerCheck(void)
 {
 #if POWER_CHECK_ADC_ENABLE
-	static uint8_t last_power_flag=0;//变化前电源状态
-
 	if(last_power_flag != power_supply_status)
 	{
 		last_power_flag = power_supply_status;
@@ -2474,6 +2477,7 @@ void Main_PowerCheck(void)
 		if(IsMainPowrIn())
 		{
 			report_feedback_message(Message_PowerSupplied);
+			last_power_flag = 1;
 		}
 	}
 	else
@@ -2543,7 +2547,7 @@ static bool driver_setup (settings_t *settings)
         .intr_type = GPIO_INTR_DISABLE
     };
     /*避免开机风扇转*/
-#if !ENABLE_DIGITAL_LASER
+#if !ENABLE_DIGITAL_LASER && !ENABLE_CNC_SPINDLE
     gpio_set_level(SPINDLE_ENABLE_PIN,1);
 #else
     gpio_set_level(SPINDLE_ENABLE_PIN,0);
