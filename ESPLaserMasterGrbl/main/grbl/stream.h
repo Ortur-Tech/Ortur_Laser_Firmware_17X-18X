@@ -37,8 +37,15 @@
 #define ASCII_DEL  0x7F
 #define ASCII_EOL  "\r\n"
 
+//  avoid steam suspend and backup
+#define STEAM_NO_BACKUP 1
+
 #ifndef RX_BUFFER_SIZE
-#define RX_BUFFER_SIZE (1024 * 16) // must be a power of 2
+#define RX_BUFFER_SIZE (1024 * 64) // must be a power of 2
+#endif
+
+#ifndef USB_RX_BUFFER_SIZE
+#define USB_RX_BUFFER_SIZE (1024 * 8) // must be a power of 2
 #endif
 
 #ifndef TX_BUFFER_SIZE
@@ -86,9 +93,24 @@ typedef struct {
 #ifdef SERIAL_RTS_HANDSHAKE
     volatile bool rts_state;
 #endif
+#if !STEAM_NO_BACKUP
     bool backup;
+#endif
     char data[RX_BUFFER_SIZE];
 } stream_rx_buffer_t;
+
+typedef struct {
+    volatile uint_fast16_t head;
+    volatile uint_fast16_t tail;
+    bool overflow;
+#ifdef SERIAL_RTS_HANDSHAKE
+    volatile bool rts_state;
+#endif
+#if !STEAM_NO_BACKUP
+    bool backup;
+#endif
+    char data[USB_RX_BUFFER_SIZE];
+} stream_usb_rx_buffer_t;
 
 typedef struct {
     volatile uint_fast16_t head;
@@ -103,7 +125,9 @@ typedef struct {
     char data[BLOCK_TX_BUFFER_SIZE];
 } stream_block_tx_buffer_t;
 
+#if !STEAM_NO_BACKUP
 bool stream_rx_suspend (stream_rx_buffer_t *rxbuffer, bool suspend);
 void stream_rx_backup (stream_rx_buffer_t *rxbuffer);
+#endif
 
 #endif

@@ -23,13 +23,17 @@
 
 #include "hal.h"
 
+#if !STEAM_NO_BACKUP
 static stream_rx_buffer_t rxbackup;
+#endif
 
 // "dummy" version of serialGetC
 static int16_t stream_get_null (void)
 {
     return SERIAL_NO_DATA;
 }
+
+#if !STEAM_NO_BACKUP
 
 bool stream_rx_suspend (stream_rx_buffer_t *rxbuffer, bool suspend)
 {
@@ -47,3 +51,5 @@ ISR_CODE void stream_rx_backup (stream_rx_buffer_t *rxbuffer)
     rxbuffer->backup = true;
     rxbuffer->tail = rxbuffer->head;
 }
+
+#endif

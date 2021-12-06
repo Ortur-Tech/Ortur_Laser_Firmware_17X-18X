@@ -102,7 +102,10 @@ void usb_SerialInit(void)
 
 uint8_t usbPlugIn = 0;
 uint8_t usbCDCConnected = 0;
-static stream_rx_buffer_t rxbuf = {0}, rxbackup;
+static stream_usb_rx_buffer_t rxbuf = {0};
+#if !STEAM_NO_BACKUP
+static stream_usb_rx_buffer_t rxbackup;
+#endif
 static stream_block_tx_buffer_t txbuf = {0};
 static char txdata2[BLOCK_TX_BUFFER_SIZE]; // Secondary TX buffer (for double buffering)
 static bool use_tx2data = false;
@@ -146,7 +149,7 @@ void setUsbCDCConnected(uint8_t value)
 uint16_t usbRxFree (void)
 {
     uint16_t tail = rxbuf.tail, head = rxbuf.head;
-    return RX_BUFFER_SIZE - BUFCOUNT(head, tail, RX_BUFFER_SIZE);
+    return USB_RX_BUFFER_SIZE - BUFCOUNT(head, tail, USB_RX_BUFFER_SIZE);
 }
 
 //
@@ -167,7 +170,7 @@ void usbRxCancel (void)
 {
     rxbuf.data[rxbuf.head] = ASCII_CAN;
     rxbuf.tail = rxbuf.head;
-    rxbuf.head = (rxbuf.tail + 1) & (RX_BUFFER_SIZE - 1);
+    rxbuf.head = (rxbuf.tail + 1) & (USB_RX_BUFFER_SIZE - 1);
 }
 
 //
@@ -246,7 +249,7 @@ int16_t usbGetC (void)
         return -1; // no data available else EOF
 
     char data = rxbuf.data[bptr++];             // Get next character, increment tmp pointer
-    rxbuf.tail = bptr & (RX_BUFFER_SIZE - 1);   // and update pointer
+    rxbuf.tail = bptr & (USB_RX_BUFFER_SIZE - 1);   // and update pointer
 
     return (int16_t)data;
 }
@@ -261,8 +264,10 @@ bool usbSuspendInput (bool suspend)
 {
     if(suspend)
         hal.stream.read = usbGetNull;
+#if !STEAM_NO_BACKUP
     else if(rxbuf.backup)
-        memcpy(&rxbuf, &rxbackup, sizeof(stream_rx_buffer_t));
+        memcpy(&rxbuf, &rxbackup, sizeof(stream_usb_rx_buffer_t));
+#endif
 
     return rxbuf.tail != rxbuf.head;
 }
@@ -271,19 +276,22 @@ void usbBufferInput (uint8_t *data, uint32_t length)
 {
     while(length--) {
 
-        uint_fast16_t next_head = (rxbuf.head + 1)  & (RX_BUFFER_SIZE - 1); // Get and increment buffer pointer
+        uint_fast16_t next_head = (rxbuf.head + 1)  & (USB_RX_BUFFER_SIZE - 1); // Get and increment buffer pointer
 
         if(rxbuf.tail == next_head) {                                       // If buffer full
             rxbuf.overflow = 1;                                             // flag overflow
         } else {
+#if !STEAM_NO_BACKUP
             if(*data == CMD_TOOL_ACK && !rxbuf.backup) {
 
-                memcpy(&rxbackup, &rxbuf, sizeof(stream_rx_buffer_t));
+                memcpy(&rxbackup, &rxbuf, sizeof(stream_usb_rx_buffer_t));
                 rxbuf.backup = true;
                 rxbuf.tail = rxbuf.head;
                 hal.stream.read = usbGetC; // restore normal input
 
-            } else if(sys.ready && hal.stream.enqueue_realtime_command && !hal.stream.enqueue_realtime_command(*data)) {        // Check and strip realtime commands,
+            } else
+#endif
+            	if(sys.ready && hal.stream.enqueue_realtime_command && !hal.stream.enqueue_realtime_command(*data)) {        // Check and strip realtime commands,
                 rxbuf.data[rxbuf.head] = *data;                             // if not add data to buffer
                 rxbuf.head = next_head;                                     // and update pointer
             }

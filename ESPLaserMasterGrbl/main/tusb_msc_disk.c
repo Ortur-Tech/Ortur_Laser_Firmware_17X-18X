@@ -171,7 +171,14 @@ uint8_t msc_disk0[DISK_BLOCK_NUM][DISK_BLOCK_SIZE] = {
 		//------------- Block2: Root Directory -------------//
 		{
 				// first entry is volume label
-				'O', 'R', 'T', 'U', 'R', ' ', 'L', 'a', 's', 'e', 'r', 0x08,
+#if (MACHINE_TYPE == OLM2_PRO) || (MACHINE_TYPE == OLM_PRO) || (MACHINE_TYPE == OLM2_S2) || (MACHINE_TYPE == OLM2)
+				'O', 'r', 't', 'u', 'r', ' ', 'L', 'a', 's', 'e', 'r',
+#elif (MACHINE_TYPE == AUFERO_1) || (MACHINE_TYPE == AUFERO_2)
+				'A', 'u', 'f', 'e', 'r', 'o', 'L', 'a', 's', 'e', 'r',
+#else
+#error "unsupport machine."
+#endif
+				0x08,
 				0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 				0x4F, 0x6D, 0x65, 0x43, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 				// second entry is readme file

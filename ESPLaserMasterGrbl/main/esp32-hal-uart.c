@@ -79,11 +79,17 @@ static uart_t _uart_bus_array[3] = {
 #endif
 
 static const DRAM_ATTR uint16_t RX_BUFFER_SIZE_MASK = RX_BUFFER_SIZE - 1;
+#if !STEAM_NO_BACKUP
 static const DRAM_ATTR uint8_t ESP_CMD_TOOL_ACK = CMD_TOOL_ACK;
+#endif
 
 static uart_t *uart1 = NULL;
 
-static stream_rx_buffer_t rxbuffer = {0}, rxbackup;
+static stream_rx_buffer_t rxbuffer = {0};
+#if !STEAM_NO_BACKUP
+static stream_rx_buffer_t rxbackup;
+#endif
+;
 
 #if SERIAL2_ENABLE
 
@@ -91,7 +97,9 @@ static uart_t *uart2 = NULL;
 
 static stream_rx_buffer_t rxbuffer2 = {0};
 
+#if !STEAM_NO_BACKUP
 static stream_rx_buffer_t rxbackup2;
+#endif
 
 #endif
 
@@ -132,6 +140,7 @@ IRAM_ATTR static void _uart1_isr (void *arg)
 
     	 c = READ_PERI_REG(UART_FIFO_AHB_REG(0)); //uart1->dev->ahb_fifo.rw_byte;
 
+#if !STEAM_NO_BACKUP
         if(c == ESP_CMD_TOOL_ACK && !rxbuffer.backup) {
 
             memcpy(&rxbackup, &rxbuffer, sizeof(stream_rx_buffer_t));
@@ -139,7 +148,9 @@ IRAM_ATTR static void _uart1_isr (void *arg)
             rxbuffer.tail = rxbuffer.head;
             hal.stream.read = serialRead; // restore normal input
 
-        } else if(!hal.stream.enqueue_realtime_command(c)) {
+        } else
+#endif
+        	if(!hal.stream.enqueue_realtime_command(c)) {
 
             uint32_t bptr = (rxbuffer.head + 1) & RX_BUFFER_SIZE_MASK;  // Get next head pointer
 
@@ -403,8 +414,10 @@ IRAM_ATTR bool serialSuspendInput (bool suspend)
     UART_MUTEX_LOCK(uart1);
     if(suspend)
         hal.stream.read = serialGetNull;
+#if !STEAM_NO_BACKUP
     else if(rxbuffer.backup)
         memcpy(&rxbuffer, &rxbackup, sizeof(stream_rx_buffer_t));
+#endif
     UART_MUTEX_UNLOCK(uart1);
 
     return rxbuffer.tail != rxbuffer.head;
@@ -434,6 +447,7 @@ static void IRAM_ATTR _uart2_isr (void *arg)
             rxbuffer2.head = bptr;                    // and update pointer
         }
 #else
+#if !STEAM_NO_BACKUP
         if(c == ESP_CMD_TOOL_ACK && !rxbuffer.backup) {
 
             memcpy(&rxbackup2, &rxbuffer2, sizeof(stream_rx_buffer_t));
@@ -441,7 +455,9 @@ static void IRAM_ATTR _uart2_isr (void *arg)
             rxbuffer2.tail = rxbuffer.head;
             hal.stream.read = serial2Read; // restore normal input
 
-        } else if(!hal.stream.enqueue_realtime_command(c)) {
+        } else
+#endif
+        	if(!hal.stream.enqueue_realtime_command(c)) {
 
             uint32_t bptr = (rxbuffer2.head + 1) & RX_BUFFER_SIZE_MASK;  // Get next head pointer
 
@@ -600,8 +616,10 @@ bool serial2SuspendInput (bool suspend)
     UART_MUTEX_LOCK(uart2);
     if(suspend)
         hal.stream.read = serialGetNull;
+#if !STEAM_NO_BACKUP
     else if(rxbuffer2.backup)
         memcpy(&rxbuffer2, &rxbackup2, sizeof(stream_rx_buffer_t));
+#endif
     UART_MUTEX_UNLOCK(uart2);
 
     return rxbuffer2.tail != rxbuffer2.head;
