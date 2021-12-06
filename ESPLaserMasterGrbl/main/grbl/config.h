@@ -573,7 +573,7 @@
 #define DEFAULT_X_MAX_TRAVEL 390.0f // mm NOTE: Must be a positive value.
 #define DEFAULT_Y_MAX_TRAVEL 390.0f // mm NOTE: Must be a positive value.
 #define DEFAULT_Z_MAX_TRAVEL  50.0f // mm NOTE: Must be a positive value.
-#elif (MACHINE_TYPE == OLM2) || MACHINE_TYPE == OLM2_S2
+#elif MACHINE_TYPE == OLM2
 #define DEFAULT_X_STEPS_PER_MM (5.0f*16)
 #define DEFAULT_Y_STEPS_PER_MM (5.0f*16)
 #define DEFAULT_Z_STEPS_PER_MM (708*3)
@@ -586,7 +586,19 @@
 #define DEFAULT_X_MAX_TRAVEL 400.0f // mm NOTE: Must be a positive value.
 #define DEFAULT_Y_MAX_TRAVEL 430.0f // mm NOTE: Must be a positive value.
 #define DEFAULT_Z_MAX_TRAVEL 100.0f // mm NOTE: Must be a positive value.
-
+#elif MACHINE_TYPE == OLM2_S2
+#define DEFAULT_X_STEPS_PER_MM (5.0f*16)
+#define DEFAULT_Y_STEPS_PER_MM (5.0f*16)
+#define DEFAULT_Z_STEPS_PER_MM (708*3)
+#define DEFAULT_X_MAX_RATE (170.0f*60) // mm/min
+#define DEFAULT_Y_MAX_RATE (170.0f*60) // mm/min
+#define DEFAULT_Z_MAX_RATE (10.0f*60) // mm/min
+#define DEFAULT_X_ACCELERATION (2200.0f*60*60) // 10*60*60 mm/min^2 = 10 mm/sec^2
+#define DEFAULT_Y_ACCELERATION (1800.0f*60*60) // 10*60*60 mm/min^2 = 10 mm/sec^2
+#define DEFAULT_Z_ACCELERATION (200.0f*60*60) // 10*60*60 mm/min^2 = 10 mm/sec^2
+#define DEFAULT_X_MAX_TRAVEL 390.0f // mm NOTE: Must be a positive value.
+#define DEFAULT_Y_MAX_TRAVEL 410.0f // mm NOTE: Must be a positive value.
+#define DEFAULT_Z_MAX_TRAVEL 100.0f // mm NOTE: Must be a positive value.
 #elif (MACHINE_TYPE == AUFERO_4)
 #define DEFAULT_X_STEPS_PER_MM (5.0f*16)
 #define DEFAULT_Y_STEPS_PER_MM (5.0f*16)
