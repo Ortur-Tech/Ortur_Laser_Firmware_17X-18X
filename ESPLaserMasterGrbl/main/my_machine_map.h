@@ -319,7 +319,7 @@
 // Define spindle enable and spindle direction output pins.
 
 #ifndef VFD_SPINDLE
-#define SPINDLE_ENABLE_PIN  GPIO_NUM_34
+#define SPINDLE_ENABLE_PIN  GPIO_NUM_13//GPIO_NUM_34
 #define SPINDLE_MASK        (1ULL << SPINDLE_ENABLE_PIN)
 #define SPINDLEPWMPIN       GPIO_NUM_33
 #endif

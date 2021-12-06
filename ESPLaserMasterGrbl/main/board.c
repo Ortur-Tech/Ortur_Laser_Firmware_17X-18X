@@ -63,10 +63,12 @@ void extended_FuncTask( void * pvParameters )
 		/*加速度检测*/
 		accel_detection_limit();
 #endif
+#if MOVEMENT_LASERON_CHECK
 		/*统计激光工作时长*/
 		laser_on_time_count();
 		/*不移动激光检查*/
 		movement_laseron_check();
+#endif
 #if ENABLE_FIRE_CHECK
 		/*都平均值*/
 		fire_GetAverageValue();

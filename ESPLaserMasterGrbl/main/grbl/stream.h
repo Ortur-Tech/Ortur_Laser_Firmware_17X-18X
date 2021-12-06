@@ -51,7 +51,7 @@
 
 // Serial baud rate
 #ifndef BAUD_RATE
-#define BAUD_RATE 512000
+#define BAUD_RATE 115200
 #endif
 
 // Value to be returned from input stream when no data is available
