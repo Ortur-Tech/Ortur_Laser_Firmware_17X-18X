@@ -19,20 +19,16 @@
 #include "my_machine_map.h"
 #include "driver.h"
 
-#if MACHINE_TYPE == OLM2_PRO_S1
-#if BOARD_VERSION == OLM_ESP_PRO_V1X
+#if MACHINE_TYPE == OLM2_PRO_S2
 #define OTA_FILE_NAME "ESP_OLM2_PRO_"
-#elif BOARD_VERSION == OLM_ESP_V1X
+#elif MACHINE_TYPE == OLM2_PRO_S1
 #define OTA_FILE_NAME "OLM2_PRO_"
-#endif
 #elif MACHINE_TYPE == OLM2
 #define OTA_FILE_NAME "ESP_OLM_2_"
 #elif MACHINE_TYPE == OLM2_S2
 #define OTA_FILE_NAME "ESP_OLM2_S2_"
 #elif (MACHINE_TYPE == AUFERO_4)
-
 #define OTA_FILE_NAME "ESP_AUFERO4_"
-
 #elif (MACHINE_TYPE == AUFERO_1)
 #define OTA_FILE_NAME "ESP_AUFERO1_"
 #elif (MACHINE_TYPE == AUFERO_2)
@@ -42,6 +38,7 @@
 #else
 #error "没有定义bootloader升级匹配字符串"
 #endif
+
 
 //#include "msc_device.h"
 #define MSC_OTA		0
@@ -104,7 +101,7 @@ uint8_t msc_disk0[DISK_BLOCK_NUM][DISK_BLOCK_SIZE] = {
 				0xF8, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00,
 				0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x00, 0x29, 0x34, 0x12,
 				0x56, 0x78,
-#if (MACHINE_TYPE == OLM2_PRO_S1) || (MACHINE_TYPE == OLM_PRO) || (MACHINE_TYPE == OLM2_S2) || (MACHINE_TYPE == OLM2)
+#if (MACHINE_TYPE == OLM2_PRO_S1) ||(MACHINE_TYPE == OLM2_PRO_S2) || (MACHINE_TYPE == OLM_PRO) || (MACHINE_TYPE == OLM2_S2) || (MACHINE_TYPE == OLM2)
 				'O', 'r', 't', 'u', 'r', ' ', 'L', 'a', 's', 'e', 'r',
 #elif (MACHINE_TYPE == AUFERO_1) || (MACHINE_TYPE == AUFERO_2)
 				'A', 'u', 'f', 'e', 'r', 'o', 'L', 'a', 's', 'e', 'r',
@@ -171,7 +168,7 @@ uint8_t msc_disk0[DISK_BLOCK_NUM][DISK_BLOCK_SIZE] = {
 		//------------- Block2: Root Directory -------------//
 		{
 				// first entry is volume label
-#if (MACHINE_TYPE == OLM2_PRO_S1) || (MACHINE_TYPE == OLM_PRO) || (MACHINE_TYPE == OLM2_S2) || (MACHINE_TYPE == OLM2)
+#if (MACHINE_TYPE == OLM2_PRO_S2) || (MACHINE_TYPE == OLM2_PRO_S1) || (MACHINE_TYPE == OLM_PRO) || (MACHINE_TYPE == OLM2_S2) || (MACHINE_TYPE == OLM2)
 				'O', 'r', 't', 'u', 'r', ' ', 'L', 'a', 's', 'e', 'r',
 #elif (MACHINE_TYPE == AUFERO_1) || (MACHINE_TYPE == AUFERO_2)
 				'A', 'u', 'f', 'e', 'r', 'o', 'L', 'a', 's', 'e', 'r',

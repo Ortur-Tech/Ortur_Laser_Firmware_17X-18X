@@ -12,7 +12,7 @@
 #include "config.h"
 /************************硬件版本对应的机型*********************************
 // *    BOARD_VERSION                    MACHINE_TYPE                         软件版本
-// *  OLM_ESP_PRO_V1X  --- AUFERO1---AUFERO2---OLM2S2---OLM2_PRO_S1(S2机型)     V18X
+// *  OLM_ESP_PRO_V1X  --- AUFERO1---AUFERO2---OLM2S2---OLM2_PRO_S2             V18X
 // *                                             ||
 // *  S2_MAX_V10                               OLM2(S0)                         V18X
 // *
@@ -26,23 +26,20 @@
 #define OLM_ESP_PRO_V1X     2   //我们自己的主板
 #define OCM_ESP_PRO_V1X     3   //我们自己的主板
 
-#define ORTUR_HW_NAME 		"OLM_ESP_PRO_V1.2"  //"OLM_ESP_PRO_V1.2"   //"OLM_ESP_V1X"  //"S2_MAX_V1.0"
-#define BOARD_VERSION 		 OLM_ESP_PRO_V1X     //OLM_ESP_PRO_V1X   //OLM_ESP_V1X   //OLM_ESP_PRO_V1X
+
 /*******************硬件版本定义 END*******************/
 
 
 /*******************机型定义 BEGIN*******************/
-#define MACHINE_UNKOWN 		0
-
-
 // 三段型号命名 , 主版本xx , 次版本xx , 小修订xx
 // Ortur 10
+#define MACHINE_UNKOWN 		0
 #define OLM	     			101000
 #define OLM_PRO				100100
 #define OLM2				100200   //方框机400*430
 #define OLM2_S2             100202
 #define OLM2_PRO		    102000
-#define OLM2_PRO_S1		    102001  //S2版本只需要修改主板名
+#define OLM2_PRO_S1		    102001
 #define OLM2_PRO_S2		    102002
 #define OLM3	     		100300
 
@@ -54,10 +51,21 @@
 #define AUFERO_4			200400	//方框机器370*400
 
 
-#define MACHINE_TYPE 	    OLM2_S2  //OLM2_PRO_S1 //AUFERO_1 //OLM2_PRO_S1 //OLM2_S2 //AUFERO_2 //AUFERO_2 // //AUFERO_1
+#define MACHINE_TYPE 	    OLM2_PRO_S1
 /*******************机型定义 END*******************/
 
-
+#if (MACHINE_TYPE == OLM2_S0)
+#define ORTUR_HW_NAME 		"S2_MAX_V1.0"
+#define BOARD_VERSION 		 OLM_ESP_PRO_V1X
+#elif (MACHINE_TYPE == OLM2_S2) || (MACHINE_TYPE == OLM2_PRO_S2) || (MACHINE_TYPE == AUFERO_1) || (MACHINE_TYPE == AUFERO_2)
+#define ORTUR_HW_NAME 		"OLM_ESP_PRO_V1.2"
+#define BOARD_VERSION 		 OLM_ESP_PRO_V1X
+#elif (MACHINE_TYPE == OLM2_PRO_S1)
+#define ORTUR_HW_NAME 		"OLM_ESP_V1X"
+#define BOARD_VERSION 		 OLM_ESP_V1X
+#elif
+#error "unknown machine type!!!"
+#endif
 
 #define DEBUG_LEVEL LOG_ERROR
 /*调试等级*/
