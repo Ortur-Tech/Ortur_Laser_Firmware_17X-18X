@@ -44,50 +44,28 @@
 
 #define ORTUR_FW_NAME "OLF " ORTUR_FW_VERSION
 
-
-#if BOARD_VERSION == OLM_ESP_V1X
-
 #if (MACHINE_TYPE == OLM2_PRO_S1)
 #define ORTUR_MODEL_NAME "Ortur Laser Master 2 Pro S1"
-#elif (MACHINE_TYPE == AUFERO_4)
-#define ORTUR_MODEL_NAME "Ortur Aufero 4 S1"
-#elif (MACHINE_TYPE == AUFERO_1)
-#define ORTUR_MODEL_NAME "Ortur Aufero 1 S1"
-#elif (MACHINE_TYPE == OLM_PRO)
-#define ORTUR_MODEL_NAME "Ortur Laser Master Pro S1"
-#elif
-#define ORTUR_MODEL_NAME "Unkown Machine S1"
-#endif
-
-#elif BOARD_VERSION == OLM_ESP_PRO_V1X
-
-#if (MACHINE_TYPE == OLM2_PRO_S1)
+#elif (MACHINE_TYPE == OLM2_PRO_S2)
 #define ORTUR_MODEL_NAME "Ortur Laser Master 2 Pro S2"
 #elif (MACHINE_TYPE == AUFERO_4)
-#define ORTUR_MODEL_NAME "Ortur Aufero 4 S2"
+#define ORTUR_MODEL_NAME "Aufero 4 S2"
 #elif (MACHINE_TYPE == AUFERO_2)
-#define ORTUR_MODEL_NAME "Ortur Aufero 2 S2"
+#define ORTUR_MODEL_NAME "Aufero 2 S2"
 #elif (MACHINE_TYPE == AUFERO_1)
-#define ORTUR_MODEL_NAME "Ortur Aufero 1 S2"
+#define ORTUR_MODEL_NAME "Aufero 1 S2"
 #elif (MACHINE_TYPE == OLM_PRO)
 #define ORTUR_MODEL_NAME "Ortur Laser Master Pro S2"
 #elif (MACHINE_TYPE == OLM2)
 #define ORTUR_MODEL_NAME "Ortur Laser Master 2 S0"
 #elif MACHINE_TYPE == OLM2_S2
 #define ORTUR_MODEL_NAME "Ortur Laser Master 2 S2"
+#elif MACHINE_TYPE == AUFERO_CNC
+#define ORTUR_MODEL_NAME "Aufero CNC"
 #else
 #error "错误的机型！！"
 #endif
 
-#elif BOARD_VERSION == OCM_ESP_PRO_V1X
-#if (MACHINE_TYPE == AUFERO_CNC)
-#define ORTUR_MODEL_NAME "Ortur Aufero CNC S2"
-#else
-#error "错误的机型！！！"
-#endif
-#else
-#error "错误的硬件版本！！！"
-#endif
 
 // NOTE: Only one board may be enabled!
 // If none is enabled pin mappings from generic_map.h will be used
