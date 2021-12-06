@@ -1479,15 +1479,27 @@ static void reportConnection (void)
 }
 #endif
 
-
+uint8_t fan_Speed = 0;
 void fan_PwmSet(uint8_t duty)
 {
 
+#if !(BOARD_VERSION == OCM_ESP_PRO_V1X)
+	if(duty)
+	{
+		gpio_set_level(COOLANT_FLOOD_PIN,1);
+		fan_Speed = 100;
+	}
+	else
+	{
+		gpio_set_level(COOLANT_FLOOD_PIN,0);
+		fan_Speed = 0;
+	}
+#endif
 }
 
 uint8_t fan_GetSpeed(void)
 {
-	return 0;
+	return fan_Speed;
 }
 
 void light_Init(void)
