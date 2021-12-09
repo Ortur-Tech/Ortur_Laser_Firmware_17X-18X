@@ -51,10 +51,10 @@
 #define AUFERO_4			200400	//方框机器370*400
 
 
-#define MACHINE_TYPE 	    OLM2_PRO_S1
+#define MACHINE_TYPE 	    AUFERO_1
 /*******************机型定义 END*******************/
 
-#if (MACHINE_TYPE == OLM2_S0)
+#if (MACHINE_TYPE == OLM2)
 #define ORTUR_HW_NAME 		"S2_MAX_V1.0"
 #define BOARD_VERSION 		 OLM_ESP_PRO_V1X
 #elif (MACHINE_TYPE == OLM2_S2) || (MACHINE_TYPE == OLM2_PRO_S2) || (MACHINE_TYPE == AUFERO_1) || (MACHINE_TYPE == AUFERO_2)

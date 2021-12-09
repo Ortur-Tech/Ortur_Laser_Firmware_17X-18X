@@ -38,6 +38,7 @@
 #include "board.h"
 #include "digital_laser.h"
 #include "accelDetection.h"
+#include "mbedtls/md5.h"
 
 #ifdef ENABLE_SPINDLE_LINEARIZATION
 #include <stdio.h>
@@ -973,7 +974,24 @@ void report_build_info (char *line)
 	/*硬件版本*/
 	hal.stream.write("[OLH: " ORTUR_HW_NAME );
 	hal.stream.write("]" ASCII_EOL);
+	/*MAC地址*/
+	uint8_t mac[6] = {0};
+	unsigned char mbedtls_md5sum[16] = "XXXXXXXXXXXXXXXX";
+	char str[100] = {0};
+	esp_read_mac(mac, ESP_MAC_WIFI_STA);
+	mbedtls_md5_ret(mac, 6, mbedtls_md5sum);
+	sprintf(str, "%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X",
+			mbedtls_md5sum[0], mbedtls_md5sum[1], mbedtls_md5sum[2], mbedtls_md5sum[3],
+			mbedtls_md5sum[4], mbedtls_md5sum[5], mbedtls_md5sum[6], mbedtls_md5sum[7],
+			mbedtls_md5sum[8], mbedtls_md5sum[9], mbedtls_md5sum[10], mbedtls_md5sum[11],
+			mbedtls_md5sum[12], mbedtls_md5sum[13], mbedtls_md5sum[14], mbedtls_md5sum[15]); //无前缀0x的大写16进制数
+	hal.stream.write("[SN: ");
+	hal.stream.write(str);
+	hal.stream.write("]" ASCII_EOL);
 
+	/*sn*/
+	//hal.stream.write("[SN: " "XXXXXXXXXXXXXXXX");
+	//hal.stream.write("]" ASCII_EOL);
 	//esp_efuse_mac_get_default(mac)
 
 	/*TODO:数字激光*/
