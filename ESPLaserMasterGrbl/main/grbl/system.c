@@ -566,7 +566,7 @@ void system_apply_jog_limits (float *target)
 
     if(sys.homed.mask) do {
         idx--;
-        float pulloff = settings.limits.flags.hard_enabled && bit_istrue(sys.homing.mask, bit(idx)) ? settings.homing.pulloff : 0.0f;
+        float pulloff =  0.0f;
         if(bit_istrue(sys.homed.mask, bit(idx)) && settings.axis[idx].max_travel < -0.0f) {
 #if ENABLE_HOMING_FORCE_SET_ORIGIN_OFFSET
         	if(bit_isfalse(settings.homing.dir_mask.value, bit(idx))) {
