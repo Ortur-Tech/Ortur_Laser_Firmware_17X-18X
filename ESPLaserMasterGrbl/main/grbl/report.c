@@ -38,6 +38,7 @@
 #include "board.h"
 #include "digital_laser.h"
 #include "accelDetection.h"
+#include "mbedtls/md5.h"
 
 #ifdef ENABLE_SPINDLE_LINEARIZATION
 #include <stdio.h>
@@ -974,7 +975,20 @@ void report_build_info (char *line)
 	hal.stream.write("[OLH: " ORTUR_HW_NAME );
 	hal.stream.write("]" ASCII_EOL);
 
-	//esp_efuse_mac_get_default(mac)
+	 /*MAC地址*/
+	  uint8_t mac[6] = {0};
+	  unsigned char mbedtls_md5sum[16] = "XXXXXXXXXXXXXXXX";
+	  char str[100] = {0};
+	  esp_read_mac(mac, ESP_MAC_WIFI_STA);
+	  mbedtls_md5_ret(mac, 6, mbedtls_md5sum);
+	  sprintf(str, "%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X",
+	      mbedtls_md5sum[0], mbedtls_md5sum[1], mbedtls_md5sum[2], mbedtls_md5sum[3],
+	      mbedtls_md5sum[4], mbedtls_md5sum[5], mbedtls_md5sum[6], mbedtls_md5sum[7],
+	      mbedtls_md5sum[8], mbedtls_md5sum[9], mbedtls_md5sum[10], mbedtls_md5sum[11],
+	      mbedtls_md5sum[12], mbedtls_md5sum[13], mbedtls_md5sum[14], mbedtls_md5sum[15]); //无前缀0x的大写16进制数
+	  hal.stream.write("[SN: ");
+	  hal.stream.write(str);
+	  hal.stream.write("]" ASCII_EOL);
 
 	/*TODO:数字激光*/
 	hal.stream.write("[OLM:GENERAL");
@@ -1063,7 +1077,7 @@ void report_build_info (char *line)
     // NOTE: Compiled values, like override increments/max/min values, may be added at some point later.
     hal.stream.write(uitoa((uint32_t)(BLOCK_BUFFER_SIZE - 1)));
     hal.stream.write(",");
-    hal.stream.write(uitoa(hal.rx_buffer_size));
+    hal.stream.write_buffer_size();
     hal.stream.write(",");
     hal.stream.write(uitoa((uint32_t)N_AXIS));
 #if COMPATIBILITY_LEVEL == 0
