@@ -1081,7 +1081,8 @@ void report_build_info (char *line)
     // NOTE: Compiled values, like override increments/max/min values, may be added at some point later.
     hal.stream.write(uitoa((uint32_t)(BLOCK_BUFFER_SIZE - 1)));
     hal.stream.write(",");
-    hal.stream.write(uitoa(hal.rx_buffer_size));
+    //hal.stream.write(uitoa(hal.rx_buffer_size));
+    hal.stream.write_buffer_size();
     hal.stream.write(",");
     hal.stream.write(uitoa((uint32_t)N_AXIS));
 #if COMPATIBILITY_LEVEL == 0
