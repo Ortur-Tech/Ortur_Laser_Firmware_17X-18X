@@ -2378,12 +2378,12 @@ uint8_t IsMainPowrIn(void)
 #endif
 
 	uint32_t votage = (float)value / 8192 * 2.6 * (VOTAGE_SAMPLING_RES + VOTAGE_DIV_RES) / VOTAGE_SAMPLING_RES;
-	if(votage > (RATE_VOTAGE + 3))
+	if(votage > (RATE_VOTAGE + 5))
 	{
 		return 2;
 	}
 	/*大于10v认为有电*/
-	else if(votage > (RATE_VOTAGE - 3))
+	else if(votage > (RATE_VOTAGE - 5))
 	{
 		use_time_save_flag = 1;
 		return 1;
