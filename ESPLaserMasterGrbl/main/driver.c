@@ -1479,15 +1479,27 @@ static void reportConnection (void)
 }
 #endif
 
-
+uint8_t fan_Speed = 0;
 void fan_PwmSet(uint8_t duty)
 {
 
+#if !(BOARD_VERSION == OCM_ESP_PRO_V1X)
+	if(duty)
+	{
+		gpio_set_level(COOLANT_FLOOD_PIN,1);
+		fan_Speed = 100;
+	}
+	else
+	{
+		gpio_set_level(COOLANT_FLOOD_PIN,0);
+		fan_Speed = 0;
+	}
+#endif
 }
 
 uint8_t fan_GetSpeed(void)
 {
-	return 0;
+	return fan_Speed;
 }
 
 void light_Init(void)
@@ -2366,12 +2378,12 @@ uint8_t IsMainPowrIn(void)
 #endif
 
 	uint32_t votage = (float)value / 8192 * 2.6 * (VOTAGE_SAMPLING_RES + VOTAGE_DIV_RES) / VOTAGE_SAMPLING_RES;
-	if(votage > (RATE_VOTAGE + 3))
+	if(votage > (RATE_VOTAGE + 5))
 	{
 		return 2;
 	}
 	/*大于10v认为有电*/
-	else if(votage > (RATE_VOTAGE - 3))
+	else if(votage > (RATE_VOTAGE - 5))
 	{
 		use_time_save_flag = 1;
 		return 1;
