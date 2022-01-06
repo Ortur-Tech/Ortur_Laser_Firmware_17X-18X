@@ -125,7 +125,7 @@
 #include "grbl/hal.h"
 
 static const DRAM_ATTR float FZERO = 0.0f;
-
+#define VOLTAGE_OFFSET   5
 #define PWM_RAMPED       0 // Ramped spindle PWM.
 #define PROBE_ENABLE     1 // Probe input
 #define PROBE_ISR        0 // Catch probe state change by interrupt TODO: needs verification!

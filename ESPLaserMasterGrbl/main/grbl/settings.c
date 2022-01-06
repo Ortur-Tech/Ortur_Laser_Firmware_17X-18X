@@ -121,6 +121,7 @@ const settings_t defaults = {
 	.origin_offset_z = ORIGIN_OFFSET_Z,
 #endif
 	.uart_baudrate = BAUD_RATE / 100,
+	.voltage_offset = VOLTAGE_OFFSET,
 #if ENABLE_ACCELERATION_DETECT
 	.accel_sensitivity = DEFAULT_ACCELERATION_LIMIT,
 #endif
@@ -931,7 +932,11 @@ status_code_t settings_store_global_setting (setting_type_t setting, char *svalu
             	settings.origin_offset_z = value;
 				break;
 #endif
-
+            case Setting_VoltageOffset:
+            	if(int_value < 0 || int_value > 255)
+            	 return Status_SettingDisabled;
+				settings.voltage_offset = int_value;
+				break;
 #if ENABLE_ACCELERATION_DETECT
             case Setting_AccelerateThreshold:	//设置加速度阈值
             	settings.accel_sensitivity = int_value;

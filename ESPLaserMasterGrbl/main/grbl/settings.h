@@ -182,6 +182,7 @@ typedef enum {
 	Setting_OriginOffsetY = 272,
 	Setting_OriginOffsetZ = 273,
 #endif
+	Setting_VoltageOffset = 274,			//电压偏移
 /******************************添加参数END************************************************/
 
     // Normally used for Ethernet or WiFi Station
@@ -546,6 +547,7 @@ typedef struct {
     uint8_t echo_enable;
     uint8_t power_log_enable;				//打印电源电压，电流信息
     uint32_t uart_baudrate;					//串口波特率
+    uint8_t voltage_offset;
 } settings_t;
 
 extern settings_t settings;
