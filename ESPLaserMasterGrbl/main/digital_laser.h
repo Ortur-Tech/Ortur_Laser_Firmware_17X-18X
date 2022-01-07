@@ -34,6 +34,7 @@ typedef enum{
   COMM_GET_VL6180_CONNECTED			  ,
   COMM_GET_NTC_CONNECTED			  ,
   COMM_GET_LASER_STATE				  ,
+  COMM_IAP_RST                        ,
   COMM_LASER_PWM_DUTY_255			  ,
   COMM_LASER_PWM_DUTY_511			  ,
   COMM_LASER_PWM_DUTY_767			  ,
