@@ -352,7 +352,7 @@ iap_steps i2c_iap(void)
 				gpio_set_level(SPINDLE_ENABLE_PIN, settings.spindle.invert.on ? 0 : 1); //开启激光头供电
 				if(IAP_COMMUNICATION_REQ(i2c_iap_req))
 				{
-					event = I2C_IAP_SEND;
+					event = I2C_IAP_SET;
 					waittime = HAL_GetTick();
 					return iap_nexts_step;
 				}
@@ -363,13 +363,12 @@ iap_steps i2c_iap(void)
 				}
 			}
 			break;
-		case I2C_IAP_SET: //未使用
+		case I2C_IAP_SET:
 			if(IAP_COMMUNICATION_REQ(i2c_iap_set)&&!I2CIAPRESP[i2c_iap_set].setstatus)
 			{
 				event = I2C_IAP_SEND;
 				return iap_nexts_step;
 			}
-
 			break;
 		case I2C_IAP_SEND:
 			//等数字激光头擦除flash，防止写入失败
