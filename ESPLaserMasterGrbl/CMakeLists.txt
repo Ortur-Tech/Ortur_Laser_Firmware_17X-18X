@@ -9,11 +9,11 @@ set(EXTRA_COMPONENT_DIRS    ./components)
 
 add_compile_options(-fdiagnostics-color=always)
 
-#project(OLM2_PRO_174)
+project(OLM2_PRO_S1_176)
 
-#project(ESP_OLM2_PRO_186)
-#project(ESP_OLM2_PRO_S2_186)
-#project(ESP_AUFERO2_186)
-project(ESP_AUFERO1_186)
-#project(ESP_OLM_2_186)
-#project(ESP_OLM2_S2_186)
+#project(ESP_OLM2_PRO_188)
+#project(ESP_OLM2_PRO_S2_188)
+#project(ESP_AUFERO2_188)
+#project(ESP_AUFERO1_188)
+#project(ESP_OLM_2_188)
+#project(ESP_OLM2_S2_188)
