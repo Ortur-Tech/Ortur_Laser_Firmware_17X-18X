@@ -39,6 +39,8 @@
 #include "digital_laser.h"
 #include "accelDetection.h"
 #include "mbedtls/md5.h"
+#include "mbedtls/aes.h"
+#include "mac_encrypt.h"
 
 #ifdef ENABLE_SPINDLE_LINEARIZATION
 #include <stdio.h>
@@ -79,6 +81,8 @@ static char *(*get_rate_value)(float value);
 static uint8_t override_counter = 0; // Tracks when to add override data to status reports.
 static uint8_t wco_counter = 0;      // Tracks when to add work coordinate offset data to status reports.
 alarm_code_t current_alarm = Alarm_None;
+
+int32_t gc_line_number = -1;
 
 static const report_t report_fns = {
     .status_message = report_status_message,
@@ -239,15 +243,39 @@ status_code_t report_status_message (status_code_t status_code)
     switch(status_code) {
 
         case Status_OK: // STATUS_OK
-            hal.stream.write("ok" ASCII_EOL);
+        	if(gc_line_number < 0)
+        		hal.stream.write("ok" ASCII_EOL);
+        	else
+        	{
+        		char str[16] = {0};
+        		hal.stream.write("ok N");
+        		itoa(gc_line_number, str, 10);
+        		hal.stream.write(str);
+        		hal.stream.write(ASCII_EOL);
+        		gc_line_number = -1;
+        	}
             break;
 
         default:
-            hal.stream.write(appendbuf(3, "error:", uitoa((uint32_t)status_code), ASCII_EOL));
-            if(status_code == Status_Reset)
-			{
-				hal.stream.write("[MSG: Emergency Switch Engaged.]"ASCII_EOL);
-			}
+        	if(gc_line_number < 0)
+        	{
+				hal.stream.write(appendbuf(3, "error:", uitoa((uint32_t)status_code), ASCII_EOL));
+				if(status_code == Status_Reset)
+				{
+					hal.stream.write("[MSG: Emergency Switch Engaged.]"ASCII_EOL);
+				}
+        	}
+        	else
+        	{
+        		char str[16] = {0};
+        		itoa(gc_line_number, str, 10);
+        		hal.stream.write(appendbuf(5, "error:", uitoa((uint32_t)status_code), " N", str, ASCII_EOL));
+				if(status_code == Status_Reset)
+				{
+					hal.stream.write("[MSG: Emergency Switch Engaged.]"ASCII_EOL);
+				}
+				gc_line_number = -1;
+        	}
             break;
     }
 
@@ -975,20 +1003,21 @@ void report_build_info (char *line)
 	hal.stream.write("[OLH: " ORTUR_HW_NAME );
 	hal.stream.write("]" ASCII_EOL);
 
-	 /*MAC地址*/
-	  uint8_t mac[6] = {0};
-	  unsigned char mbedtls_md5sum[16] = "XXXXXXXXXXXXXXXX";
-	  char str[100] = {0};
-	  esp_read_mac(mac, ESP_MAC_WIFI_STA);
-	  mbedtls_md5_ret(mac, 6, mbedtls_md5sum);
-	  sprintf(str, "%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X",
-	      mbedtls_md5sum[0], mbedtls_md5sum[1], mbedtls_md5sum[2], mbedtls_md5sum[3],
-	      mbedtls_md5sum[4], mbedtls_md5sum[5], mbedtls_md5sum[6], mbedtls_md5sum[7],
-	      mbedtls_md5sum[8], mbedtls_md5sum[9], mbedtls_md5sum[10], mbedtls_md5sum[11],
-	      mbedtls_md5sum[12], mbedtls_md5sum[13], mbedtls_md5sum[14], mbedtls_md5sum[15]); //无前缀0x的大写16进制数
-	  hal.stream.write("[SN: ");
-	  hal.stream.write(str);
-	  hal.stream.write("]" ASCII_EOL);
+	 /*SN地址*/
+	unsigned char mac[6] = {0};
+	unsigned char aes_data[16] = {0};
+	char str[100] = {0};
+	mac_encrypt(aes_data);
+	mac_decrypt(mac, aes_data);
+	//mbedtls_md5_ret(mac, 6, mbedtls_md5sum);
+	sprintf(str, "%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X",
+			aes_data[0], aes_data[1], aes_data[2], aes_data[3],
+			aes_data[4], aes_data[5], aes_data[6], aes_data[7],
+			aes_data[8], aes_data[9], aes_data[10], aes_data[11],
+			aes_data[12], aes_data[13], aes_data[14], aes_data[15]); //无前缀0x的大写16进制数
+	hal.stream.write("[SN: ");
+	hal.stream.write(str);
+	hal.stream.write("]" ASCII_EOL);
 
 	/*TODO:数字激光*/
 	hal.stream.write("[OLM:GENERAL");
