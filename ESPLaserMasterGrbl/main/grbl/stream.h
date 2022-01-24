@@ -58,7 +58,11 @@
 
 // Serial baud rate
 #ifndef BAUD_RATE
+#if (MACHINE_TYPE == OLM2) || (MACHINE_TYPE == OLM2_PRO_S1)
+#define BAUD_RATE 115200
+#else
 #define BAUD_RATE 512000
+#endif
 #endif
 
 // Value to be returned from input stream when no data is available
