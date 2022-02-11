@@ -51,6 +51,7 @@ void laser_init(void)
 	regs[COMM_GET_VL6180_CONNECTED ].reg = 0XD0; regs[COMM_GET_VL6180_CONNECTED ].len = 1;
 	regs[COMM_GET_NTC_CONNECTED    ].reg = 0XD1; regs[COMM_GET_NTC_CONNECTED    ].len = 1;
 	regs[COMM_GET_LASER_STATE      ].reg = 0XD2; regs[COMM_GET_LASER_STATE      ].len = 1;
+	regs[COMM_IAP_RST              ].reg = 0xD4; regs[COMM_IAP_RST              ].len = 1;
 
 	regs[COMM_LASER_PWM_DUTY_255   ].reg = 0xE0; regs[COMM_LASER_PWM_DUTY_255	].len = 1;
 	regs[COMM_LASER_PWM_DUTY_511   ].reg = 0xE1; regs[COMM_LASER_PWM_DUTY_511	].len = 1;
@@ -223,21 +224,31 @@ uint32_t laser_get_value(LaserRegNum reg_num)
 	}
 	//portENTER_CRITICAL(&mux2);
 
-	laser_protocol_read(reg_num,buf);
-//	if(reg_num == COMM_GET_TEMPRATURE)
-//	{
-//		printf("%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x\r\n",buf[0],buf[1],buf[2],buf[3],buf[4],buf[5],buf[6],buf[7],buf[8]);
-//
-//	}
-	for(int i = 0; i < regs[reg_num].len; i++)
+	if (laser_protocol_read(reg_num,buf) == 0)
 	{
-		if(i > 3) break;
-		value = (value << 8) + buf[i + 2];
-	}
+	//	if(reg_num == COMM_GET_TEMPRATURE)
+	//	{
+	//		printf("%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x\r\n",buf[0],buf[1],buf[2],buf[3],buf[4],buf[5],buf[6],buf[7],buf[8]);
+	//
+	//	}
+		if(buf[0]!=regs[reg_num].reg)
+		{
+			return 0xffffffff;
+		}
+		for(int i = 0; i < regs[reg_num].len; i++)
+		{
+			if(i > 3) break;
+			value = (value << 8) + buf[i + 2];
+		}
 
-	//portEXIT_CRITICAL(&mux2);
-	//printf("current distance:%d.\r\n", (buf[2]<< 8) | buf[3]);
-	return value;
+		//portEXIT_CRITICAL(&mux2);
+		//printf("current distance:%d.\r\n", (buf[2]<< 8) | buf[3]);
+		return value;
+	}
+	else
+	{
+		return 0xffffffff;
+	}
 }
 /*
  * 返回对焦状态

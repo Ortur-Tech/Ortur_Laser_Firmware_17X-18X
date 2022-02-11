@@ -34,7 +34,7 @@
 #ifdef KINEMATICS_API
 #include "kinematics.h"
 #endif
-
+#include "board.h"
 // Pin change interrupt for pin-out commands, i.e. cycle start, feed hold, and reset. Sets
 // only the realtime command execute variable to have the main program execute these when
 // its ready. This works exactly like the character-based realtime commands when picked off
@@ -464,11 +464,11 @@ status_code_t system_execute_line (char *line)
 
         default:
             retval = Status_Unhandled;
-
             // Let user code have a peek at system commands before check for global setting
             if(grbl.on_unknown_sys_command)
+            {
                 retval = grbl.on_unknown_sys_command(sys.state, line, lcline);
-
+            }
             if (retval == Status_Unhandled) {
                 // Check for global setting, store if so
                 if(sys.state == STATE_IDLE || (sys.state & (STATE_ALARM|STATE_ESTOP|STATE_CHECK_MODE))) {
@@ -476,10 +476,16 @@ status_code_t system_execute_line (char *line)
                     float parameter;
                     if(!read_float(line, &counter, &parameter))
                         retval = Status_BadNumberFormat;
-                    else if(!(isintf(parameter) && line[counter++] == '='))
+                    else if(!isintf(parameter))
                         retval = Status_InvalidStatement;
-                    else
+                    else if(line[counter++] == '=')
+                    {
                         retval = settings_store_global_setting((setting_type_t)parameter, &lcline[counter]);
+                    }
+                    else
+                    {
+                    	retval = report_grbl_alone_setting((setting_type_t)parameter);
+                    }
                 } else
                     retval = Status_IdleError;
             }

@@ -18,6 +18,7 @@
 #include "board.h"
 #include "my_machine_map.h"
 #include "driver.h"
+#include "i2c_iap.h"
 
 #if MACHINE_TYPE == OLM2_PRO_S2
 #define OTA_FILE_NAME "ESP_OLM2_PRO_"
@@ -38,19 +39,146 @@
 #else
 #error "没有定义bootloader升级匹配字符串"
 #endif
-
-
+#define IAP_FILE_NAME "LASER_FW_"
 //#include "msc_device.h"
 #define MSC_OTA		0
 #define MSC_SPIFFS	1
 
+typedef __attribute__((packed))  struct {
+	uint8_t DIR_Name[11];          // File Name
+	uint8_t DIR_Attr;              // File Attribute
+	uint8_t DIR_NTRes;             // Reserved
+	uint8_t DIR_CreateTime_Tenth;  // Component of the file creation time
+	uint16_t DIR_CreateTime;        // Component of the file creation time
+	uint16_t DIR_CreateDate;        // Component of the file creation date
+	uint16_t DIR_LastAccessDate;    // Last Access date
+	uint16_t DIR_ClusHigh;          // High word of first data cluster
+	uint16_t DIR_WriteTime;         // Last modification write time
+	uint16_t DIR_WriteDate;         // Last modification write date
+	uint16_t DIR_ClusLow;           // Low word of first data cluster
+	uint32_t DIR_FileSize;          // Filesize
+} FAT_DIR_t;
+
 const esp_partition_t *target_partition;
+const esp_partition_t *G_laserapp_p;
 uint8_t *msc_disk = NULL;
 static bool idf_flash;
 static uint32_t _lba = 0;
 static long old_millis;
 static uint32_t _offset = 0;
 uint8_t usb_msc_init_flag = MSC_SPIFFS;
+
+uint8_t longFileName[250] = {0};
+uint8_t nameLen = 0;
+uint8_t fileNameMatchFlag = 0;
+uint8_t findedfile_wite = 0;
+FAT_DIR_t FileAttr = { .DIR_FileSize = 0, };
+
+#ifdef I2C_IAP
+extern void laser_iap_init(void);
+//uint8_t laser_app_start = 0;
+/*
+ *brief:从虚拟U盘获取升级文件包
+ *param:
+ *return:返回数据包长度
+ **/
+
+uint16_t getiapsubdata(void *iapdata,const uint16_t currcnt)
+{
+	uint16_t datalen = 0;
+    static uint16_t read_offset = 0;
+    static uint16_t lastcnt = 1;
+
+   if(0 == (FileAttr.DIR_FileSize % 240))
+   {
+	   datalen = 240;
+	   if(currcnt >= (FileAttr.DIR_FileSize / 240))
+	   {
+		   //数据发送完成
+		   return 0;
+	   }
+   }
+   else
+   {
+	   if(currcnt < (FileAttr.DIR_FileSize / 240) )
+	   {
+		   datalen	= 240;
+	   }
+	   else
+	   {
+		  datalen	= FileAttr.DIR_FileSize % 240;
+	   }
+	   if(currcnt >= (FileAttr.DIR_FileSize / 240 + 1))
+	   {
+		   //数据发送完成
+		   return 0;
+	   }
+   }
+	if(currcnt !=lastcnt)//如果没有重发数据包 读地址偏移
+	{
+		esp_partition_read(G_laserapp_p, read_offset, (void *)iapdata,datalen);
+		read_offset += datalen;
+	}
+//	if(currcnt == 0 && iapdata[0] != 0x00 && iapdata[1] !=0x20)
+//	{
+//		mprintf(LOG_TEMP, "laser flash read error\r\n");
+//	}
+	lastcnt = currcnt;
+
+	return datalen;
+}
+bool laserapp_init(void)
+{
+	laser_iap_init();
+	G_laserapp_p = esp_partition_find_first(ESP_PARTITION_TYPE_DATA,ESP_PARTITION_SUBTYPE_ANY, "laserapp");
+	if(G_laserapp_p == NULL)
+	{
+		mprintf(LOG_TEMP,"GET LASERAPP PARTITION FIEL!!");
+	}
+	else
+	{
+		mprintf(LOG_TEMP,"GET LASERAPP PARTITION SUCCESS!!");
+	}
+	return G_laserapp_p != NULL;
+}
+/*
+ * brief:数字激光头升级流程
+ */
+void laserapp()
+{
+	static iap_steps iap_state = iap_current_step;
+
+	while(1)
+	{
+		iap_state = i2c_iap();
+		//mprintf(LOG_TEMP, "iap_state:%d\r\n",iap_state);
+		if(iap_current_step == iap_state) //继续当前步骤
+		{
+			old_millis = HAL_GetTick();
+			//mprintf(LOG_TEMP, "cmd resend\r\n");
+		}
+		else if(iap_nexts_step == iap_state) //执行下一步||//升级成功
+		{
+			old_millis = HAL_GetTick();
+			mprintf(LOG_TEMP, "next cmd/data.\r\n");
+		}
+		else if(iap_exe_success == iap_state)
+		{
+
+			mprintf(LOG_TEMP, "IAP UPDATE SUCCESS.\r\n");
+			esp_restart();
+		}
+		else
+		{
+			//错误
+			mprintf(LOG_TEMP, "I2C IAP FIELDED!!!\r\n");
+			esp_restart();
+		}
+		//加上延时防止数据发送过快激光器flash拷贝异常
+		HAL_Delay(50);
+	}
+}
+#endif
 
 /**
  * Task used as workaround to detect when update has been finished
@@ -59,12 +187,31 @@ static void ticker_task(void *p) {
 	while (1) {
 		if (HAL_GetTick() - old_millis > 1000) {
 			//board_led_state(STATE_WRITING_FINISHED);
-			esp_err_t err = esp_ota_set_boot_partition(target_partition);
-			if (err)
-				mprintf(LOG_ERROR, "BOOT ERR => %x [%d]", err, _offset);
 
+			if(fileNameMatchFlag == 1)
+			{
+				mprintf(LOG_TEMP,"START SET BOOT\r\n");
+				 esp_err_t err = esp_ota_set_boot_partition(target_partition);
+				if (err)
+				mprintf(LOG_ERROR, "BOOT ERR => %x [%d]", err, _offset);
 			//board_led_state(10);
-			esp_restart();
+				esp_restart();
+			}
+#ifdef I2C_IAP
+			else if(fileNameMatchFlag == 2)
+			{
+				//laserapp();
+				//激光器升级任务创建
+				xTaskCreate(laserapp, "laser_task", 3*1024, NULL, 1, NULL );
+			}
+
+#endif
+			else
+			{
+				//board_led_state(10);
+				mprintf(LOG_TEMP,"NO BOOT RESTART\r\n");
+				esp_restart();
+			}
 		}
 		HAL_Delay(100);
 	}
@@ -344,24 +491,8 @@ int32_t tud_msc_read10_cb(uint8_t lun, uint32_t lba, uint32_t offset,
 #endif
 	return bufsize;
 }
-typedef __attribute__((packed))  struct {
-	uint8_t DIR_Name[11];          // File Name
-	uint8_t DIR_Attr;              // File Attribute
-	uint8_t DIR_NTRes;             // Reserved
-	uint8_t DIR_CreateTime_Tenth;  // Component of the file creation time
-	uint16_t DIR_CreateTime;        // Component of the file creation time
-	uint16_t DIR_CreateDate;        // Component of the file creation date
-	uint16_t DIR_LastAccessDate;    // Last Access date
-	uint16_t DIR_ClusHigh;          // High word of first data cluster
-	uint16_t DIR_WriteTime;         // Last modification write time
-	uint16_t DIR_WriteDate;         // Last modification write date
-	uint16_t DIR_ClusLow;           // Low word of first data cluster
-	uint32_t DIR_FileSize;          // Filesize
-} FAT_DIR_t;
 
-uint8_t longFileName[250] = {0};
-uint8_t nameLen = 0;
-uint8_t fileNameMatchFlag = 0;
+
 /*获取文件名*/
 uint8_t get_long_file_name(FAT_DIR_t *pFile)
 {
@@ -409,8 +540,6 @@ uint8_t get_long_file_name(FAT_DIR_t *pFile)
 	return nameLen;
 }
 
-FAT_DIR_t FileAttr = { .DIR_FileSize = 0, };
-
 uint32_t FAT_RootDirWriteRequest(uint32_t FAT_LBA, uint32_t offset, uint8_t *data, uint32_t len) {
 	FAT_DIR_t *pFile = (FAT_DIR_t*) data;
 	uint32_t index = 2;
@@ -418,7 +547,13 @@ uint32_t FAT_RootDirWriteRequest(uint32_t FAT_LBA, uint32_t offset, uint8_t *dat
 	pFile++; // Skip Root Dir
 	pFile++; // Skip Status File
 
-	while ((pFile->DIR_Attr != 0x20) && (index++ < 512)) {
+	while(index++ < len)
+	 {
+		if((pFile->DIR_Attr == 0x20) && !memcmp(&(pFile->DIR_Name[8]),"BIN",3))
+		{
+			findedfile_wite = 1;
+			break;
+		}
 		pFile++;
 	}
 
@@ -432,12 +567,16 @@ uint32_t FAT_RootDirWriteRequest(uint32_t FAT_LBA, uint32_t offset, uint8_t *dat
 		memcpy(&FileAttr, pFile, 32);
 		FileAttr.DIR_WriteTime = 0;
 		FileAttr.DIR_WriteDate = 0;
-		mprintf(LOG_TEMP,"file name:%s.size:%d.\r\n", FileAttr.DIR_Name, FileAttr.DIR_FileSize);
-
+		//mprintf(LOG_TEMP,"file name:%s.size:%d.\r\n", FileAttr.DIR_Name, FileAttr.DIR_FileSize);
 		if(memcmp(FileAttr.DIR_Name,OTA_FILE_NAME,strlen(OTA_FILE_NAME)) == 0)
 		{
 			/*固件名匹配*/
 			fileNameMatchFlag = 1;
+		}
+		else if(memcmp(FileAttr.DIR_Name,IAP_FILE_NAME,strlen(IAP_FILE_NAME)) == 0)
+		{
+			/*升级文件为数字激光器*/
+			fileNameMatchFlag = 2;
 		}
 		if(get_long_file_name(pFile))
 		{
@@ -446,6 +585,12 @@ uint32_t FAT_RootDirWriteRequest(uint32_t FAT_LBA, uint32_t offset, uint8_t *dat
 				mprintf(LOG_TEMP,"update file found.\r\n");
 				/*固件名匹配*/
 				fileNameMatchFlag = 1;
+			}
+			else if(memcmp(longFileName,IAP_FILE_NAME,strlen(IAP_FILE_NAME)) == 0)
+			{
+				/*升级文件为数字激光器*/
+				mprintf(LOG_TEMP,"I2C update file found.\r\n");
+			    fileNameMatchFlag = 2;
 			}
 			else
 			{
@@ -456,6 +601,8 @@ uint32_t FAT_RootDirWriteRequest(uint32_t FAT_LBA, uint32_t offset, uint8_t *dat
 	}
 	return len;
 }
+
+
 
 // Callback invoked when received WRITE10 command.
 // Process data in buffer to disk's storage and return number of written bytes
@@ -469,7 +616,20 @@ int32_t tud_msc_write10_cb(uint8_t lun, uint32_t lba, uint32_t offset,
 #else
 	esp_err_t err = 0;
 	(void) lun;
-	if (buffer[0] == 0xe9 && !idf_flash && fileNameMatchFlag == 1) { // we presume that we are having beginning of esp32 binary file when we see magic number at beginning of buffer
+
+#ifdef I2C_IAP
+	static bool i2c_iap_write = 0;
+	if(buffer[0] == 0x00 &&buffer[0] == 0x20&&(lba > 2)&&!idf_flash) //如果文件名是数字激光头的话执行 buffer[0] == 0x00&&buffer[1] == 0x20
+	{
+		i2c_iap_write = true;
+		idf_flash = true;
+		_lba = lba;
+		esp_partition_erase_range(G_laserapp_p, 0x0,G_laserapp_p->size);
+		old_millis = HAL_GetTick();
+		xTaskCreate(ticker_task, "tT", 3 * 1024, NULL, 1, NULL);
+	}
+#endif
+	if (buffer[0] == 0xe9 && !idf_flash ) { //&& findedfile_wite  we presume that we are having beginning of esp32 binary file when we see magic number at beginning of buffer
 		//ESP_LOGE("", "start flash");
 		//
 		//board_led_state(STATE_WRITING_STARTED);
@@ -483,24 +643,41 @@ int32_t tud_msc_write10_cb(uint8_t lun, uint32_t lba, uint32_t offset,
 	}
 
 	if (!idf_flash) {
+
 		FAT_RootDirWriteRequest(lba, offset, buffer, bufsize);
 		mprintf(LOG_TEMP, "write lba:%d offset:%d,len:%d.\r\n", lba, offset, bufsize);
-		for (int i = 0; i < bufsize; i++) {
-			mprintf(LOG_TEMP, "%02x ", buffer[i]);
+//		for (int i = 0; i < bufsize; i++) {
+//			mprintf(LOG_TEMP, "%02x ", buffer[i]);
+//		}
+		if(lba * 512 + offset + bufsize < DISK_BLOCK_NUM * DISK_BLOCK_SIZE)
+		{
+			uint8_t *addr = &msc_disk[lba * 512] + offset;
+			memcpy(addr, buffer, bufsize);
 		}
-		uint8_t *addr = &msc_disk[lba * 512] + offset;
-		memcpy(addr, buffer, bufsize);
 	} else {
+		mprintf(LOG_TEMP, "lba:%d,_lba:%d\r\n", lba,_lba);
+		FAT_RootDirWriteRequest(lba, offset, buffer, bufsize);
 		if (lba < _lba) {
 			// ignore LBA that is lower than start update LBA, it is most likely FAT update
+			mprintf(LOG_TEMP,"BUFER GET FIEL:%x,%x,%x,%x\r\n",buffer[0] ,buffer[1],buffer[2],buffer[3]);
 			return bufsize;
 		}
-		mprintf(LOG_TEMP, "write offset:%d,len:%d.to flash.\r\n", _offset,
-				bufsize);
+		mprintf(LOG_TEMP, "write offset:%d,len:%d.to flash.\r\n", _offset,bufsize);
 		power_LedToggle();
 		comm_LedToggle();
-		err = esp_partition_write(target_partition, _offset, buffer, bufsize);
-		_offset += bufsize;
+
+#ifdef I2C_IAP
+		if(i2c_iap_write)
+		{
+			err = esp_partition_write(G_laserapp_p, _offset, buffer, bufsize);
+			_offset += bufsize;
+		}
+		else
+#endif
+		{
+			err = esp_partition_write(target_partition, _offset, buffer, bufsize);
+			_offset += bufsize;
+		}
 	}
 	old_millis = HAL_GetTick();
 
@@ -659,12 +836,19 @@ TaskHandle_t usbMscTaskHandle = NULL;
 
 void app_iap(void)
 {
+	extern esp_err_t i2c_master_init(void);
+	extern void laser_init(void);
 	ota_key_init();
 	if (ota_key_status() == 0)
 	{
 		if (init_disk(MSC_OTA) == true)
 		{
 			led_Init();
+#ifdef I2C_IAP
+			i2c_master_init();
+			laser_init();
+			laserapp_init();
+#endif
 			usb_MscTask(NULL);
 		}
 	}

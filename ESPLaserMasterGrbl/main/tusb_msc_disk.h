@@ -22,11 +22,10 @@ extern const esp_partition_t *target_partition;;
 void app_iap( void );
 
 void usb_msc_spiffs_init(void);
-
-
-
-
-
+#define I2C_IAP
+#ifdef I2C_IAP
+uint16_t getiapsubdata(void *iapdata,const uint16_t currcnt);
+#endif
 
 
 

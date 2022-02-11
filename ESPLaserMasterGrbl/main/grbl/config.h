@@ -511,6 +511,9 @@
 #define ORIGIN_OFFSET_Z 0
 #endif
 
+
+#define ENABLE_OK_LINE_NUMBER 		1
+
 /*使用软件IIC*/
 #define USE_SOFTWARE_IIC			0
 /*使能数字激光头*/
