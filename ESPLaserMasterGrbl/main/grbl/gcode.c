@@ -852,6 +852,8 @@ status_code_t gc_execute_block(char *block, char *message)
                     case 'N':
                         word_bit.parameter = Word_N;
                         gc_block.values.n = (int32_t)truncf(value);
+                        extern int32_t gc_line_number ;
+						gc_line_number = gc_block.values.n;
                         break;
 
                     case 'P': // NOTE: For certain commands, P value must be an integer, but none of these commands are supported.

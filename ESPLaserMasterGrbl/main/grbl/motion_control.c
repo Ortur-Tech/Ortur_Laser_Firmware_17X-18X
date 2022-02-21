@@ -192,7 +192,9 @@ bool mc_line (float *target, plan_line_data_t *pl_data)
         if(!plan_buffer_line(target, pl_data) && settings.mode == Mode_Laser && pl_data->condition.spindle.on && !pl_data->condition.spindle.ccw) {
             // Correctly set spindle state, if there is a coincident position passed.
             // Forces a buffer sync while in M3 laser mode only.
-            hal.spindle.set_state(pl_data->condition.spindle, pl_data->spindle.rpm);
+        	//printf("pl_data->spindle.rpm:%f,gc_state.spindle.rpm:%f\r\n",pl_data->spindle.rpm,gc_state.spindle.rpm);
+        	//同步使用全局的 gc_state.spindel.rpm 防止激光异常关闭
+            hal.spindle.set_state(pl_data->condition.spindle,gc_state.spindle.rpm);// pl_data->spindle.rpm
         }
 #ifdef KINEMATICS_API
       }

@@ -36,7 +36,7 @@
 #define MACHINE_UNKOWN 		0
 #define OLM	     			101000
 #define OLM_PRO				100100
-#define OLM2				100200   //方框机400*430
+#define OLM2				100200   // OLM2 S0 方框机400*430
 #define OLM2_S2             100202
 #define OLM2_PRO		    102000
 #define OLM2_PRO_S1		    102001
