@@ -41,6 +41,7 @@
 #define OLM2_PRO		    102000
 #define OLM2_PRO_S1		    102001
 #define OLM2_PRO_S2		    102002
+#define OLM2_PRO_S2_MAX		102003
 #define OLM3	     		100300
 
 // Aufero 20
@@ -51,13 +52,13 @@
 #define AUFERO_4			200400	//方框机器370*400
 
 
-#define MACHINE_TYPE 	    AUFERO_1
+#define MACHINE_TYPE 	    OLM2_PRO_S2
 /*******************机型定义 END*******************/
 
 #if (MACHINE_TYPE == OLM2)
 #define ORTUR_HW_NAME 		"S2_MAX_V1.0"
 #define BOARD_VERSION 		 OLM_ESP_PRO_V1X
-#elif (MACHINE_TYPE == OLM2_S2) || (MACHINE_TYPE == OLM2_PRO_S2) || (MACHINE_TYPE == AUFERO_1) || (MACHINE_TYPE == AUFERO_2)
+#elif (MACHINE_TYPE == OLM2_S2) || MACHINE_TYPE == OLM2_PRO_S2_MAX || (MACHINE_TYPE == OLM2_PRO_S2) || (MACHINE_TYPE == AUFERO_1) || (MACHINE_TYPE == AUFERO_2)
 #define ORTUR_HW_NAME 		"OLM_ESP_PRO_V1.2"
 #define BOARD_VERSION 		 OLM_ESP_PRO_V1X
 #elif (MACHINE_TYPE == OLM2_PRO_S1)
