@@ -109,6 +109,9 @@ IRAM_ATTR static void _uart1_isr (void *arg)
 
     laser_enter_isr();
 
+    /*有数据就不关机*/
+    system_UpdateAutoPoweroffTime();
+
     uart1->dev->int_clr.rxfifo_full = 1;
     uart1->dev->int_clr.frm_err = 1;
     uart1->dev->int_clr.rxfifo_tout = 1;

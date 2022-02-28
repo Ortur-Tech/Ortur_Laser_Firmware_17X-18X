@@ -274,7 +274,9 @@ bool usbSuspendInput (bool suspend)
 
 void usbBufferInput (uint8_t *data, uint32_t length)
 {
-    while(length--) {
+	/*有数据就不关机*/
+	system_UpdateAutoPoweroffTime();
+	while(length--) {
 
         uint_fast16_t next_head = (rxbuf.head + 1)  & (USB_RX_BUFFER_SIZE - 1); // Get and increment buffer pointer
 
