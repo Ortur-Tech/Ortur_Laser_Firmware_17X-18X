@@ -46,6 +46,8 @@
 
 #if (MACHINE_TYPE == OLM2_PRO_S1)
 #define ORTUR_MODEL_NAME "Ortur Laser Master 2 Pro S1"
+#elif (MACHINE_TYPE == OLM)
+#define ORTUR_MODEL_NAME "Ortur Laser Master"
 #elif (MACHINE_TYPE == OLM2_PRO_S2)
 #define ORTUR_MODEL_NAME "Ortur Laser Master 2 Pro S2"
 #elif MACHINE_TYPE == OLM2_PRO_S2_MAX

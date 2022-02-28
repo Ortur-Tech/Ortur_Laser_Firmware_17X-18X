@@ -34,7 +34,7 @@
 // 三段型号命名 , 主版本xx , 次版本xx , 小修订xx
 // Ortur 10
 #define MACHINE_UNKOWN 		0
-#define OLM	     			101000
+#define OLM     			101000
 #define OLM_PRO				100100
 #define OLM2				100200   // OLM2 S0 方框机400*430
 #define OLM2_S2             100202
@@ -55,7 +55,7 @@
 #define MACHINE_TYPE 	    OLM2_PRO_S2
 /*******************机型定义 END*******************/
 
-#if (MACHINE_TYPE == OLM2)
+#if (MACHINE_TYPE == OLM2) || (MACHINE_TYPE == OLM)
 #define ORTUR_HW_NAME 		"S2_MAX_V1.0"
 #define BOARD_VERSION 		 OLM_ESP_PRO_V1X
 #elif (MACHINE_TYPE == OLM2_S2) || MACHINE_TYPE == OLM2_PRO_S2_MAX || (MACHINE_TYPE == OLM2_PRO_S2) || (MACHINE_TYPE == AUFERO_1) || (MACHINE_TYPE == AUFERO_2)

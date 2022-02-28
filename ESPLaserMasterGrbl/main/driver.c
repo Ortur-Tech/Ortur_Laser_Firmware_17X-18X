@@ -2318,7 +2318,7 @@ uint32_t power_GetCurrent(void)
 /*大于10V认为有电压*/
 //#define VOTAGE_LIMIT 21 //10V
 
-#if (MACHINE_TYPE == OLM2)
+#if (MACHINE_TYPE == OLM) || (MACHINE_TYPE == OLM2)
 #define RATE_VOTAGE 12
 #else
 #define RATE_VOTAGE 24

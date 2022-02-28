@@ -58,7 +58,7 @@
 
 // Serial baud rate
 #ifndef BAUD_RATE
-#if (MACHINE_TYPE == OLM2) || (MACHINE_TYPE == OLM2_PRO_S1)
+#if (MACHINE_TYPE == OLM) || (MACHINE_TYPE == OLM2) || (MACHINE_TYPE == OLM2_PRO_S1)
 #define BAUD_RATE 115200
 #else
 #define BAUD_RATE 512000

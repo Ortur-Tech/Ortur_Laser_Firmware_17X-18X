@@ -75,7 +75,7 @@
 // immediately forces a feed hold and then safely de-energizes the machine. Resuming is blocked until
 // the safety door is re-engaged. When it is, Grbl will re-energize the machine and then resume on the
 // previous tool path, as if nothing happened.
-#if MACHINE_TYPE == AUFERO_2 ||MACHINE_TYPE == OLM2_S2 ||MACHINE_TYPE == OLM2 || MACHINE_TYPE == OLM2_PRO_S1 || MACHINE_TYPE == OLM2_PRO_S2_MAX || MACHINE_TYPE == OLM2_PRO_S2|| (MACHINE_TYPE == OLM_PRO) ||(MACHINE_TYPE == AUFERO_4) ||(MACHINE_TYPE == AUFERO_1) ||(MACHINE_TYPE == AUFERO_CNC)
+#if MACHINE_TYPE == AUFERO_2 || (MACHINE_TYPE == OLM) ||MACHINE_TYPE == OLM2_S2 ||MACHINE_TYPE == OLM2 || MACHINE_TYPE == OLM2_PRO_S1 || MACHINE_TYPE == OLM2_PRO_S2_MAX || MACHINE_TYPE == OLM2_PRO_S2|| (MACHINE_TYPE == OLM_PRO) ||(MACHINE_TYPE == AUFERO_4) ||(MACHINE_TYPE == AUFERO_1) ||(MACHINE_TYPE == AUFERO_CNC)
 
 #else
 #define ENABLE_SAFETY_DOOR_INPUT_PIN // Default disabled. Uncomment to enable.
@@ -403,8 +403,8 @@
 #define DEFAULT_DIRECTION_INVERT_MASK (0b11) //(0b00cbazyx)
 #elif MACHINE_TYPE == AUFERO_2  || MACHINE_TYPE == AUFERO_CNC
 #define DEFAULT_DIRECTION_INVERT_MASK (0b10) //(0b00cbazyx)
-#elif  MACHINE_TYPE == OLM2
-#define DEFAULT_DIRECTION_INVERT_MASK (0b00) //(0b00cbazyx)
+#elif  MACHINE_TYPE == OLM2 || (MACHINE_TYPE == OLM)
+#define DEFAULT_DIRECTION_INVERT_MASK (0b01) //(0b00cbazyx)
 #else
 #define DEFAULT_DIRECTION_INVERT_MASK (0b110) //(0b00cbazyx)
 #endif
@@ -482,7 +482,7 @@
 /********************************自定义功能 BEGIN****************************************/
 
 /*火焰报警触发阈值*/
-#if  (MACHINE_TYPE == AUFERO_2) || (MACHINE_TYPE == OLM2) || MACHINE_TYPE == OLM2_S2 || (BOARD_VERSION == OCM_ESP_PRO_V1X) || (MACHINE_TYPE == AUFERO_1) || (MACHINE_TYPE == AUFERO_4)
+#if  (MACHINE_TYPE == AUFERO_2) || (MACHINE_TYPE == OLM) || (MACHINE_TYPE == OLM2) || MACHINE_TYPE == OLM2_S2 || (BOARD_VERSION == OCM_ESP_PRO_V1X) || (MACHINE_TYPE == AUFERO_1) || (MACHINE_TYPE == AUFERO_4)
 #define ENABLE_FIRE_CHECK 0
 #else
 #define ENABLE_FIRE_CHECK 1
@@ -499,7 +499,7 @@
 #define DEFAULT_LASER_FOCAL_LENGTH 					50 //mm 焦距
 #define ENABLE_AUTO_FOCUS							0
 /*回零偏移*/
-#if (MACHINE_TYPE == AUFERO_2) || (MACHINE_TYPE == OLM2) || MACHINE_TYPE == OLM2_S2 || MACHINE_TYPE == OLM2_PRO_S1 || MACHINE_TYPE == OLM2_PRO_S2_MAX || MACHINE_TYPE == OLM2_PRO_S2 || (MACHINE_TYPE == OLM_PRO) || (MACHINE_TYPE == AUFERO_4)||(MACHINE_TYPE == AUFERO_1)||(MACHINE_TYPE == AUFERO_CNC)
+#if (MACHINE_TYPE == AUFERO_2) || (MACHINE_TYPE == OLM) || (MACHINE_TYPE == OLM2) || MACHINE_TYPE == OLM2_S2 || MACHINE_TYPE == OLM2_PRO_S1 || MACHINE_TYPE == OLM2_PRO_S2_MAX || MACHINE_TYPE == OLM2_PRO_S2 || (MACHINE_TYPE == OLM_PRO) || (MACHINE_TYPE == AUFERO_4)||(MACHINE_TYPE == AUFERO_1)||(MACHINE_TYPE == AUFERO_CNC)
 #define ENABLE_HOMING_FORCE_SET_ORIGIN_OFFSET 0
 #else
 #define ENABLE_HOMING_FORCE_SET_ORIGIN_OFFSET 1
@@ -540,7 +540,7 @@
 #if MACHINE_TYPE == AUFERO_1
 #define DEFAULT_ACCELERATION_LIMIT 	400
 #else
-#define DEFAULT_ACCELERATION_LIMIT 	300
+#define DEFAULT_ACCELERATION_LIMIT 	150
 #endif
 #define ENABLE_POWER_SUPPLY_CHECK 	1
 #define ENABLE_COMM_LED2			1
@@ -560,6 +560,19 @@
 #define DEFAULT_X_MAX_TRAVEL 400.0f // mm NOTE: Must be a positive value.
 #define DEFAULT_Y_MAX_TRAVEL 400.0f // mm NOTE: Must be a positive value.
 #define DEFAULT_Z_MAX_TRAVEL 100.0f // mm NOTE: Must be a positive value.
+#elif (MACHINE_TYPE == OLM)
+#define DEFAULT_X_STEPS_PER_MM (5.0f*16)
+#define DEFAULT_Y_STEPS_PER_MM (5.0f*16)
+#define DEFAULT_Z_STEPS_PER_MM (708*3)
+#define DEFAULT_X_MAX_RATE (100.0f*60) // mm/min
+#define DEFAULT_Y_MAX_RATE (100.0f*60) // mm/min
+#define DEFAULT_Z_MAX_RATE (10.0f*60) // mm/min
+#define DEFAULT_X_ACCELERATION (1200.0f*60*60) // 10*60*60 mm/min^2 = 10 mm/sec^2
+#define DEFAULT_Y_ACCELERATION (800.0f*60*60) // 10*60*60 mm/min^2 = 10 mm/sec^2
+#define DEFAULT_Z_ACCELERATION (2200.0f*60*60) // 10*60*60 mm/min^2 = 10 mm/sec^2
+#define DEFAULT_X_MAX_TRAVEL 150.0f // mm NOTE: Must be a positive value.
+#define DEFAULT_Y_MAX_TRAVEL 130.0f // mm NOTE: Must be a positive value.
+#define DEFAULT_Z_MAX_TRAVEL 50.0f // mm NOTE: Must be a positive value.
 #elif (MACHINE_TYPE == OLM2_PRO_S2_MAX)
 #define DEFAULT_X_STEPS_PER_MM (5.0f*16)
 #define DEFAULT_Y_STEPS_PER_MM (5.0f*16)
@@ -806,7 +819,7 @@
 // After homing, Grbl will set by default the entire machine space into negative space, as is typical
 // for professional CNC machines, regardless of where the limit switches are located. Set this
 // define to 1 to force Grbl to always set the machine origin at the homed location despite switch orientation.
-#if (MACHINE_TYPE == OLM2) || MACHINE_TYPE == OLM2_S2 || MACHINE_TYPE == OLM2_PRO_S1 || MACHINE_TYPE == OLM2_PRO_S2_MAX || MACHINE_TYPE == OLM2_PRO_S2 || (MACHINE_TYPE == OLM_PRO) || (MACHINE_TYPE == AUFERO_1) || (MACHINE_TYPE == AUFERO_CNC)
+#if (MACHINE_TYPE == OLM) || (MACHINE_TYPE == OLM2) || MACHINE_TYPE == OLM2_S2 || MACHINE_TYPE == OLM2_PRO_S1 || MACHINE_TYPE == OLM2_PRO_S2_MAX || MACHINE_TYPE == OLM2_PRO_S2 || (MACHINE_TYPE == OLM_PRO) || (MACHINE_TYPE == AUFERO_1) || (MACHINE_TYPE == AUFERO_CNC)
 #define HOMING_FORCE_SET_ORIGIN // Default disabled. Uncomment to enable.
 #endif
 
@@ -834,7 +847,7 @@
 // NOTE: Still a work-in-progress. Machine coordinates must be in all negative space and
 // does not work with HOMING_FORCE_SET_ORIGIN enabled. Parking motion also moves only in
 // positive direction.
-#if (MACHINE_TYPE == AUFERO_2) || (MACHINE_TYPE == OLM2) || MACHINE_TYPE == OLM2_S2 ||(MACHINE_TYPE == OLM2_PRO_S1) || MACHINE_TYPE == OLM2_PRO_S2_MAX || MACHINE_TYPE == OLM2_PRO_S2 || (MACHINE_TYPE == OLM_PRO) ||(MACHINE_TYPE == AUFERO_4) ||(MACHINE_TYPE == AUFERO_1) ||(MACHINE_TYPE == AUFERO_CNC)
+#if (MACHINE_TYPE == OLM) || (MACHINE_TYPE == AUFERO_2) || (MACHINE_TYPE == OLM2) || MACHINE_TYPE == OLM2_S2 ||(MACHINE_TYPE == OLM2_PRO_S1) || MACHINE_TYPE == OLM2_PRO_S2_MAX || MACHINE_TYPE == OLM2_PRO_S2 || (MACHINE_TYPE == OLM_PRO) ||(MACHINE_TYPE == AUFERO_4) ||(MACHINE_TYPE == AUFERO_1) ||(MACHINE_TYPE == AUFERO_CNC)
 
 #else
 #define DEFAULT_PARKING_ENABLE // Default disabled. Uncomment to enable.
