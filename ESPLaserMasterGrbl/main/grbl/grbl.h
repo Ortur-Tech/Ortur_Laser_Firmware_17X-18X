@@ -101,6 +101,7 @@
 
 #define CMD_EXIT 0x03 // ctrl-C (ETX)
 #define CMD_REBOOT 0x14 // ctrl-T (DC4) - only acted upon if preceeded by 0x1B (ESC)
+#define CMD_RESET_RX_BUFFER 0X15
 #define CMD_RESET 0x18 // ctrl-X (CAN)
 #define CMD_STOP 0x19 // ctrl-Y (EM)
 #define CMD_STATUS_REPORT_LEGACY '?'

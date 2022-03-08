@@ -783,7 +783,10 @@ ISR_CODE bool protocol_enqueue_realtime_command (char c)
         case '\n':
         case '\r':
             break;
-
+        case CMD_RESET_RX_BUFFER:
+        	//multiSteamRxFlush();
+        	hal.stream.reset_read_buffer();
+        	break;
         case CMD_STOP:
             system_set_exec_state_flag(EXEC_STOP);
             char_counter = 0;
