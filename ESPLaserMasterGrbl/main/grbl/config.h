@@ -495,7 +495,7 @@
 #define USE_ADC_FIRE_CHECK 1
 
 #define DEFAULT_POWER_LOG_ENABLE 					0 //默认电源调试信息不输出
-#define DEFAULT_AUTO_POWEROFF_TIME 					30//分钟 自动关机
+#define DEFAULT_AUTO_POWEROFF_TIME 					0 //分钟 自动关机,默认关闭功能
 #define DEFAULT_LASER_FOCAL_LENGTH 					50 //mm 焦距
 #define ENABLE_AUTO_FOCUS							0
 /*回零偏移*/

@@ -2184,11 +2184,13 @@ uint8_t power_KeyDown(void)
 }
 
 static uint32_t auto_poweroff_time = 0;
+static uint8_t auto_poweroff_time_update_flag = 0;
 
 /*自动关机功能*/
 void system_UpdateAutoPoweroffTime(void)
 {
-	auto_poweroff_time = HAL_GetTick();
+	//auto_poweroff_time = HAL_GetTick();
+	auto_poweroff_time_update_flag = 1;
 }
 /*
  * breif:自动关机判断函数
@@ -2196,6 +2198,11 @@ void system_UpdateAutoPoweroffTime(void)
 void system_AutoPowerOff(void)
 {
 	if(settings.sys_auto_poweroff_time == 0) return;
+	if(auto_poweroff_time_update_flag == 1)
+	{
+		auto_poweroff_time_update_flag = 0;
+		auto_poweroff_time = HAL_GetTick();
+	}
 	/*usb,uart长时间没有输入数据则自动关机*/
 	if((HAL_GetTick() - auto_poweroff_time) > (1000 * 60 * settings.sys_auto_poweroff_time))
 	{
