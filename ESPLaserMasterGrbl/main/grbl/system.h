@@ -85,6 +85,8 @@ typedef enum {
 	Message_PowerSupplied = 16,
 	Message_NoPowerSupply = 17,
 
+	Message_ClearBuffer = 18,
+
     Message_NextMessage // Next unassigned message number
 } message_code_t;
 
