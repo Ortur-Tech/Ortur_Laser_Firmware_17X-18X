@@ -268,7 +268,11 @@ IRAM_ATTR static void flush (uart_t *uart)
 
     // we read the data out and make `fifo_len == 0 && rd_addr == wr_addr`.
     while(uart->dev->status.rxfifo_cnt || (uart->dev->mem_rx_status.rx_waddr != uart->dev->mem_rx_status.apb_rx_raddr))
-        READ_PERI_REG(UART_FIFO_REG(uart->num));
+    {
+    	READ_PERI_REG(UART_FIFO_AHB_REG(uart->num));
+    	//READ_PERI_REG(UART_FIFO_REG(uart->num));
+    }
+
 
     UART_MUTEX_UNLOCK(uart);
 }
