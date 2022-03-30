@@ -262,7 +262,7 @@ status_code_t report_status_message (status_code_t status_code)
 				hal.stream.write(appendbuf(3, "error:", uitoa((uint32_t)status_code), ASCII_EOL));
 				if(status_code == Status_Reset)
 				{
-					hal.stream.write("[MSG: Emergency Switch Engaged.]"ASCII_EOL);
+					hal.stream.write("[MSG:Emergency Switch Engaged.]"ASCII_EOL);
 				}
         	}
         	else
@@ -272,7 +272,7 @@ status_code_t report_status_message (status_code_t status_code)
         		hal.stream.write(appendbuf(5, "error:", uitoa((uint32_t)status_code), " N", str, ASCII_EOL));
 				if(status_code == Status_Reset)
 				{
-					hal.stream.write("[MSG: Emergency Switch Engaged.]"ASCII_EOL);
+					hal.stream.write("[MSG:Emergency Switch Engaged.]"ASCII_EOL);
 				}
 				gc_line_number = -1;
         	}

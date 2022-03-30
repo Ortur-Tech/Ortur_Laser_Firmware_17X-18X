@@ -1581,7 +1581,7 @@ void estop_StatusReport(void)
 {
 	if(gpio_get_level(RESET_PIN) == 1)
 	{
-		hal.stream.write("[MSG: Emergency Switch Engaged.]"ASCII_EOL);
+		hal.stream.write("[MSG:Emergency Switch Engaged.]"ASCII_EOL);
 	}
 }
 
@@ -1840,7 +1840,7 @@ void fire_InfoReport(void)
 	char str[100] = {0};
 	if(settings.fire_alarm_time_threshold == 0)
 	{
-		hal.stream.write_all("[MSG: Warning: Flame Sensor Disabled by User OverRide]" ASCII_EOL);
+		hal.stream.write_all("[MSG:Warning: Flame Sensor Disabled by User OverRide]" ASCII_EOL);
 	}
 	{
 		if(fire_temp_enable_flag == 0)
@@ -1861,11 +1861,11 @@ void fire_InfoReport(void)
 				if(fire_evn_value < EVN_MAX_VALUE)
 	#endif
 				{
-					hal.stream.write_all("[MSG: Flame detector Inactive. Luminosity too high]" ASCII_EOL);
+					hal.stream.write_all("[MSG:Flame detector Inactive. Luminosity too high]" ASCII_EOL);
 				}
 				else
 				{
-					sprintf(str,"[MSG: Flame detector active,Ambient infrared value:%d]\r\n",fire_evn_value);
+					sprintf(str,"[MSG:Flame detector active,Ambient infrared value:%d]\r\n",fire_evn_value);
 					hal.stream.write_all(str);
 				}
 
@@ -1973,7 +1973,7 @@ void fire_Check(void)
 		/*触发火焰报警后需重新获取环境值*/
 		fire_evn_flag = 0;
 //		fan_PwmSet(0);//关风扇
-		hal.stream.write_all("[MSG: Flame Alarm! If Safe, press Power Button to Resume]" ASCII_EOL);
+		hal.stream.write_all("[MSG:Flame Alarm! If Safe, press Power Button to Resume]" ASCII_EOL);
 //		sys.state = STATE_ALARM;
 //		sys.abort = 1;
 		fire_alarm_state = 1;
@@ -2206,7 +2206,7 @@ void system_AutoPowerOff(void)
 	/*usb,uart长时间没有输入数据则自动关机*/
 	if((HAL_GetTick() - auto_poweroff_time) > (1000 * 60 * settings.sys_auto_poweroff_time))
 	{
-		hal.stream.write_all(" [MSG: Power saving Mode enabled. Ortur powering off]"ASCII_EOL);
+		hal.stream.write_all(" [MSG:Power saving Mode enabled. Ortur powering off]"ASCII_EOL);
 		HAL_Delay(5);
 		esp_restart();
 	}
