@@ -470,18 +470,24 @@ status_code_t system_execute_line (char *line)
                 retval = grbl.on_unknown_sys_command(sys.state, line, lcline);
 
             if (retval == Status_Unhandled) {
-                // Check for global setting, store if so
-                if(sys.state == STATE_IDLE || (sys.state & (STATE_ALARM|STATE_ESTOP|STATE_CHECK_MODE))) {
-                    uint_fast8_t counter = 1;
-                    float parameter;
-                    if(!read_float(line, &counter, &parameter))
-                        retval = Status_BadNumberFormat;
-                    else if(!(isintf(parameter) && line[counter++] == '='))
-                        retval = Status_InvalidStatement;
-                    else
-                        retval = settings_store_global_setting((setting_type_t)parameter, &lcline[counter]);
-                } else
-                    retval = Status_IdleError;
+            	// Check for global setting, store if so
+				if(sys.state == STATE_IDLE || (sys.state & (STATE_ALARM|STATE_ESTOP|STATE_CHECK_MODE))) {
+					uint_fast8_t counter = 1;
+					float parameter;
+					if(!read_float(line, &counter, &parameter))
+						retval = Status_BadNumberFormat;
+					else if(!isintf(parameter))
+						retval = Status_InvalidStatement;
+					else if(line[counter++] == '=')
+					{
+						retval = settings_store_global_setting((setting_type_t)parameter, &lcline[counter]);
+					}
+					else
+					{
+						retval = report_grbl_alone_setting((setting_type_t)parameter);
+					}
+				} else
+					retval = Status_IdleError;
             }
     }
 
