@@ -1576,3 +1576,486 @@ void report_pid_log (void)
     grbl.report.status_message(Status_GcodeUnsupportedCommand);
 #endif
 }
+status_code_t report_grbl_alone_setting(setting_type_t setting)
+{
+	 uint_fast8_t set_idx = 0;
+
+	    if (setting >= Setting_AxisSettingsBase && setting <= Setting_AxisSettingsMax) {
+	        // Store axis configuration. Axis numbering sequence set by AXIS_SETTING defines.
+	        // NOTE: Ensure the setting index corresponds to the report.c settings printout.
+	        //bool found = false;
+	        uint_fast16_t base_idx = (uint_fast16_t)setting - (uint_fast16_t)Setting_AxisSettingsBase;
+	        uint_fast8_t axis_idx = base_idx % AXIS_SETTINGS_INCREMENT;
+	        if(axis_idx < N_AXIS) switch((base_idx - axis_idx) / AXIS_SETTINGS_INCREMENT) {
+
+	            case AxisSetting_StepsPerMM:
+	            	if(axis_idx == 0)
+	            	{
+	            		report_float_setting((setting_type_t)(axis_idx + Setting_AxisSettingsBase),settings.axis[axis_idx].steps_per_mm , N_DECIMAL_SETTINGVALUE);
+	            	}
+	            	if(axis_idx == 1)
+	            	{
+	            		report_float_setting((setting_type_t)(axis_idx + Setting_AxisSettingsBase),settings.axis[axis_idx].steps_per_mm , N_DECIMAL_SETTINGVALUE);
+	            	}
+	            	if(axis_idx ==2)
+	            	{
+	            		report_float_setting((setting_type_t)(axis_idx + Setting_AxisSettingsBase),settings.axis[axis_idx].steps_per_mm , N_DECIMAL_SETTINGVALUE);
+	            	}
+	                break;
+
+	            case AxisSetting_MaxRate:
+	            	if(axis_idx == 0)
+					{
+	            		report_float_setting((setting_type_t)(axis_idx + Setting_AxisSettingsBase+10),settings.axis[axis_idx].max_rate , N_DECIMAL_SETTINGVALUE);
+					}
+					if(axis_idx == 1)
+					{
+						report_float_setting((setting_type_t)(axis_idx + Setting_AxisSettingsBase+10),settings.axis[axis_idx].max_rate , N_DECIMAL_SETTINGVALUE);
+					}
+					if(axis_idx ==2)
+					{
+						report_float_setting((setting_type_t)(axis_idx + Setting_AxisSettingsBase+10),settings.axis[axis_idx].max_rate , N_DECIMAL_SETTINGVALUE);
+					}
+
+	                break;
+
+	            case AxisSetting_Acceleration:
+	            	if(axis_idx == 0)
+					{
+						report_float_setting((setting_type_t)(axis_idx + Setting_AxisSettingsBase+20),settings.axis[axis_idx].acceleration / (60.0f * 60.0f) , N_DECIMAL_SETTINGVALUE);
+					}
+					if(axis_idx == 1)
+					{
+						report_float_setting((setting_type_t)(axis_idx + Setting_AxisSettingsBase+20),settings.axis[axis_idx].acceleration / (60.0f * 60.0f), N_DECIMAL_SETTINGVALUE);
+					}
+					if(axis_idx ==2)
+					{
+						report_float_setting((setting_type_t)(axis_idx + Setting_AxisSettingsBase+20),settings.axis[axis_idx].acceleration / (60.0f * 60.0f), N_DECIMAL_SETTINGVALUE);
+					}
+	                break;
+
+	            case AxisSetting_MaxTravel:
+	            	if(axis_idx == 0)
+					{
+						report_float_setting((setting_type_t)(axis_idx + Setting_AxisSettingsBase+30),-settings.axis[axis_idx].max_travel , N_DECIMAL_SETTINGVALUE);
+					}
+					if(axis_idx == 1)
+					{
+						report_float_setting((setting_type_t)(axis_idx + Setting_AxisSettingsBase+30),-settings.axis[axis_idx].max_travel, N_DECIMAL_SETTINGVALUE);
+					}
+					if(axis_idx ==2)
+					{
+						report_float_setting((setting_type_t)(axis_idx + Setting_AxisSettingsBase+30),-settings.axis[axis_idx].max_travel, N_DECIMAL_SETTINGVALUE);
+					}
+	                break;
+
+	#ifdef ENABLE_BACKLASH_COMPENSATION
+	            case AxisSetting_Backlash:
+	                //report_float_setting((setting_type_t)(AxisSetting_Backlash + Setting_AxisSettingsBase),settings.axis[axis_idx].backlash , N_DECIMAL_SETTINGVALUE);
+	                break;
+	#endif
+	            default: // for stopping compiler warning
+	            	 return Status_InvalidStatement;
+	        }
+
+	    } else {
+	        // Store non-axis Grbl settings
+	        switch(setting) {
+
+	            case Setting_PulseMicroseconds:
+	                report_float_setting(Setting_PulseMicroseconds,settings.steppers.pulse_microseconds,1);
+	                break;
+	            case Setting_PulseDelayMicroseconds:
+	                report_float_setting(Setting_PulseDelayMicroseconds,settings.steppers.pulse_delay_microseconds,1);
+	                break;
+
+	            case Setting_StepperIdleLockTime:
+	            	report_uint_setting(Setting_StepperIdleLockTime, settings.steppers.idle_lock_time);
+	                break;
+
+	            case Setting_StepInvertMask:
+	            	report_uint_setting(Setting_StepInvertMask, settings.steppers.step_invert.mask);
+	                break;
+
+	            case Setting_DirInvertMask:
+	            	report_uint_setting(Setting_DirInvertMask, settings.steppers.dir_invert.mask);
+	                break;
+
+	            case Setting_InvertStepperEnable: // Reset to ensure change. Immediate re-init may cause problems.
+	            	report_uint_setting(Setting_InvertStepperEnable, settings.steppers.enable_invert.mask);
+	                break;
+
+	            case Setting_LimitPinsInvertMask: // Reset to ensure change. Immediate re-init may cause problems.
+	            	report_uint_setting(Setting_LimitPinsInvertMask, settings.limits.invert.mask);
+	                break;
+
+	            case Setting_InvertProbePin: // Reset to ensure change. Immediate re-init may cause problems.
+	            	report_uint_setting(Setting_InvertProbePin, settings.probe.invert_probe_pin);
+	                break;
+
+	            case Setting_StatusReportMask:
+	            	 report_uint_setting(Setting_StatusReportMask, (uint32_t)settings.status_report.mask);
+	                break;
+
+	            case Setting_JunctionDeviation:
+	            	report_float_setting(Setting_JunctionDeviation, settings.junction_deviation, N_DECIMAL_SETTINGVALUE);
+	                break;
+
+	            case Setting_ArcTolerance:
+	            	report_float_setting(Setting_ArcTolerance, settings.arc_tolerance, N_DECIMAL_SETTINGVALUE);
+	                break;
+
+	            case Setting_ReportInches:
+	            	report_uint_setting(Setting_ReportInches, settings.flags.report_inches);
+	                break;
+
+	            case Setting_ControlInvertMask:
+	            	report_uint_setting(Setting_ControlInvertMask, settings.control_invert.mask);
+	               break;
+
+	            case Setting_CoolantInvertMask:
+	            	report_uint_setting(Setting_CoolantInvertMask, settings.coolant_invert.mask);
+	                break;
+
+	            case Setting_SpindleInvertMask:
+	            	report_uint_setting(Setting_SpindleInvertMask, settings.spindle.invert.mask);
+	                break;
+
+	            case Setting_SpindleAtSpeedTolerance:
+	            	 report_float_setting(Setting_SpindleAtSpeedTolerance, settings.spindle.at_speed_tolerance, 1);
+	                break;
+
+	            case Setting_ControlPullUpDisableMask:
+	            	report_uint_setting(Setting_ControlPullUpDisableMask, settings.control_disable_pullup.mask);
+	                break;
+
+	            case Setting_LimitPullUpDisableMask:
+	            	report_uint_setting(Setting_LimitPullUpDisableMask, settings.limits.disable_pullup.mask);
+	                break;
+
+	            case Setting_ProbePullUpDisable:
+	            	if(hal.probe.configure)
+	            	report_uint_setting(Setting_ProbePullUpDisable, settings.probe.disable_probe_pullup);
+	                break;
+
+	            case Setting_SoftLimitsEnable:
+	            	report_uint_setting(Setting_SoftLimitsEnable, settings.limits.flags.soft_enabled);
+	                break;
+
+	            case Setting_HardLimitsEnable:
+	            	report_uint_setting(Setting_HardLimitsEnable, ((settings.limits.flags.hard_enabled & bit(0)) ? bit(0) | (settings.limits.flags.check_at_init ? bit(1) : 0) : 0));
+	                break;
+
+	            case Setting_JogSoftLimited:
+	            	 report_uint_setting(Setting_JogSoftLimited, settings.limits.flags.jog_soft_limited);
+	                break;
+
+	            case Setting_RestoreOverrides:
+	            	report_uint_setting(Setting_RestoreOverrides, settings.flags.restore_overrides);
+	                break;
+
+	            case Setting_IgnoreDoorWhenIdle:
+	            	report_uint_setting(Setting_IgnoreDoorWhenIdle, settings.flags.safety_door_ignore_when_idle);
+	                break;
+
+	            case Setting_SleepEnable:
+	            	report_uint_setting(Setting_SleepEnable, settings.flags.sleep_enable);
+	                break;
+
+	            case Setting_HoldActions:
+	            	report_uint_setting(Setting_HoldActions, (settings.flags.disable_laser_during_hold ? bit(0) : 0) | (settings.flags.restore_after_feed_hold ? bit(1) : 0));
+	                break;
+
+	            case Setting_ForceInitAlarm:
+	            	report_uint_setting(Setting_ForceInitAlarm, settings.flags.force_initialization_alarm);
+	                break;
+
+	            case Setting_ProbingFeedOverride:
+	            	report_uint_setting(Setting_ProbingFeedOverride, settings.probe.allow_feed_override);
+	                break;
+
+	            case Setting_HomingEnable:
+	            	report_uint_setting(Setting_HomingEnable, (settings.homing.flags.enabled ? 1 : 0));
+	                break;
+
+	            case Setting_HomingDirMask:
+	            	 report_uint_setting(Setting_HomingDirMask, settings.homing.dir_mask.value);
+	                break;
+
+	            case Setting_HomingFeedRate:
+	            	report_float_setting(Setting_HomingFeedRate, settings.homing.feed_rate, N_DECIMAL_SETTINGVALUE);
+	                break;
+
+	            case Setting_HomingSeekRate:
+	            	report_float_setting(Setting_HomingSeekRate, settings.homing.seek_rate, N_DECIMAL_SETTINGVALUE);
+	                break;
+
+	            case Setting_HomingDebounceDelay:
+	            	report_uint_setting(Setting_HomingDebounceDelay, settings.homing.debounce_delay);
+	                break;
+
+	            case Setting_HomingPulloff:
+	            	 report_float_setting(Setting_HomingPulloff, settings.homing.pulloff, N_DECIMAL_SETTINGVALUE);
+	                break;
+
+	            case Setting_EnableLegacyRTCommands:
+	            	 report_uint_setting(Setting_EnableLegacyRTCommands, settings.flags.legacy_rt_commands ? 1 : 0);
+	                break;
+
+	            case Setting_HomingLocateCycles:
+	            	report_uint_setting(Setting_HomingLocateCycles, settings.homing.locate_cycles);
+	                break;
+
+	            case Setting_HomingCycle_1:
+	            	report_uint_setting((setting_type_t)(Setting_HomingCycle_1), settings.homing.cycle[0].mask);
+	            	break;
+	            case Setting_HomingCycle_2:
+	            	report_uint_setting((setting_type_t)(Setting_HomingCycle_2), settings.homing.cycle[1].mask);
+	               break;
+	            case Setting_HomingCycle_3:
+	            	report_uint_setting((setting_type_t)(Setting_HomingCycle_3), settings.homing.cycle[2].mask);
+				   break;
+	            case Setting_HomingCycle_4:
+	            	//report_uint_setting((setting_type_t)(Setting_HomingCycle_4), settings.homing.cycle[3].mask);
+				   break;
+	            case Setting_HomingCycle_5:
+	            	//report_uint_setting((setting_type_t)(Setting_HomingCycle_5), settings.homing.cycle[4].mask);
+				   break;
+	            case Setting_HomingCycle_6:
+	            	//report_uint_setting((setting_type_t)(Setting_HomingCycle_6), settings.homing.cycle[5].mask);
+	                break;
+
+	            case Setting_G73Retract:
+	            	report_float_setting(Setting_G73Retract, settings.g73_retract, N_DECIMAL_SETTINGVALUE);
+	                break;
+
+	            case Setting_PWMFreq:
+	            	 report_float_setting(Setting_PWMFreq, settings.spindle.pwm_freq, N_DECIMAL_SETTINGVALUE);
+	                break;
+
+	            case Setting_RpmMax:
+	            	report_float_setting(Setting_RpmMax, settings.spindle.rpm_max, N_DECIMAL_RPMVALUE);
+	                break;
+
+	            case Setting_RpmMin:
+	            	report_float_setting(Setting_RpmMin, settings.spindle.rpm_min, N_DECIMAL_RPMVALUE);
+	                break;
+
+	            case Setting_Mode:
+	            	report_uint_setting(Setting_Mode, (uint32_t)settings.mode);
+	                break;
+
+	            case Setting_ParkingEnable:
+	            	 report_uint_setting(Setting_ParkingEnable, settings.parking.flags.value);
+	                break;
+
+	            case Setting_ParkingAxis:
+	            	report_uint_setting(Setting_ParkingAxis, settings.parking.axis);
+	                break;
+
+	            case Setting_ParkingPulloutIncrement:
+	            	report_float_setting(Setting_ParkingPulloutIncrement, settings.parking.pullout_increment, N_DECIMAL_SETTINGVALUE);
+	                break;
+
+	            case Setting_ParkingPulloutRate:
+	            	report_float_setting(Setting_ParkingPulloutRate, settings.parking.pullout_rate, N_DECIMAL_SETTINGVALUE);
+	                break;
+
+	            case Setting_ParkingTarget:
+	            	report_float_setting(Setting_ParkingTarget, settings.parking.target, N_DECIMAL_SETTINGVALUE);
+	                break;
+
+	            case Setting_ParkingFastRate:
+	            	report_float_setting(Setting_ParkingFastRate, settings.parking.rate, N_DECIMAL_SETTINGVALUE);
+	                break;
+
+	            case Setting_PWMOffValue:
+	            	report_float_setting(Setting_PWMOffValue, settings.spindle.pwm_off_value, N_DECIMAL_SETTINGVALUE);
+	                break;
+
+	            case Setting_PWMMinValue:
+	            	report_float_setting(Setting_PWMMinValue, settings.spindle.pwm_min_value, N_DECIMAL_SETTINGVALUE);
+	                break;
+
+	            case Setting_PWMMaxValue:
+	            	 report_float_setting(Setting_PWMMaxValue, settings.spindle.pwm_max_value, N_DECIMAL_SETTINGVALUE);
+	                break;
+
+	            case Setting_StepperDeenergizeMask:
+	            	report_uint_setting(Setting_StepperDeenergizeMask, settings.steppers.deenergize.mask);
+	                break;
+
+	            case Setting_SpindlePPR:
+	            	 if(hal.driver_cap.spindle_sync || hal.driver_cap.spindle_pid)
+	            	     report_uint_setting(Setting_SpindlePPR, settings.spindle.ppr);
+	                break;
+
+	#ifdef ENABLE_SPINDLE_LINEARIZATION
+
+	            case Setting_LinearSpindlePiece1:
+	            case Setting_LinearSpindlePiece2:
+	            case Setting_LinearSpindlePiece3:
+	            case Setting_LinearSpindlePiece4:
+	                {
+	                    uint32_t idx = setting - Setting_LinearSpindlePiece1;
+	                    float rpm, start, end;
+
+	                    if(svalue[0] == '0' && svalue[1] == '\0') {
+	                        settings.spindle.pwm_piece[idx].rpm = NAN;
+	                        settings.spindle.pwm_piece[idx].start =
+	                        settings.spindle.pwm_piece[idx].end = 0.0f;
+	                    } else if(sscanf(svalue, "%f,%f,%f", &rpm, &start, &end) == 3) {
+	                        settings.spindle.pwm_piece[idx].rpm = rpm;
+	                        settings.spindle.pwm_piece[idx].start = start;
+	                        settings.spindle.pwm_piece[idx].end = end;
+	                    } else
+	                        return Status_InvalidStatement;
+	                }
+	                break;
+	#endif
+
+	#ifdef SPINDLE_RPM_CONTROLLED
+
+	            case Setting_SpindlePGain:
+	                settings.spindle.pid.p_gain = value;
+	                break;
+
+	            case Setting_SpindleIGain:
+	                settings.spindle.pid.i_gain = value;
+	                break;
+
+	            case Setting_SpindleDGain:
+	                settings.spindle.pid.d_gain = value;
+	                break;
+
+	            case Setting_SpindleMaxError:
+	                settings.spindle.pid.max_error = value;
+	                break;
+
+	            case Setting_SpindleIMaxError:
+	                settings.spindle.pid.i_max_error = value;
+	                break;
+
+	#endif
+
+	            case Setting_PositionPGain:
+	            	if(hal.driver_cap.spindle_sync)
+	            		report_float_setting(Setting_PositionPGain, settings.position.pid.p_gain, N_DECIMAL_SETTINGVALUE);
+	                break;
+
+	            case Setting_PositionIGain:
+	            	if(hal.driver_cap.spindle_sync)
+	            	   report_float_setting(Setting_PositionIGain, settings.position.pid.i_gain, N_DECIMAL_SETTINGVALUE);
+	                break;
+
+	            case Setting_PositionDGain:
+	            	if(hal.driver_cap.spindle_sync)
+	            	 report_float_setting(Setting_PositionDGain, settings.position.pid.d_gain, N_DECIMAL_SETTINGVALUE);
+	                break;
+
+	            case Setting_PositionIMaxError:
+	            	if(hal.driver_cap.spindle_sync)
+	            	 report_float_setting(Setting_PositionIMaxError, settings.position.pid.i_max_error, N_DECIMAL_SETTINGVALUE);
+	                break;
+
+	/*******************************自定义设置 BEGIN****************************************/
+	            case Setting_FireLogEnable: //设置火焰报警阈值
+	            	report_uint_setting(Setting_FireLogEnable, settings.fire_log_enable); //火焰传感器数据打印
+					break;
+	            case Setting_FireAlarmDeltaThreshold: //设置火焰报警阈值
+	            	report_uint_setting(Setting_FireAlarmDeltaThreshold, settings.fire_alarm_delta_threshold); //火焰传感器报警阈值
+					break;
+	            case Setting_FireAlarmThreshold: //设置火焰报警次数阈值
+	            	report_uint_setting(Setting_FireAlarmThreshold, settings.fire_alarm_time_threshold); //火焰传感器报警阈值
+	            	break;
+	            case Setting_UartBaudrate:
+	            	report_uint_setting(Setting_UartBaudrate, settings.uart_baudrate);					//串口波特率
+	            	break;
+	#if ENABLE_HOMING_FORCE_SET_ORIGIN_OFFSET
+	            case Setting_OriginOffsetX:     //设置x原点偏移
+	            	settings.origin_offset_x = value;
+	            	break;
+	            case Setting_OriginOffsetY:		//设置y原点偏移
+	            	settings.origin_offset_y = value;
+					break;
+	            case Setting_OriginOffsetZ:		//设置z原点偏移
+	            	settings.origin_offset_z = value;
+					break;
+	#endif
+	            case Setting_VoltageOffset:
+	            	report_uint_setting(Setting_VoltageOffset, settings.voltage_offset);					//电压偏移
+					break;
+	#if ENABLE_ACCELERATION_DETECT
+	            case Setting_AccelerateThreshold:	//设置加速度阈值
+	            	 report_uint_setting(Setting_AccelerateThreshold, settings.accel_sensitivity); //加速度传感器报警阈值
+	            	break;
+	#endif
+	            case Setting_AutoPowerOffTime:	//自动关机功能
+	            	report_uint_setting(Setting_AutoPowerOffTime, settings.sys_auto_poweroff_time); //自动关机时间
+					break;
+	            case Setting_LaserUsedTime:	//使用时长
+	            	report_uint_setting(Setting_LaserUsedTime, settings.laser_used_time); //激光使用时间s
+					break;
+	            case Setting_LaserFocalLength:
+	            	 report_uint_setting(Setting_LaserFocalLength, settings.laser_focal_length);			//焦距
+	            	break;
+	            case Setting_IICRate:
+	            	report_uint_setting(Setting_IICRate, settings.iic_rate);							//iic通讯速率
+					break;
+	            case Setting_EnableDigitalLaserMode:
+	            	report_uint_setting(Setting_EnableDigitalLaserMode, settings.laser_control_mode);	//激光器控制模式
+					break;
+	            case Setting_EnableEcho:
+	            	report_uint_setting(Setting_EnableEcho, settings.echo_enable);						//echo输出使能
+					break;
+	            case Setting_PowerLogEnable:
+	            	 report_uint_setting(Setting_PowerLogEnable, settings.power_log_enable);					//电源信息输出使能
+					break;
+	/*******************************自定义设置 END****************************************/
+
+	            case Setting_ToolChangeMode:
+	            	if(!hal.driver_cap.atc && hal.stream.suspend_read)
+	            	   report_uint_setting(Setting_ToolChangeMode, settings.tool_change.mode);
+	                break;
+
+	            case Setting_ToolChangeProbingDistance:
+	            	 if(!hal.driver_cap.atc && hal.stream.suspend_read)
+	            	    report_float_setting(Setting_ToolChangeProbingDistance, settings.tool_change.probing_distance, 1);
+	                break;
+
+	            case Setting_ToolChangeFeedRate:
+	            	 if(!hal.driver_cap.atc && hal.stream.suspend_read)
+						report_float_setting(Setting_ToolChangeFeedRate, settings.tool_change.feed_rate, 1);
+	                break;
+
+	            case Setting_ToolChangeSeekRate:
+	                if(!hal.driver_cap.atc && hal.stream.suspend_read)
+	                    report_float_setting(Setting_ToolChangeSeekRate, settings.tool_change.seek_rate, 1);
+	                break;
+
+	            case Settings_IoPort_InvertIn:
+	                if(hal.port.num_digital_in)
+	                    report_uint_setting(Settings_IoPort_InvertIn, settings.ioport.invert_in.mask);
+	                break;
+
+	            case Settings_IoPort_Pullup_Disable:
+	                if(hal.port.num_digital_in)
+	                    report_uint_setting(Settings_IoPort_Pullup_Disable, settings.ioport.pullup_disable_in.mask);
+	                break;
+
+	            case Settings_IoPort_InvertOut:
+	                if(hal.port.num_digital_out)
+	                    report_uint_setting(Settings_IoPort_InvertOut, settings.ioport.invert_out.mask);
+	                break;
+
+	            case Settings_IoPort_OD_Enable:
+	                if(hal.port.num_digital_out)
+	                    report_uint_setting(Settings_IoPort_OD_Enable, settings.ioport.od_enable_out.mask);
+	                break;
+	            default:
+	                return Status_InvalidStatement;
+	        }
+	    }
+
+	    return Status_OK;
+}
