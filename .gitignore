@@ -56,3 +56,4 @@ dkms.conf
 /ESPLaserMasterGrbl/esp-idf
 /build/
 /ESPLaserMasterGrbl/idf_components
+/ESPLaserMasterGrbl.si4project/

@@ -185,6 +185,12 @@ typedef enum {
 	Setting_OriginOffsetZ = 273,
 #endif
 	Setting_VoltageOffset = 274,			//电压偏移
+#if WIRELESS_STRIP_ENABLE
+	Setting_STRIP_ADDR = 275,
+	Setting_STRIP_TYPE = 276,
+	Setting_STRIP_KEY		= 277,
+	Setting_STRIP_RANDOM_ADDR	= 278,
+#endif
 /******************************添加参数END************************************************/
 
     // Normally used for Ethernet or WiFi Station
@@ -261,14 +267,6 @@ typedef enum {
     Setting_UserDefined_7 = 457,
     Setting_UserDefined_8 = 458,
     Setting_UserDefined_9 = 459,
-
-#if WIRELESS_STRIP_ENABLE
-	Setting_STRIP_ADDR = 500,
-	Setting_STRIP_TYPE = 501,
-	Setting_STRIP_KEY		= 502,
-	Setting_STRIP_RANDOM_ADDR	= 503,
-
-#endif
 
     Setting_SettingsMax
 //
