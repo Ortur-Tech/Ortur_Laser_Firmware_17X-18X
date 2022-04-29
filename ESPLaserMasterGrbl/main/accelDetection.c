@@ -558,7 +558,7 @@ void accel_detection()
 			switch(GsensorDeviceType)
 			{
 			case SC7A20_DEVICE :
-				hal.stream.write_all("[SC7A20:(");
+				hal.stream.write_all("[MSG:SC7A20(");
 				break;
 			case BMA250_DEVICE :
 				hal.stream.write_all("[BMA250:(");
