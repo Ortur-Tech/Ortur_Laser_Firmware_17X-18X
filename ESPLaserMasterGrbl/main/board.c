@@ -84,6 +84,10 @@ void extended_FuncTask( void * pvParameters )
 #if ENABLE_DIGITAL_LASER
 		laser_keep_active();
 #endif
+
+#if WIRELESS_STRIP_ENABLE
+		execute_cmd_task();
+#endif
 	}
 }
 

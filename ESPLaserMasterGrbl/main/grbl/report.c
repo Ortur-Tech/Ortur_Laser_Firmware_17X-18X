@@ -712,6 +712,11 @@ void report_grbl_settings (bool all)
         report_uint_setting(Setting_EnableEcho, settings.echo_enable);						//echo输出使能
         report_uint_setting(Setting_PowerLogEnable, settings.power_log_enable);					//电源信息输出使能
         report_uint_setting(Setting_UartBaudrate, settings.uart_baudrate);					//串口波特率
+#if WIRELESS_STRIP_ENABLE
+        report_uint_setting(Setting_STRIP_ADDR, settings.strip.addr);					//strip addr
+        report_uint_setting(Setting_STRIP_TYPE, settings.strip.type);					//strip type
+        report_uint_setting(Setting_STRIP_RANDOM_ADDR, settings.random_addr);					//strip type
+#endif
 #if ENABLE_HOMING_FORCE_SET_ORIGIN_OFFSET
         report_float_setting(Setting_OriginOffsetX, settings.origin_offset_x, N_DECIMAL_SETTINGVALUE); //x轴原点偏移
         report_float_setting(Setting_OriginOffsetY, settings.origin_offset_y, N_DECIMAL_SETTINGVALUE); //y轴原点偏移

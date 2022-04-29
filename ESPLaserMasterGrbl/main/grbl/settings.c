@@ -243,7 +243,12 @@ const settings_t defaults = {
     .parking.target = DEFAULT_PARKING_TARGET,
     .parking.rate = DEFAULT_PARKING_RATE,
     .parking.pullout_rate = DEFAULT_PARKING_PULLOUT_RATE,
-    .parking.pullout_increment = DEFAULT_PARKING_PULLOUT_INCREMENT
+    .parking.pullout_increment = DEFAULT_PARKING_PULLOUT_INCREMENT,
+#if WIRELESS_STRIP_ENABLE
+	.strip.addr=WIRELESS_STRIP_ADDR_DEFAULT,
+	.strip.type=WIRELESS_STRIP_TYPE_DEFAULT,
+	.random_addr=STRIP_RANDOM_ADDR_DEFAULT,
+#endif
 };
 
 // Write build info to persistent storage
@@ -397,7 +402,9 @@ void settings_restore (settings_restore_t restore)
         settings.control_disable_pullup.block_delete &= hal.driver_cap.block_delete;
         settings.control_disable_pullup.e_stop &= hal.driver_cap.e_stop;
         settings.control_disable_pullup.stop_disable &= hal.driver_cap.program_stop;
-
+#if WIRELESS_STRIP_ENABLE
+        settings.random_addr = rmt_data.addr;
+#endif
         write_global_settings();
     }
 
@@ -958,6 +965,25 @@ status_code_t settings_store_global_setting (setting_type_t setting, char *svalu
             case Setting_PowerLogEnable:
 				settings.power_log_enable = int_value;
 				break;
+#if WIRELESS_STRIP_ENABLE
+            case Setting_STRIP_ADDR:
+				settings.strip.addr = (uint32_t)truncf(value);
+				break;
+            case Setting_STRIP_TYPE:
+				settings.strip.type = int_value;
+				break;
+            case Setting_STRIP_KEY:
+            {
+				uint8_t key = (uint8_t)int_value;
+				if(key<=0xf)
+				{
+					cmd_flag.cmd = STRIP_CMD_DIY_CMD;
+					cmd_flag.key = key;
+				}
+            }
+			break;
+
+#endif
 /*******************************自定义设置 END****************************************/
 
             case Setting_ToolChangeMode:
