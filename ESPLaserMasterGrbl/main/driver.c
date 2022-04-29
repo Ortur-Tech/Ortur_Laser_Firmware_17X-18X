@@ -47,6 +47,7 @@
 #include "hal/ledc_ll.h"
 #include "hal/ledc_types.h"
 #include "esp32-hal-uart.h"
+#include "extern_components/wireless_powerstrip.h"
 
 #if TRINAMIC_ENABLE
 #include "motors/trinamic.h"
@@ -1504,6 +1505,8 @@ uint8_t fan_GetSpeed(void)
 
 void light_Init(void)
 {
+#ifndef WIRELESS_STRIP_ENABLE
+
 #if !(BOARD_VERSION == OCM_ESP_PRO_V1X)
 	gpio_config_t gpioConfig = {
 	        .pin_bit_mask = ((uint64_t)1 << LIGHT_PIN),
@@ -1516,11 +1519,14 @@ void light_Init(void)
 	gpio_config(&gpioConfig);
 	gpio_set_level(LIGHT_PIN,0);
 #endif
+
+#endif
 }
 
 uint8_t light_brightness = 100;
 void light_SetState(uint8_t s)
 {
+#ifndef WIRELESS_STRIP_ENABLE
 #if !(BOARD_VERSION == OCM_ESP_PRO_V1X)
 #if ENABLE_GPIO_SET_CRITICAL
 	portENTER_CRITICAL(&mux3);
@@ -1537,6 +1543,7 @@ void light_SetState(uint8_t s)
 	}
 #if ENABLE_GPIO_SET_CRITICAL
 	portEXIT_CRITICAL(&mux3);
+#endif
 #endif
 #endif
 }
@@ -2663,6 +2670,9 @@ static bool driver_setup (settings_t *settings)
 #endif
     /*照明初始化*/
     light_Init();
+#if WIRELESS_STRIP_ENABLE
+    wireless_strip_init();
+#endif
     /*蜂鸣器初始化*/
     beep_Init();
 #if ENABLE_FIRE_CHECK

@@ -27,7 +27,9 @@
 #include "config.h"
 #include "system.h"
 #include "my_machine.h"
-
+#if WIRELESS_STRIP_ENABLE
+#include "extern_components/wireless_powerstrip.h"
+#endif
 // Version of the persistent storage data. Will be used to migrate existing data from older versions of Grbl
 // when firmware is upgraded. Always stored in byte 0 of non-volatile storage
 #define SETTINGS_VERSION ORTUR_FW_VERSION_NUM  // NOTE: Check settings_reset() when moving to next version.
@@ -259,6 +261,14 @@ typedef enum {
     Setting_UserDefined_7 = 457,
     Setting_UserDefined_8 = 458,
     Setting_UserDefined_9 = 459,
+
+#if WIRELESS_STRIP_ENABLE
+	Setting_STRIP_ADDR = 500,
+	Setting_STRIP_TYPE = 501,
+	Setting_STRIP_KEY		= 502,
+	Setting_STRIP_RANDOM_ADDR	= 503,
+
+#endif
 
     Setting_SettingsMax
 //
@@ -548,6 +558,10 @@ typedef struct {
     uint8_t power_log_enable;				//打印电源电压，电流信息
     uint32_t uart_baudrate;					//串口波特率
     uint8_t voltage_offset;
+#if WIRELESS_STRIP_ENABLE
+    strip_settings_t strip;
+    uint32_t random_addr;
+#endif
 } settings_t;
 
 extern settings_t settings;
@@ -589,4 +603,9 @@ void write_global_settings ();//添加函数声明
 
 /*恢复出厂设置*/
 void coord_data_restore(void);
+
+#if WIRELESS_STRIP_ENABLE
+
+#endif
+
 #endif

@@ -22,6 +22,9 @@ OPTION(WebAuth "WebUI authentication" OFF)
 OPTION(MPGMode "MPG mode" OFF)
 OPTION(I2SStepping "Use I2S Stepping" OFF)
 
+#433MHZ communication components
+OPTION(WirelessPowerStrip "Use Wireless PowerSTRIP" ON)
+
 # Networking options (WiFi)
 OPTION(SoftAP "Enable soft AP mode" OFF)
 
@@ -44,6 +47,9 @@ set(WEBUI_SOURCE webui/server.c webui/response.c webui/commands.c webui/flashfs.
 set(BLUETOOTH_SOURCE bluetooth.c )
 set(HUANYANG_SOURCE spindle/huanyang.c spindle/modbus)
 set(EEPROM_SOURCE eeprom/eeprom_24LC16B.c eeprom/eeprom_24AAxxx.c)
+
+set(WIRELESSStRIP_SOURCE extern_components/wireless_powerstrip.c)
+
 
 set(SRCS main.c driver.c nvs.c esp32-hal-uart.c board.c usb_serial.c accelDetection.c tusb_msc_disk.c serial_iap.c digital_laser.c single_uart.c
  mac_encrypt.c
@@ -74,6 +80,10 @@ set(SRCS main.c driver.c nvs.c esp32-hal-uart.c board.c usb_serial.c accelDetect
  grbl/system.c
  grbl/tool_change.c
 )
+
+if(WirelessPowerStrip)
+list (APPEND SRCS ${WIRELESSStRIP_SOURCE})
+endif()
 
 if(Networking)
 list (APPEND SRCS ${NETWORKING_SOURCE})
@@ -125,6 +135,10 @@ elseif(BOARD_CNC_BOOSTERPACK)
 target_compile_definitions("${COMPONENT_LIB}" PUBLIC BOARD_CNC_BOOSTERPACK)
 elseif(BOARD_MY_MACHINE)
 target_compile_definitions("${COMPONENT_LIB}" PUBLIC BOARD_MY_MACHINE)
+endif()
+
+if(WirelessPowerStrip)
+target_compile_definitions("${COMPONENT_LIB}" PUBLIC WIRELESS_STRIP_ENABLE=1)
 endif()
 
 if(Networking)

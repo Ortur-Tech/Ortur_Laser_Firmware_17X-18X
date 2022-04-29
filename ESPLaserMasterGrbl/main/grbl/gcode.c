@@ -693,6 +693,21 @@ status_code_t gc_execute_block(char *block, char *message)
 						laser_auto_focus_set(1);
 #endif
 						break;
+#if WIRELESS_STRIP_ENABLE
+					case 20:
+					case 21:
+					case 22:
+					case 23:
+					case 24:
+					case 25:
+					case 26:
+					case 27:
+					case 28:
+					{
+						cmd_flag.cmd = int_value;
+					}
+					break;
+#endif
                     case 56:
                         if(!settings.parking.flags.enable_override_control) // TODO: check if enabled?
                             FAIL(Status_GcodeUnsupportedCommand); // [Unsupported M command]
