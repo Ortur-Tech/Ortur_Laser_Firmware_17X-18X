@@ -23,7 +23,7 @@ OPTION(MPGMode "MPG mode" OFF)
 OPTION(I2SStepping "Use I2S Stepping" OFF)
 
 #433MHZ communication components
-OPTION(WirelessPowerStrip "Use Wireless PowerSTRIP" ON)
+OPTION(WirelessPowerStrip "Use Wireless PowerSTRIP" OFF)
 
 # Networking options (WiFi)
 OPTION(SoftAP "Enable soft AP mode" OFF)
