@@ -51,8 +51,7 @@
 #define AUFERO_3			200300
 #define AUFERO_4			200400	//方框机器370*400
 
-
-#define MACHINE_TYPE 	    AUFERO_2
+#define MACHINE_TYPE 	    OLM2
 /*******************机型定义 END*******************/
 
 #if (MACHINE_TYPE == OLM2) || (MACHINE_TYPE == OLM)
